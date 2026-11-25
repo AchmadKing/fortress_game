@@ -1,37 +1,44 @@
 # Current Development Phase
 
-## Phase 1 — Core Game Architecture
+## Phase 2 — Mathematical / Systems Prototype
 
-Project saat ini berada pada tahap **Phase 1: Core Game Architecture**.
-
----
-
-### Status Eksekusi Phase 1
-
-- **Architecture Skeleton Implementation**: **COMPLETED (MINIMAL SKELETON)**
-- **Boundary Verification Tests**: **PASSED (5/5 tests passed, 0 failed)**
-- **Developer Review & Approval Gate**: **PENDING REVIEW**
-- **Gameplay Development**: **NOT STARTED**
+Project saat ini berada pada tahap **Phase 2: Mathematical / Systems Prototype (PLANNING ONLY)**.
 
 ---
 
-### Komponen Teknis yang Telah Diimplementasikan
+### Riwayat Status Fase
 
-| Layer / Modul | File Implementasi | Status | Hasil Pengujian |
-| :--- | :--- | :--- | :--- |
-| **Domain State** | `scripts/domain/state/game_state_snapshot.gd` | IMPLEMENTED | Terisolasi murni, bebas Node/SceneTree |
-| **Domain Configuration** | `scripts/domain/config/game_config_resource.gd` | IMPLEMENTED | Wadah data statis berbasis `Resource` |
-| **Simulation Layer** | `scripts/simulation/simulation_runner.gd` | IMPLEMENTED | Deterministik, independen dari frame rate |
-| **Application Coordinator** | `scripts/application/coordinators/game_coordinator.gd` | IMPLEMENTED | Unidirectional flow, proteksi mutasi state |
-| **Persistence Boundary** | `scripts/infrastructure/persistence/save_snapshot_dto.gd` | IMPLEMENTED | Plain data serialization, validasi schema version |
-| **Architecture Test Suite** | `tests/test_architecture_boundaries.gd` | IMPLEMENTED | 5/5 boundary test lulus verifikasi headless |
+- **Phase 0 — Workspace & Development Environment Setup**: **COMPLETED**
+- **Phase 1 — Core Game Architecture**: **COMPLETED / APPROVED**
+  - Architecture Skeleton: COMPLETED
+  - Boundary Verification: 5/5 PASSED (test suite headless)
+  - Gameplay Implementation: NOT STARTED
+  - Developer Approval: APPROVED (Commit `4b7436e`)
+- **Phase 2 — Mathematical / Systems Prototype**: **IN PROGRESS — PLANNING ONLY**
+  - Mathematical & Systems Design Document: IN PROGRESS ([docs/design/MATHEMATICAL_SYSTEMS_PROTOTYPE.md](docs/design/MATHEMATICAL_SYSTEMS_PROTOTYPE.md))
+  - Gameplay Development: NOT STARTED
+
+---
+
+### Status Komponen Phase 2
+
+| Komponen Sistem | Status | Keterangan |
+| :--- | :--- | :--- |
+| **Population & Manpower Model** | PLANNING | Total Pop, Civilians, Soldiers, Heroes, Casualties |
+| **Worker Economy Model** | PLANNING | Salary, Productivity, Maintenance, Morale |
+| **Soldier System (Aggregate)** | PLANNING | Army Power, Salary, Morale, Equipment Factor |
+| **Hero Progression Formula** | PLANNING | EXP curves, Star rank, Stat scaling, Fatigue |
+| **Equipment & Repair Model** | PLANNING | Tiers, Durability, Repair cost, Degradation |
+| **Fortress Durability & Repair** | PLANNING | Max HP, Incoming Damage, Worker Repair Rate, Fail Condition |
+| **Wave Threat Budget** | PLANNING | Budget scaling, Unit costs, Trait modifiers, Randomness control |
+| **Combat Abstraction Model** | PLANNING | Deterministic simulation formula (Input -> Sim -> Output) |
+| **100-Wave Economic Validation** | PLANNING | Income vs Expense balance, Loop stability |
+| **Gameplay Code / Assets** | NOT STARTED | Belum ada kode gameplay, combat, atau visual |
 
 ---
 
 ### Rules & Constraints
 
 > **CRITICAL RULE**:
-> **No gameplay development (combat, wave, hero, economy, gameplay UI, scenes) is allowed until Phase 1 Architecture Implementation is fully reviewed and approved by the developer.**
-
-- Seluruh implementasi saat ini murni merupakan kerangka (*skeleton*) arsitektural dan kontrak interface.
-- Keputusan besar seperti Autoload global, Event Bus besar, dan mekanisme save backend tetap berstatus fleksibel (*reversible*).
+> **No gameplay implementation (combat code, wave spawner, hero mechanics, economy scripts, UI, scenes) is allowed during Phase 2 Planning.**
+> Tahap ini murni perancangan formula matematika dan model sistem abstrak untuk memvalidasi kestabilan loop permainan sebelum visual dibuat.

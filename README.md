@@ -25,8 +25,10 @@ Tujuan tahap ini adalah membuat proyek mudah dikembangkan, mudah dipahami AI, mu
 
 ## 🚦 Status Pengembangan
 
-- **Fase Saat Ini**: `Phase 1 — Core Game Architecture` (**IN PROGRESS — Architecture Discovery & Design**)
-- **Fase Sebelumnya**: `Phase 0 — Workspace & Development Environment Setup` (**COMPLETED**)
+- **Fase Saat Ini**: `Phase 2 — Mathematical / Systems Prototype` (**IN PROGRESS — PLANNING**)
+- **Fase Selesai**:
+  - `Phase 0 — Workspace & Development Environment Setup`: **COMPLETED**
+  - `Phase 1 — Core Game Architecture`: **COMPLETED / APPROVED**
 - **Gameplay Development**: **NOT STARTED**
 
 Rincian perencanaan dan aturan proyek dapat dilihat pada:

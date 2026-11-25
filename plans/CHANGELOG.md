@@ -4,7 +4,15 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
-## [Unreleased] - Phase 1: Core Game Architecture
+## [Unreleased] - Phase 2: Mathematical / Systems Prototype (Planning)
+
+### Added
+- Dokumen desain sistem dan pemodelan matematika ([docs/design/MATHEMATICAL_SYSTEMS_PROTOTYPE.md](docs/design/MATHEMATICAL_SYSTEMS_PROTOTYPE.md)) yang mencakup model populasi, ekonomi pekerja, agregat pasukan, progresi hero, equipment & durability, wave threat budget, abstraksi combat deterministik, simulasi ekonomi 100-wave, scenario testing, serta pemisahan core formulas dan balance parameters.
+- Inisiasi tahap perencanaan sistem matematika Phase 2.
+
+---
+
+## [0.2.0] - Phase 1: Core Game Architecture (Completed & Approved)
 
 ### Added
 - Implementasi skeleton arsitektur minimal Phase 1 yang membuktikan pemisahan lapisan:
@@ -14,10 +22,15 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
   - `scripts/application/coordinators/game_coordinator.gd`: Coordinator aliran data satu arah (*unidirectional data flow*) dengan sinyal reaktif.
   - `scripts/infrastructure/persistence/save_snapshot_dto.gd`: DTO serialisasi save/load dengan validasi `schema_version`.
 - Test suite arsitektur headless ([tests/test_architecture_boundaries.gd](tests/test_architecture_boundaries.gd)) yang memvalidasi ke-5 boundary secara otomatis (5 lulus, 0 gagal).
-- Pembaruan menyeluruh pada dokumen [docs/architecture/CORE_ARCHITECTURE.md](docs/architecture/CORE_ARCHITECTURE.md) mendokumentasikan struktur skeleton aktual, keputusan teknis, opsi reversible, serta batasan gameplay yang belum diimplementasikan.
+- Pembaruan dokumen arsitektur [docs/architecture/CORE_ARCHITECTURE.md](docs/architecture/CORE_ARCHITECTURE.md).
 
-### Changed
-- Pembaruan [plans/CURRENT_PHASE.md](plans/CURRENT_PHASE.md): Mencatat penyelesaian implementasi skeleton arsitektur Phase 1 dan hasil pengujian boundary, berstatus menunggu approval developer sebelum melangkah ke Phase 2.
+### Verified & Approved
+- Boundary verification: 5/5 PASSED, 0 FAILED.
+- Domain state murni terisolasi dari Node/SceneTree.
+- Simulation boundary deterministik dan frame-independent.
+- Persistence plain DTO + schema version.
+- Gameplay implementation: NOT STARTED.
+- Persetujuan resmi Developer: APPROVED (Commit `4b7436e`).
 
 ---
 
