@@ -1,11 +1,11 @@
 # Core Game Architecture — Fortress Game
 
-**Status**: PROPOSED (Architecture Discovery & Technical Design)  
+**Status**: ARCHITECTURE SKELETON IMPLEMENTED (AWAITING DEVELOPER REVIEW)  
 **Target Platform**: Mobile (Android) — Lightweight, Battery-Friendly  
 **Development Environment**: PC (Windows / Godot Engine 4.x / VS Code / Antigravity AI)
 
 > [!IMPORTANT]
-> Dokumen ini adalah rancangan arsitektur tingkat tinggi (*Architecture Proposal*). Seluruh keputusan teknis berstatus `PROPOSED` dan belum dikunci. Implementasi skrip, scene, maupun gameplay DILARANG dimulai sebelum dokumen ini direview dan disetujui secara eksplisit oleh developer.
+> Arsitektur skeleton minimal telah diimplementasikan untuk membuktikan batas (*boundaries*) teknis antar-layer. **Belum ada implementasi gameplay, combat, wave, hero, maupun UI**. Keputusan implementasi tetap dijaga seringan dan se-modular mungkin agar dapat disesuaikan pada fase prototipe berikutnya.
 
 ---
 
@@ -21,9 +21,33 @@ Arsitektur inti game dirancang untuk memenuhi sasaran berikut:
 
 ---
 
-## 2. System Boundaries
+## 2. Actual Implemented Architecture Skeleton
 
-Arsitektur dibagi ke dalam 5 lapisan (*layers*) dengan batas tanggung jawab (*boundary*) yang tegas:
+Berdasarkan persetujuan bersyarat Phase 1, skeleton arsitektur minimal telah dibangun dengan struktur file berikut:
+
+```text
+scripts/
+├── domain/
+│   ├── state/
+│   │   └── game_state_snapshot.gd     # Domain State murni (RefCounted, zero Node/SceneTree)
+│   └── config/
+│       └── game_config_resource.gd    # Data definition berbasis Godot Resource (.tres)
+├── simulation/
+│   └── simulation_runner.gd          # Boundary simulasi deterministik (tanpa _process)
+├── application/
+│   └── coordinators/
+│       └── game_coordinator.gd       # Coordinator aliran data satu arah (unidirectional data flow)
+└── infrastructure/
+    └── persistence/
+        └── save_snapshot_dto.gd       # DTO Save/Load dengan schema_version & plain data
+
+tests/
+└── test_architecture_boundaries.gd   # Test suite headless membuktikan isolasi kelima boundary
+```
+
+---
+
+## 3. System Boundaries & Layer Responsibilities
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
@@ -33,177 +57,108 @@ Arsitektur dibagi ke dalam 5 lapisan (*layers*) dengan batas tanggung jawab (*bo
                                │  (Observes State / Sends Commands)
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    GAMEPLAY LOGIC & SYSTEMS                 │
-│  (GameCoordinator, FortressSystem, WaveSystem, HeroSystem)  │
+│                 APPLICATION / COORDINATORS                  │
+│       (GameCoordinator: orchestrates flow & signals)        │
 └──────────────────────────────┬──────────────────────────────┘
                                │  (Executes Simulation / Mutates Data)
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                      SIMULATION LAYER                       │
-│    (DamageCalculator, StatFormulas, TickScheduler, Rules)   │
+│    (SimulationRunner: pure calculation, tick, headless)     │
 └──────────────────────────────┬──────────────────────────────┘
                                │  (Operates On)
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                      DOMAIN DATA MODELS                     │
-│    (FortressData, HeroData, WaveData, EconomyData, Items)   │
+│    (GameStateSnapshot: pure RefCounted data container)      │
+│    (GameConfigResource: static configuration Resource)      │
 └──────────────────────────────┬──────────────────────────────┘
                                ▲
                                │  (Serializes / Deserializes)
 ┌──────────────────────────────┴──────────────────────────────┐
 │                  PERSISTENCE & INFRASTRUCTURE               │
-│     (SaveManager, FileIO, DeviceSettings, AudioAdapter)     │
+│         (SaveSnapshotDto: schema_version, plain DTO)        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
----
-
-## 3. Responsibility Tiap Sistem
-
-| Layer / Sistem | Tanggung Jawab Utama | Hal yang Dilarang |
+| Layer / File | Tanggung Jawab Nyata yang Diimplementasikan | Hal yang Dilarang & Dijaga |
 | :--- | :--- | :--- |
-| **Presentation / UI** | Menerima input sentuhan pemain, merender visual benteng, unit, dan UI, memutar animasi/suara, menampilkan angka damage. | Menyimpan state otoritatif, menghitung formula damage, mengubah data ekonomi secara langsung. |
-| **Gameplay Systems** | Mengorkestrasi aturan main: mengontrol flow wave, memvalidasi perintah upgrade benteng/hero, memicu aksi combat. | Mengakses langsung node UI spesifik, memuat visual texture atau aset grafis. |
-| **Simulation Layer** | Menyediakan fungsi kalkulasi murni (*pure mathematical functions*): formula armor/damage, kalkulasi stat multiplier, tick timing. | Menyimpan referensi Node, mengakses SceneTree, melakukan I/O file. |
-| **Domain Data** | Merepresentasikan kondisi data game (*game state snapshot*), nilai HP, level, inventori, konfigurasi stat unit. | Memiliki logika rendering, memiliki dependensi ke scene visual. |
-| **Persistence / Storage** | Menyimpan dan memuat snapshot state ke penyimpanan lokal perangkat (save/load), mengelola migrasi format data. | Memanipulasi state aktif tanpa melalui sistem yang berwenang. |
+| **Domain State** (`game_state_snapshot.gd`) | Menyimpan snapshot data game murni, menyediakan method `clone()`, `to_dictionary()`, dan `from_dictionary()`. | Dilarang mewarisi `Node`, memanggil SceneTree, melakukan I/O file, atau memuat resource visual. |
+| **Domain Config** (`game_config_resource.gd`) | Menyediakan wadah parameter konfigurasi statis berbasis `Resource` untuk Inspector Godot. | Dilarang memuat logika simulasi atau manipulasi state runtime. |
+| **Simulation** (`simulation_runner.gd`) | Melakukan perhitungan langkah (*step/tick*) deterministik secara murni dari snapshot A ke snapshot B. | Dilarang mengandalkan `_process()`, delta rendering frame, atau window visual. |
+| **Application Coordinator** (`game_coordinator.gd`) | Mengorkestrasi aliran data satu arah: menerima perintah UI, memanggil simulasi, memancarkan signal `state_changed`. | Mengembalikan clone state ke pemanggil agar state internal tidak dimutasi sembarangan oleh UI. |
+| **Persistence DTO** (`save_snapshot_dto.gd`) | Serialisasi/deserialisasi plain dictionary dengan validasi `schema_version`. | Dilarang melakukan serialisasi Node visual atau hierarki SceneTree. |
 
 ---
 
-## 4. Data Flow
+## 4. Unidirectional Data Flow
 
-Prinsip aliran data yang diusulkan adalah **Unidirectional Data Flow**:
+Pola aliran data yang diterapkan dan telah diverifikasi melalui pengujian:
+
+1. **Presentation / UI** mengirimkan panggilan metode / perintah (misal: `coordinator.request_step(delta_tick)`).
+2. **Coordinator** memvalidasi dan meneruskan state ke **SimulationRunner**.
+3. **SimulationRunner** menghasilkan snapshot state baru secara deterministik tanpa efek samping ke rendering.
+4. **Coordinator** memperbarui state internal dan memancarkan signal reaktif `state_changed(new_snapshot)`.
+5. **Presentation / UI** merespons signal untuk memperbarui tampilan visualnya.
+
+---
+
+## 5. Keputusan Teknis yang Dipilih & Alasannya
+
+1. **Pure `RefCounted` untuk Domain State**:
+   - *Alasan*: Ringan, memori dikelola otomatis oleh Godot tanpa overhead node SceneTree, sangat cepat di mobile Android, dan memfasilitasi unit test headless.
+2. **Deterministic Step Function untuk Simulasi**:
+   - *Alasan*: Memisahkan logika perhitungan game dari refresh rate layar perangkat mobile (60Hz, 90Hz, 120Hz). Menghindari inkonsistensi formula matematis.
+3. **Save/Load DTO dengan `schema_version` eksplisit**:
+   - *Alasan*: Menjamin backward compatibility format penyimpanan saat ada update versi aplikasi di Android, serta mencegah ketergantungan rapuh pada node tree.
+4. **Typed GDScript Konsisten**:
+   - *Alasan*: Seluruh parameter dan return type didefinisikan secara statis. Menghindari runtime type error dan memberikan optimasi kecepatan eksekusi pada Godot 4.
+
+---
+
+## 6. Keputusan yang Masih Bersifat Reversible (Belum Dikunci)
+
+1. **Autoload vs Scene Injection**:
+   - Belum ada Autoload yang didaftarkan di `project.godot`. `GameCoordinator` saat ini berupa kelas modular yang dapat di-inject ke scene atau didaftarkan sebagai Autoload jika nanti terbukti diperlukan.
+2. **Central Event Bus vs Local Signals**:
+   - Saat ini menggunakan direct signals pada coordinator. Belum dibuat Event Bus global besar guna menghindari kompleksitas dini.
+3. **Mekanisme Tick Simulasi (Fixed Physics vs Internal Accumulator)**:
+   - Abstraksi `SimulationRunner.step()` saat ini independen dari loop engine. Keputusan apakah akan dikendalikan oleh `_physics_process` atau timer internal akan ditentukan saat prototipe Phase 2.
+
+---
+
+## 7. Bagian yang Sengaja Belum Diimplementasikan
+
+Sesuai aturan `AGENTS.md` dan batasan ACC Bersyarat Phase 1, hal berikut **DILARANG dan SENGAJA BELUM DIIMPLEMENTASIKAN**:
+- ❌ Logika combat, damage formula riil, dan battle state.
+- ❌ Wave generator dan monster spawning.
+- ❌ Hero, soldier, dan worker mechanics.
+- ❌ Sistem ekonomi, currency, dan inventori.
+- ❌ Scene gameplay, level map, dan battlefield.
+- ❌ UI/HUD gameplay nyata.
+- ❌ Pixel art, sprites, dan audio assets.
+
+---
+
+## 8. Verifikasi Pengujian
+
+Suite pengujian headless pada `tests/test_architecture_boundaries.gd` telah dijalankan menggunakan executable resmi Godot 4.7 Console dengan hasil:
 
 ```text
-[Pemain] 
-   │ Input (Touch / Click)
-   ▼
-[Presentation / UI Controller]
-   │ Request Command (e.g., UpgradeFacility, DeployHero)
-   ▼
-[Gameplay System]
-   │ Validate Rules & Cost
-   ▼
-[Simulation / Data Mutation]
-   │ Mutate Domain State Snapshot
-   ▼
-[State Notification / Signals]
-   │ Notify changes (e.g., on_health_changed, on_resource_updated)
-   ▼
-[Presentation / UI View]
-   │ Reactive Redraw (Update Text, Play VFX/SFX)
-   ▼
-[Pemain Melihat Feedback Visual]
+========================================
+RUNNING ARCHITECTURE BOUNDARY TESTS (PHASE 1)
+========================================
+[TEST] Running test_domain_isolation...
+[PASS] test_domain_isolation
+[TEST] Running test_simulation_determinism...
+[PASS] test_simulation_determinism
+[TEST] Running test_unidirectional_coordination...
+[PASS] test_unidirectional_coordination
+[TEST] Running test_persistence_dto_serialization...
+[PASS] test_persistence_dto_serialization
+[TEST] Running test_config_resource_isolation...
+[PASS] test_config_resource_isolation
+========================================
+TEST RESULTS: 5 PASSED, 0 FAILED
+========================================
 ```
-
-- **Aturan Otoritas**: UI tidak pernah mengubah state langsung. UI hanya mengirimkan *Intent/Command* ke System.
-- **Aturan Reaktif**: Visual diperbarui sebagai respons atas perubahan state melalui signal/event, bukan dengan polling di `_process` setiap frame.
-
----
-
-## 5. Core Game State & Lifecycle
-
-Siklus hidup aplikasi (*Game Lifecycle*) dikelola secara terstruktur:
-
-1. **Bootstrapping**: Inisialisasi engine, pembacaan konfigurasi dasar perangkat/resolusi.
-2. **Main Menu State**: Menunggu input pemain, opsi pengaturan (audio, bahasa).
-3. **Save Loading State**: Memvalidasi integritas save file, menginisialisasi domain data.
-4. **Active Stage / Loop State**:
-   - **Preparation / Management Phase**: Pemain mengatur fasilitas benteng, upgrade, dan komposisi tim/hero.
-   - **Wave / Combat Phase**: Wave musuh bergerak, simulasi combat aktif, kalkulasi benteng & unit.
-   - **Stage Resolution Phase**: Kondisi kemenangan (*Victory*) atau kekalahan (*Defeat* / Benteng runtuh).
-5. **Mobile Lifecycle Handling**:
-   - `NOTIFICATION_APPLICATION_PAUSED` / `FOCUS_OUT`: Otomatis menjeda game, menyimpan progres sementara jika diperlukan.
-   - `NOTIFICATION_APPLICATION_RESUMED`: Mengembalikan konteks game.
-
----
-
-## 6. Domain Data vs Presentation/UI
-
-Untuk memastikan modularitas dan kemudahan pengujian:
-
-- **Domain Data**:
-  - Berisi atribut numerik murni, string ID, enum tipe, dan flag status (misal: `current_hp: int`, `max_hp: int`, `level: int`).
-  - Tidak memiliki dependensi ke node Godot seperti `Sprite2D`, `AnimationPlayer`, atau `AudioStreamPlayer2D`.
-  - Berbentuk kelas data murni (`RefCounted` / `Resource` / Dictionary terstruktur).
-- **Presentation / UI**:
-  - Mengikat (*bind*) visual ke Domain Data melalui ID atau instance data.
-  - Membaca data untuk menentukan tampilan, memancarkan signal saat pemain berinteraksi.
-
----
-
-## 7. Simulation Boundary
-
-Simulasi game (kalkulasi pertempuran, laju damage, kalkulasi wave):
-
-- **Decoupled from Render Frame**: Logika simulasi tidak boleh bergantung pada fluktuasi frame rate rendering (`delta` pada `_process`).
-- **Fixed Tick / Deterministic Approach**: Jika diperlukan simulasi kalkulasi kontinu, gunakan fixed delta (`_physics_process` atau tick internal) agar hasil simulasi konsisten di semua spesifikasi perangkat Android.
-- **Headless Capable**: Formula simulasi harus dapat dijalankan dalam unit test tanpa perlu membuka scene atau merender window.
-
----
-
-## 8. Save/Load Boundary (High-Level)
-
-- **DTO / State Snapshot**: Data yang disimpan hanyalah *plain data* (ID benteng, level fasilitas, jumlah koin, progres wave tertinggi).
-- **No Node Serialization**: Scene tree, node visual, atau objek runtime dinamis dilarang diserialisasi langsung ke disk.
-- **Schema Versioning**: Format penyimpanan menyertakan field `version: int` untuk memudahkan migrasi data saat ada update versi game di masa mendatang.
-
----
-
-## 9. Dependency Rules
-
-1. **Upper layers may depend on Lower layers**: Presentation boleh mengenal System; System boleh mengenal Simulation & Domain Data.
-2. **Lower layers MUST NOT depend on Upper layers**: Domain Data & Simulation DILARANG mengenal Presentation atau Scene Tree.
-3. **No Circular Dependencies**: Sistem A tidak boleh saling memanggil langsung dengan Sistem B secara melingkar (*no tight mutual coupling*).
-
----
-
-## 10. Extension Strategy
-
-- Penambahan konten baru (tipe tower baru, tipe monster baru, variasi wave) dirancang berbasis data (*data-driven definitions*).
-- Setiap entitas didefinisikan melalui ID unik dan data parameter, bukan dengan membuat puluhan skrip unik yang menduplikasi logika.
-
----
-
-## 11. Lightweight & Mobile (Android) Considerations
-
-1. **Memory Allocation**: Hindari instansiasi objek berulang kali dalam loop `_process` untuk mencegah lag akibat Garbage Collector / Memory Churn.
-2. **Object Pooling (Proposed for Later)**: Untuk entitas yang sering muncul dan hancur (proyektil, monster, pop-up damage text), siapkan arsitektur yang mendukung pooling pada fase implementasi.
-3. **Typed GDScript (GDScript 2.0)**: Wajib menggunakan *static typing* (`var health: int = 100`, `func take_damage(amount: int) -> void`). Ini memberikan performa eksekusi lebih cepat pada Godot 4 dan mengurangi error runtime.
-4. **Draw Calls & Texture Atlases**: Arsitektur UI dan visual dipersiapkan agar ramah batching pada renderer mobile Godot.
-
----
-
-## 12. Risks and Trade-offs
-
-| Risiko | Dampak | Strategi Mitigasi |
-| :--- | :--- | :--- |
-| **Over-Engineering** | Waktu development lambat, kode sulit dibaca | Gunakan arsitektur seminimal mungkin yang memenuhi prinsip pemisahan data-view. Tolak framework eksternal yang tidak esensial. |
-| **Coupling Acak di Godot** | Akses node dengan path string (`get_node("../../../")`) rapuh saat scene diubah | Larang penggunaan *hardcoded relative node paths*. Gunakan dependency injection sederhana atau signal. |
-| **Performa Mobile Rendah** | Frame drop dan konsumsi baterai boros pada HP spek rendah | Utamakan typed GDScript, hindari loop berat di `_process`, batasi kalkulasi per frame. |
-
----
-
-## 13. Keputusan Teknis yang Memerlukan Approval Developer
-
-Berikut adalah daftar opsi teknis yang diajukan (**PROPOSED**) dan membutuhkan arahan/persetujuan developer:
-
-### Keputusan 1: Service Coordination & System Access
-- **Opsi A (Recommended)**: *Minimal Autoload Coordinators*. Menggunakan 1-2 Autoload esensial (misal: `GameManager` / `EventBus`) untuk orkestrasi global, sementara sistem spesifik di-attach pada scene aktif.
-- **Opsi B**: *Pure Scene Tree Injection*. Tidak ada Autoload; semua dependensi dioper dari root scene ke child node secara eksplisit.
-- **Trade-off**: Opsi A sangat praktis dan natural di Godot namun perlu dijaga agar tidak menjadi "God Object". Opsi B sangat bersih secara isolasi tetapi membutuhkan wiring manual yang lebih rumit saat scene berganti.
-
-### Keputusan 2: Komunikasi Antar-Sistem
-- **Opsi A (Recommended)**: *Hybrid Signals*. Gunakan signal langsung (*local signals*) untuk hubungan parent-child (misal UI widget ke container-nya), dan *Domain Event Bus* ringan untuk komunikasi antar sistem besar (misal Combat System mengabarkan Fortress System).
-- **Opsi B**: *Pure Local Signals Only*. Semua komunikasi harus merambat melalui hierarki node tree.
-- **Trade-off**: Opsi A mencegah *signal chaining* yang terlalu dalam dan rapuh melintasi banyak hierarki.
-
-### Keputusan 3: Format Definisi Data Domain
-- **Opsi A (Recommended)**: *Custom Godot Resources (`.tres`)*. Mendefinisikan class `Resource` khusus (misal: `HeroConfig`, `WaveConfig`). Sangat terintegrasi dengan Godot Editor GUI, memudahkan developer melakukan visual tuning parameter stat.
-- **Opsi B**: *Pure GDScript Dictionaries / JSON*. Menggunakan data table berbasis file JSON atau dictionary GDScript.
-- **Trade-off**: Opsi A memanfaatkan kekuatan native Godot 4 Inspector dan static typing, Opsi B lebih independen dari engine tetapi minim validasi editor.
-
----
-
-> **STATUS: PROPOSED & AWAITING DEVELOPER REVIEW**  
-> Tidak ada implementasi teknis yang dimulai sebelum developer memberikan persetujuan terhadap poin-poin keputusan di atas.

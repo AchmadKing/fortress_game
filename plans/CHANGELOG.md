@@ -7,12 +7,17 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 ## [Unreleased] - Phase 1: Core Game Architecture
 
 ### Added
-- Dokumen rancangan arsitektur inti awal ([docs/architecture/CORE_ARCHITECTURE.md](docs/architecture/CORE_ARCHITECTURE.md)) yang mencakup tujuan arsitektur, batasan sistem, pemisahan layer (Presentation, Logic, Simulation, Data, Persistence), aliran data unidirectional, lifecycle aplikasi, mitigasi performa mobile, serta opsi keputusan teknis yang berstatus `PROPOSED`.
-- Inisiasi **Phase 1 — Core Game Architecture** (fokus terbatas pada Architecture Discovery & Design).
+- Implementasi skeleton arsitektur minimal Phase 1 yang membuktikan pemisahan lapisan:
+  - `scripts/domain/state/game_state_snapshot.gd`: Domain state container murni berbasis `RefCounted` tanpa dependensi visual.
+  - `scripts/domain/config/game_config_resource.gd`: Wadah konfigurasi statis berbasis Godot `Resource`.
+  - `scripts/simulation/simulation_runner.gd`: Runner simulasi deterministik tanpa ketergantungan pada `_process()`.
+  - `scripts/application/coordinators/game_coordinator.gd`: Coordinator aliran data satu arah (*unidirectional data flow*) dengan sinyal reaktif.
+  - `scripts/infrastructure/persistence/save_snapshot_dto.gd`: DTO serialisasi save/load dengan validasi `schema_version`.
+- Test suite arsitektur headless ([tests/test_architecture_boundaries.gd](tests/test_architecture_boundaries.gd)) yang memvalidasi ke-5 boundary secara otomatis (5 lulus, 0 gagal).
+- Pembaruan menyeluruh pada dokumen [docs/architecture/CORE_ARCHITECTURE.md](docs/architecture/CORE_ARCHITECTURE.md) mendokumentasikan struktur skeleton aktual, keputusan teknis, opsi reversible, serta batasan gameplay yang belum diimplementasikan.
 
 ### Changed
-- Pembaruan [plans/ROADMAP.md](plans/ROADMAP.md): Phase 0 ditandai `COMPLETED`; Phase 1 dialihkan menjadi tujuan arsitektur tingkat tinggi tanpa mengunci implementasi spesifik (Autoload/Event Bus/Singleton).
-- Pembaruan [plans/CURRENT_PHASE.md](plans/CURRENT_PHASE.md): Phase 0 resmi ditandai `COMPLETED` setelah verifikasi audit; Phase 1 aktif sebagai `IN PROGRESS` (Discovery & Design Only).
+- Pembaruan [plans/CURRENT_PHASE.md](plans/CURRENT_PHASE.md): Mencatat penyelesaian implementasi skeleton arsitektur Phase 1 dan hasil pengujian boundary, berstatus menunggu approval developer sebelum melangkah ke Phase 2.
 
 ---
 
