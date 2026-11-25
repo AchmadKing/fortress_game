@@ -10,7 +10,7 @@ High-level roadmap pengembangan proyek `fortress_game`.
 ---
 
 ## Phase 0 — Workspace & Development Environment
-- **Status**: IN PROGRESS
+- **Status**: COMPLETED
 - **Tujuan**:
   - Project directory structure
   - Git / GitHub repository setup & safety
@@ -20,8 +20,16 @@ High-level roadmap pengembangan proyek `fortress_game`.
   - Planning & documentation structure (`plans/`, `docs/`)
 
 ## Phase 1 — Core Game Architecture
-- **Status**: NOT STARTED
-- **Tujuan**: Membangun arsitektur dasar game, autoload/singleton core, event bus, dan lifecycle framework.
+- **Status**: IN PROGRESS (Architecture Discovery & Design)
+- **Tujuan**:
+  - Mendefinisikan arsitektur inti game berdasarkan konsep desain yang disetujui;
+  - Menentukan pembagian tanggung jawab (*responsibility boundaries*) antar sistem;
+  - Menentukan aliran data (*data flow*) dan hierarki dependensi antar sistem;
+  - Menentukan struktur data domain inti yang minimal dan esensial;
+  - Menentukan batas tegas antara presentation/UI, game logic, simulasi, data, dan persistence;
+  - Menentukan pendekatan komunikasi antar sistem setelah analisis kebutuhan teknis;
+  - Membangun baseline arsitektur yang ringan (*lightweight*), hemat memori, dan optimal untuk platform target mobile Android serta hardware development yang terbatas.
+  *(Catatan: Pilihan implementasi spesifik seperti Autoload, Singleton, Event Bus, Service Locator, ECS, Resource-based, atau Node-based tidak dikunci di awal dan harus dievaluasi trade-off-nya sebelum disetujui).*
 
 ## Phase 2 — Mathematical / Systems Prototype
 - **Status**: NOT STARTED

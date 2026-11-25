@@ -1,13 +1,13 @@
 # Fortress Game
 
-Sebuah game bertema pertahanan benteng (*fortress defense*) yang dirancang untuk platform mobile Android dengan prinsip arsitektur yang bersih, modular, dan performan.
+Sebuah game bergenre **Pixel-Art Fantasy Fortress Management / Strategy Simulation** yang dirancang untuk platform mobile Android dengan prinsip arsitektur yang bersih, modular, dan performan.
 
 ---
 
 ## 📌 Ringkasan Proyek
 
 - **Nama Proyek**: Fortress Game (`fortress_game`)
-- **Genre**: Fortress Defense / Idle-Strategy
+- **Genre**: Pixel-Art Fantasy Fortress Management / Strategy Simulation
 - **Engine**: Godot Engine (Godot 4)
 - **Target Platform**: Mobile Android (*PC digunakan sebagai development/testing environment*)
 - **Development Environment**: VS Code, Antigravity AI, Godot Editor, Git + GitHub
@@ -25,21 +25,22 @@ Tujuan tahap ini adalah membuat proyek mudah dikembangkan, mudah dipahami AI, mu
 
 ## 🚦 Status Pengembangan
 
-- **Fase Saat Ini**: `Phase 0 — Workspace & Development Environment Setup` (**IN PROGRESS**)
+- **Fase Saat Ini**: `Phase 1 — Core Game Architecture` (**IN PROGRESS — Architecture Discovery & Design**)
+- **Fase Sebelumnya**: `Phase 0 — Workspace & Development Environment Setup` (**COMPLETED**)
 - **Gameplay Development**: **NOT STARTED**
 
 Rincian perencanaan dan aturan proyek dapat dilihat pada:
-- [Roadmap Pengembangan](file:///d:/fortress_game/plans/ROADMAP.md)
-- [Status Fase Aktif](file:///d:/fortress_game/plans/CURRENT_PHASE.md)
-- [Aturan Kerja Pengembangan (AGENTS.md)](file:///d:/fortress_game/AGENTS.md)
-- [Changelog Proyek](file:///d:/fortress_game/plans/CHANGELOG.md)
+- [Roadmap Pengembangan](plans/ROADMAP.md)
+- [Status Fase Aktif](plans/CURRENT_PHASE.md)
+- [Aturan Kerja Pengembangan (AGENTS.md)](AGENTS.md)
+- [Changelog Proyek](plans/CHANGELOG.md)
 
 ---
 
 ## 🚀 Rencana Fitur Utama (High-Level Future Concept)
 - Sistem pertahanan benteng
-- Manajemen sumber daya & upgrade
-- Mekanik gelombang musuh (*wave system*)
+- Manajemen sumber daya & fasilitas
+- Mekanik strategi pertahanan gelombang musuh (*wave strategy*)
 
 ---
 
@@ -50,8 +51,3 @@ Rincian perencanaan dan aturan proyek dapat dilihat pada:
    ```
 2. Buka folder proyek di **Godot Engine 4.x**.
 3. Buka proyek di editor atau VS Code untuk development.
-
----
-
-## 📄 Lisensi
-Proyek ini dilisensikan di bawah [MIT License](LICENSE).
