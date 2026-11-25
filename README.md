@@ -25,15 +25,18 @@ Tujuan tahap ini adalah membuat proyek mudah dikembangkan, mudah dipahami AI, mu
 
 ## 🚦 Status Pengembangan
 
-- **Fase Saat Ini**: `Phase 2 — Mathematical / Systems Prototype` (**IN PROGRESS — PLANNING**)
-- **Fase Selesai**:
+- **Fase Saat Ini**: `Phase 2 — Mathematical / Systems Prototype` (**COMPLETED — AWAITING DEVELOPER REVIEW**)
+- **Fase Sebelumnya**:
   - `Phase 0 — Workspace & Development Environment Setup`: **COMPLETED**
   - `Phase 1 — Core Game Architecture`: **COMPLETED / APPROVED**
+- **Fase Berikutnya**:
+  - `Phase 3 — Gameplay Prototype`: **NOT STARTED / LOCKED**
 - **Gameplay Development**: **NOT STARTED**
 
 Rincian perencanaan dan aturan proyek dapat dilihat pada:
 - [Roadmap Pengembangan](plans/ROADMAP.md)
 - [Status Fase Aktif](plans/CURRENT_PHASE.md)
+- [Desain Matematika & Sistem (Phase 2)](docs/design/MATHEMATICAL_SYSTEMS_PROTOTYPE.md)
 - [Aturan Kerja Pengembangan (AGENTS.md)](AGENTS.md)
 - [Changelog Proyek](plans/CHANGELOG.md)
 
