@@ -38,29 +38,42 @@ High-level roadmap pengembangan proyek `fortress_game`.
   - Simulasi 100-wave stabil tanpa eksploit ekonomi maupun death spiral.
 
 ## Phase 3 — Gameplay Prototype
-- **Status**: IMPLEMENTED / PLAYABLE PROTOTYPE (READY FOR DEVELOPER PLAYTEST)
-- **Tujuan**: Prototipe interaksi gameplay minimum yang dapat dimainkan (playable prototype) di Godot Editor berbasis arsitektur Phase 1 dan sistem matematika Phase 2.
-  - Gameplay State Machine terintegrasi (Boot, Prep, Wave Preview, Battle, Result, Recovery, Game Over).
-  - Kontrol preparation (alokasi pekerja, rekrutmen prajurit zero-sum).
-  - Kontrol tempo battle (pause, resume, speed 1x/2x/4x) dan pengiriman 6 commander commands intent.
-  - Scene prototype playable (`scenes/prototype/main_prototype.tscn`).
-  - Seluruh pengujian regression Phase 1 (5/5), Phase 2 (21/21), Phase 3 (11/11), dan Playtest Smoke tervalidasi 100% lulus.
+- **Status**: IN PROGRESS (PHASE 3A COMPLETED / ITERATIONS 3B–3E PLANNED)
+- **Tujuan**: Prototipe interaksi gameplay minimum yang dapat dimainkan (*playable prototype*) di Godot Editor berbasis arsitektur Phase 1 dan sistem matematika Phase 2.
+  - **Phase 3A — Baseline & Stabilization**: **COMPLETED** (Commit `2452397`)
+    - Gameplay State Machine terintegrasi (`BOOT` s/d `GAME_OVER`).
+    - Kontrol persiapan (alokasi pekerja 4 tugas sah, rekrutmen serdadu zero-sum).
+    - Kontrol tempo battle (pause, resume, speed 1x/2x/4x) dan pengiriman 6 commander commands intent.
+    - Scene prototype playable (`scenes/prototype/main_prototype.tscn`) & debug HUD.
+    - Seluruh pengujian regression Phase 1 (5/5), Phase 2 (21/21), Phase 3 (11/11), dan Playtest Smoke 100% PASS.
+  - **Phase 3B — Soldier Equipment & Warehouse Conservation**: **PLANNED**
+    - Derivasi peran prajurit dari perlengkapan senjata (Sword, Shield, Spear, Bow, Heavy Armor).
+    - Pembebasan tugas prajurit (*dismiss soldier*) kembali ke warga sipil.
+    - Manajemen perlengkapan prajurit: equip, unequip, swap.
+    - Penegakan ketat invariant konservasi gudang senjata ($\text{Total} = \text{Warehouse} + \text{Equipped}$) dan pencegahan equip saat stok $= 0$.
+  - **Phase 3C — Hero Equipment Foundation**: **PLANNED**
+    - Slot perlengkapan minimal Hero (Weapon, Armor).
+    - Integrasi equip/unequip/swap hero dengan gudang benteng.
+    - Pengembalian perlengkapan hero ke gudang secara otomatis saat permadeath.
+  - **Phase 3D — Prototype UX & Interaction Polish**: **PLANNED**
+    - Kontrol UI untuk pasang/tukar gear prajurit & hero serta dismiss prajurit.
+    - Eliminasi gameplay dead-ends dan transparansi telemetri inventaris.
+  - **Phase 3E — Final Prototype Verification & Phase 3 Exit Gate**: **PLANNED**
+    - Automated tests untuk konservasi gear dan derivasi peran.
+    - Stres playtest 20 wave berturut-turut pada hardware berspesifikasi rendah.
+    - Verifikasi gerbang keluar sebelum pembukaan Phase 4.
 
 ## Phase 4 — Hero System
-- **Status**: NOT STARTED
-- **Tujuan**: Struktur dan sistem hero/karakter.
+- **Status**: LOCKED (AWAITING PHASE 3 COMPLETION)
+- **Tujuan**: Struktur dan sistem hero/karakter mendalam (talent tree, active/passive skills, recruitment/tavern, ascension).
 
 ## Phase 5 — Fortress & Management Systems
-- **Status**: NOT STARTED
+- **Status**: LOCKED
 - **Tujuan**: Sistem pertahanan benteng, modul/fasilitas benteng, dan manajemen pendukung.
 
 ## Phase 6 — Tactical Battle & Battlefield Systems
-- **Status**: NOT STARTED
-- **Tujuan**: Sistem pertarungan taktis, medan laga visual, dan perintah komandan mendalam.
-
-## Phase 6 — Combat & Wave Systems
-- **Status**: NOT STARTED
-- **Tujuan**: Sistem pertempuran, kalkulasi damage, dan generator gelombang musuh (waves).
+- **Status**: LOCKED
+- **Tujuan**: Sistem pertarungan taktis mendalam, efek numerik 6 perintah komandan, visual battlefield, pathfinding serdadu & AI musuh.
 
 ## Phase 7 — Economy & Progression
 - **Status**: NOT STARTED

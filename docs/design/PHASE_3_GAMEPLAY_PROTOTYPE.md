@@ -1,14 +1,16 @@
-# PHASE 3 — GAMEPLAY PROTOTYPE IMPLEMENTATION PLAN
+# PHASE 3 — GAMEPLAY PROTOTYPE IMPLEMENTATION PLAN & AUDIT ROADMAP
 
-**Status**: DRAFT / PLANNING (AWAITING DEVELOPER APPROVAL)  
+**Status**: IMPLEMENTED / PLAYABLE PROTOTYPE BASELINE (PHASE 3A COMPLETED — ITERATIVE ROADMAP 3B–3E PLANNED)  
 **Project**: `fortress_game`  
 **Repository**: `https://github.com/AchmadKing/fortress_game.git`  
 **Branch**: `main`  
+**Baseline Commit**: `2452397dfc53cf1e7f56ee693245b41e3e72ff2d`  
 **Dependencies**: Phase 0 (Completed), Phase 1 (Completed), Phase 2 (Completed)
 
 > [!IMPORTANT]
-> Dokumen ini adalah **Rencana Implementasi Teknis (Technical Implementation Plan / Design Plan)**.
-> Sesuai aturan utama `AGENTS.md`: **DILARANG MENULIS KODE GAMEPLAY, MEMBUAT SCENE GAMEPLAY FINAL, MEMBUAT BATTLE SCENE FINAL, MEMBUAT UI FINAL, MAUPUN MEMBUAT ASSET** pada tahap ini. Implementasi teknis hanya akan dimulai setelah developer memberikan persetujuan eksplisit (*Explicit Approval*).
+> Dokumen ini adalah **Audit Komprehensif dan Rencana Peta Jalan Iteratif (Comprehensive Audit & Finalized Iterative Roadmap)** untuk Phase 3.
+> Berdasarkan aturan mutlak `AGENTS.md`: **DOKUMEN INI BERSIFAT PLANNING ONLY — TIDAK ADA IMPLEMENTASI KODE GAMEPLAY MAUPUN PERUBAHAN SISTEM PADA TAHAP INI**.
+> Phase 4 saat ini berstatus **LOCKED**. Tidak ada pekerjaan Phase 4 atau fase berikutnya yang boleh dimulai sebelum seluruh iterasi Phase 3 disetujui dan diselesaikan.
 
 ---
 
@@ -518,19 +520,321 @@ Implementasi Phase 3 hanya dapat dinyatakan selesai jika seluruh checklist berik
 
 ---
 
-## 19. Explicit Phase 4 & Phase 6 Deferrals
+## 19. Comprehensive Phase 3 Audit Findings (Commit `2452397`)
 
-Untuk menjaga batasan pengembangan tetap ramping dan terarah, fitur-fitur berikut secara eksplisit ditunda:
+Audit dilakukan secara mendalam terhadap seluruh sistem domain, application coordinator, state machine, simulation runner, presentation view/controller, dan automated test suites:
 
-### Ditunda ke Phase 4 (Hero System):
-- Sistem rekrutmen hero kompleks (Tavern / Gacha / Hero Market).
-- Pohon bakat hero (*Hero Talent Trees*), equipment khusus hero, dan sistem skill aktif/pasif hero.
-- Hubungan chemistry lanjutan dan dialog antar-hero.
-- UI manajemen hero mendalam.
+### 19.1 Architecture & Domain Isolation
+- **Status**: `PASSED`
+- `GameStateSnapshot` beroperasi sebagai `RefCounted` murni tanpa dependensi Node/SceneTree.
+- `GameCoordinator` menjaga pola *Unidirectional Data Flow* dengan memancarkan sinyal `state_changed(snapshot)` dan mengembalikan `clone()` immutable.
+- `SimulationRunner` membuktikan eksekusi deterministik tanpa ketergantungan pada `_process()` atau delta frame Godot.
+- Seluruh 5 boundary Phase 1 tervalidasi lulus (**5/5 PASS**).
 
-### Ditunda ke Phase 6 (Tactical Battle & Battlefield Systems):
-- Formula combat lanjutan untuk keenam perintah komandan (efek taktis detail HOLD, ADVANCE, RETREAT, PROTECT, FOCUS, FOLLOW).
-- Pembagian zona medan tempur (Frontline, Midfield, Walls, Backline).
-- AI musuh taktis, formasi tempur serdadu, dan penargetan dinamis.
-- Pergerakan unit real-time dan pathfinding di medan laga.
-- Battle visual scene dan combat HUD interaktif.
+### 19.2 Gameplay Loop & State Machine
+- **Status**: `PASSED`
+- Siklus deterministik `BOOT -> PREPARATION -> WAVE PREVIEW -> BATTLE -> RESULT -> RECOVERY -> PREPARATION` (dan percabangan `RESULT -> GAME_OVER`) terbukti berfungsi penuh.
+- Transisi ilegal ditolak keras oleh `GameplayStateMachine`.
+- Tidak ada duplikasi logika combat: `SimulationRunner` murni memanggil `CombatEngine`, `WaveGenerator`, dan `EconomyManager` dari Phase 2.
+
+### 19.3 Worker & Economy Loop
+- **Status**: `PASSED`
+- 4 tugas pekerja sah (`Repair`, `Blacksmith`, `Construction`, `Idle`).
+- Bebas passive income dan production worker. Upkeep dipotong deterministik dan reparasi benteng dijalankan oleh Repair Worker sesuai ketersediaan kas.
+
+### 19.4 Soldier Management & Role Derivation Gap
+- **Status**: `PARTIAL / GAP IDENTIFIED`
+- **Kondisi Saat Ini**: Serdadu direkrut langsung sebagai nama peran agregat (`SWORDSMAN`, `SHIELD_INFANTRY`, `SPEARMAN`, `ARCHER`, `HEAVY_INFANTRY`) via `PopulationModel.recruit_soldier(role)`. Ketika direkrut, fungsi internal `_ensure_equipment_quantity_for_role` pada coordinator secara artifisial menggelembungkan kuantitas gudang jika kuantitas kurang dari jumlah serdadu.
+- **Konsep Target**: Peran prajurit seharusnya diturunkan secara dinamis dari perlengkapan senjata yang dipasangkan (*equipped*):
+  - $\text{Sword} \rightarrow \text{Swordsman}$
+  - $\text{Sword + Shield} \rightarrow \text{Shield Infantry}$
+  - $\text{Spear} \rightarrow \text{Spearman}$
+  - $\text{Bow} \rightarrow \text{Archer}$
+  - $\text{Heavy Armor + Great Sword} \rightarrow \text{Heavy Infantry}$
+- **Gap yang Ditemukan**:
+  - Belum ada API untuk `equip_soldier(role, weapon)`, `unequip_soldier(role)`, dan `swap_soldier_equipment()`.
+  - Belum ada mekanisme untuk membebastugaskan/mengurangi prajurit kembali menjadi warga sipil (*dismiss/reduce soldier*). Prajurit saat ini hanya berkurang jika gugur dalam pertempuran.
+
+### 19.5 Equipment & Warehouse Conservation Gap
+- **Status**: `PARTIAL / GAP IDENTIFIED`
+- **Konsep Target**:
+  $$\text{Total Equipment Owned} = \text{Equipment in Warehouse} + \text{Equipment currently Equipped}$$
+- **Gap yang Ditemukan**:
+  - Belum ada pemisahan eksplisit antara persediaan di gudang (*in warehouse*) dengan perlengkapan yang sedang dipakai (*currently equipped*).
+  - Belum ada validasi pencegahan equip saat stok gudang $= 0$.
+  - Belum ada pengembalian perlengkapan lama ke gudang saat swap gear.
+  - Invariant konservasi perlengkapan belum menjadi automated assertion test.
+
+### 19.6 Hero Management & Equipment Foundation Gap
+- **Status**: `PARTIAL / GAP IDENTIFIED`
+- **Kondisi Saat Ini**: `HeroModel` telah memiliki atribut lengkap untuk level, EXP curve, bintang/potential, fatigue, morale, chemistry, dan permadeath.
+- **Gap yang Ditemukan**:
+  - `HeroModel` belum memiliki slot equipment individual (Weapon, Armor).
+  - Belum ada fungsi hero equip, unequip, swap gear dari/ke gudang benteng.
+  - Saat hero gugur (*permadeath*), perlengkapan hero belum dikembalikan ke gudang benteng.
+  - Data slot equipment hero belum dipersistensikan di dalam snapshot state.
+
+### 19.7 Commander Commands Pipeline Status
+- **Status**: `COMPLETED (PIPELINE) / DEFERRED (TACTICAL EFFECTS TO PHASE 6)`
+- Seluruh 6 perintah komandan (`HOLD`, `ADVANCE`, `RETREAT`, `PROTECT`, `FOCUS`, `FOLLOW`) telah diimplementasikan sebagai DTO `CommanderCommand`.
+- Controller, Coordinator, dan Debug View sukses menerima, memvalidasi, mencatat status `LOGGED_PHASE3_DEFERRED`, dan menampilkan telemetrinya.
+- Efek taktis tempur mendalam secara benar dan terencana ditunda ke Phase 6.
+
+---
+
+## 20. Comprehensive 15-Area Gap Analysis Table
+
+Tabel analisis perbandingan menyeluruh antara konsep desain target, implementasi aktual saat ini, status kesiapan, dan target iterasi penyelesaian:
+
+| No | Area | Target Concept | Current Implementation | Status | Target Iteration / Phase |
+| :-: | :--- | :--- | :--- | :-: | :--- |
+| **1** | **Preparation** | Player mengalokasikan pekerja (4 tugas), merekrut prajurit dari sipil, membebastugaskan prajurit kembali ke sipil, memasang/melepas/menukar senjata prajurit & hero, dan memeriksa wave. | Alokasi pekerja 4 tugas dan rekrutmen prajurit (zero-sum) berfungsi penuh. Belum ada fitur dismiss prajurit dan manajemen pasang/tukar gear prajurit & hero. | **PARTIAL** | Phase 3B (Soldier gear/dismiss) & Phase 3C (Hero gear) |
+| **2** | **Soldier** | Peran prajurit diturunkan dari senjata yang dipasang (Sword $\rightarrow$ Swordsman, Sword+Shield $\rightarrow$ Shield, Spear $\rightarrow$ Spearman, Bow $\rightarrow$ Archer, Heavy Armor+Great Sword $\rightarrow$ Heavy). Mendukung recruit, dismiss, equip, unequip, swap. | Prajurit direkrut langsung sebagai nama peran statis pada dictionary `soldiers`. Tidak ada derivasi senjata dan tidak ada fungsi pengurangan prajurit non-tempur. | **PARTIAL** | Phase 3B (Soldier & Warehouse Conservation) |
+| **3** | **Equipment** | Perlengkapan fisik (Weapon, Armor) dengan tier (1–5), durabilitas (0–100), biaya reparasi, dan risiko rusak/hilang saat prajurit gugur. Mendukung equip, unequip, dan swap ke unit. | Model agregat `EquipmentModel` di gudang memiliki tier, durabilitas, biaya reparasi, dan penalti broken. Kehilangan gear saat gugur (35% hilang, 65% rusak) berfungsi. Belum ada API pasang/lepas per unit. | **PARTIAL** | Phase 3B (Soldier) & Phase 3C (Hero) |
+| **4** | **Warehouse** | Gudang sentral penyimpan persediaan gear bebas. Mematuhi invariant konservasi: $\text{Total} = \text{Gudang} + \text{Equipped}$. Mencegah equip bila stok $= 0$. Menerima gear copotan dan gear hero gugur. | Gudang menyimpan `Array[EquipmentModel]`. Perekrutan serdadu saat ini secara otomatis menggelembungkan kuantitas gudang bila kurang. Belum ada invariant tracking stok terpasang vs stok gudang. | **PARTIAL** | Phase 3B (Soldier & Warehouse Conservation) |
+| **5** | **Hero** | Entitas komandan individual ber-stat, EXP/level, bintang, fatigue, morale, chemistry, permadeath, serta memiliki slot equipment (Weapon, Armor) yang terintegrasi dengan gudang benteng. | `HeroModel` memiliki stat, level, EXP curve, bintang, fatigue, rest, chemistry, dan permadeath. Namun belum memiliki slot equipment, fungsi equip/unequip, maupun pengembalian gear saat gugur. | **PARTIAL** | Phase 3C (Hero Equipment Foundation). Advanced progression ke Phase 4 |
+| **6** | **Worker** | Pekerja sipil dialokasikan ke 4 tugas sah (Repair, Blacksmith, Construction, Idle). Tanpa pekerja produksi dan tanpa passive income. Reparasi benteng dieksekusi Repair Worker berbasis kas. | Sesuai 100% dengan matematika Phase 2. Tidak ada passive income. Upkeep dan reparasi berjalan deterministik di `EconomyManager`. | **COMPLETED** | Phase 3A (Baseline Validated) |
+| **7** | **Wave Preview** | Pratinjau intelijen gelombang berikutnya: nomor wave, budget threat, komposisi kuantitas musuh per archetype (Minion, Raider, Brute, Flyer, Siege, Boss), dan peringatan khusus tanpa unit scout. | Berfungsi penuh via `WaveGenerator`. Menampilkan data ancaman lengkap di UI. Player dapat memulai pertempuran atau membatalkan kembali ke persiapan. | **COMPLETED** | Phase 3A (Baseline Validated) |
+| **8** | **Battle** | Eksekusi simulasi pertempuran 5-fase Phase 2 secara deterministik. Kontrol interaktif tempo: Pause, Resume, Kecepatan (1x, 2x, 4x), dan pengiriman intent perintah komandan. Nol duplikasi combat logic. | Berfungsi penuh di `SimulationRunner` & `CombatEngine`. Timer pertempuran di `GameController` mendukung jeda, tempo 1x/2x/4x, dan instan resolve. Log telemetri tempur real-time. | **COMPLETED** | Phase 3A (Baseline Validated). Visual battlefield ke Phase 6 |
+| **9** | **Commander Commands** | 6 intent taktis: `HOLD`, `ADVANCE`, `RETREAT`, `PROTECT`, `FOCUS`, `FOLLOW`. Pipeline arsitektur mencatat intent ke snapshot telemetri. Efek kalkulasi numerik taktis ditunda ke Phase 6. | Kelas DTO `CommanderCommand` memvalidasi keenam jenis perintah. Coordinator dan Controller sukses menerima dan mencatat status `LOGGED_PHASE3_DEFERRED`. | **COMPLETED (PIPELINE)** | Efek taktis mendalam ke Phase 6 |
+| **10** | **Result** | Rangkuman hasil pertempuran menyajikan status kemenangan, kerusakan benteng, korban serdadu gugur, kerusakan/kehilangan gear, kelangsungan hero, EXP, dan loot emas. Memutuskan arah ke Game Over atau Recovery. | Berfungsi penuh. Menghitung dan menyajikan seluruh rincian hasil tempur. Mengarahkan secara tepat ke `GAME_OVER` bila benteng hancur ($HP \le 0$) atau ke `RECOVERY` bila selamat. | **COMPLETED** | Phase 3A (Baseline Validated) |
+| **11** | **Recovery** | Orkestrasi pasca-tempur murni: penerimaan loot emas, eksekusi siklus ekonomi/reparasi via Repair Worker existing, orkestrasi rest hero dan pertumbuhan sipil existing, wave $+1$, kembali ke PREPARATION. | Berfungsi penuh di `GameCoordinator.proceed_from_result()`. Menggunakan method Phase 2 murni tanpa menciptakan formula manajemen baru. Tidak pernah dipanggil saat benteng hancur. | **COMPLETED** | Phase 3A (Baseline Validated) |
+| **12** | **Game Over** | Kondisi terminal saat integritas benteng habis ($HP \le 0$). Transisi langsung dari RESULT tanpa melewati Recovery. Menghentikan siklus gameplay dan menyediakan opsi restart sesi baru. | State `GAME_OVER` berstatus terminal pada `GameplayStateMachine`. Transisi ilegal keluar ditolak. Tombol restart sesi berfungsi mereset state dari awal secara bersih. | **COMPLETED** | Phase 3A (Baseline Validated) |
+| **13** | **Persistence Boundary** | Batas serialisasi data plain dictionary melalui `GameStateSnapshot.to_dictionary()` dan `from_dictionary()` dengan validasi schema version `SaveSnapshotDto`. Tanpa disk file I/O di Phase 3. | Seluruh field domain (benteng, populasi, hero, gudang, ekonomi, gelombang, battle telemetri) tersimpan rapi dalam DTO serializable dan kompatibel dengan schema Phase 1. | **COMPLETED** | Phase 3A (Baseline Validated). Penyimpanan disk file ke Phase 10 |
+| **14** | **Tests** | Pengujian otomatis komprehensif headless: boundary arsitektur Phase 1, matematika Phase 2, gameplay prototype Phase 3, dan scene smoke playtest. Penambahan invariant test untuk gear. | 4 suite pengujian otomatis berjalan 100% lulus (Phase 1: 5/5, Phase 2: 21/21, Phase 3: 11/11, Smoke: ALL PASS). Suite pengujian baru direncanakan untuk validasi konservasi gear. | **BASELINE COMPLETED** | Phase 3A (Existing) & Phase 3E (Gear Invariant Tests) |
+| **15** | **Prototype UI** | Dashboard telemetri debug berbasis teks murni di Godot Editor. Menampilkan status seluruh sistem secara reaktif via sinyal `state_changed` tanpa polling per frame. | `PrototypeDebugView` dan `main_prototype.tscn` menyajikan kontrol 3 kolom lengkap. Nol beban frame loop (`_process` kosong). Kontrol responsif dan stabil pada hardware low-end. | **BASELINE COMPLETED** | Phase 3A (Existing) & Phase 3D (UX Polish Gear/Dismiss) |
+
+---
+
+## 21. Final Phase 3 Iterative Roadmap (3A – 3E)
+
+Untuk menyelesaikan seluruh kesenjangan (*gaps*) yang ditemukan dalam audit tanpa mengorbankan stabilitas arsitektur, Phase 3 dibagi menjadi 5 iterasi terukur:
+
+```text
+Phase 3 — Gameplay Prototype
+ ├── Phase 3A — Current Prototype Baseline & Stabilization [COMPLETED]
+ ├── Phase 3B — Soldier Equipment & Warehouse Conservation [PLANNED]
+ ├── Phase 3C — Hero Equipment Foundation [PLANNED]
+ ├── Phase 3D — Prototype UX & Interaction Polish [PLANNED]
+ └── Phase 3E — Final Prototype Verification & Phase 3 Exit Gate [PLANNED]
+```
+
+---
+
+### Phase 3A — Current Prototype Baseline & Stabilization
+- **Status**: **COMPLETED & VALIDATED** (Commit `2452397dfc53cf1e7f56ee693245b41e3e72ff2d`)
+- **Objective**: Membangun skeleton fungsional prototipe gameplay yang menghubungkan arsitektur Phase 1 dan sistem matematika Phase 2 ke dalam loop permainan yang dapat dimainkan di Godot Editor.
+- **Scope**:
+  - `GameplayStateMachine` (Boot, Prep, Preview, Battle, Result, Recovery, Game Over).
+  - `GameCoordinator` orchestration dan `SimulationRunner` integration.
+  - Alokasi pekerja sah dan rekrutmen serdadu zero-sum dasar.
+  - Eksekusi pertempuran 5-fase dengan kontrol tempo (1x, 2x, 4x, Pause/Resume).
+  - Pipeline intent 6 perintah komandan (`CommanderCommand`).
+  - Scene `scenes/prototype/main_prototype.tscn` dan teks telemetri HUD.
+- **Non-goals**:
+  - Sistem manajemen perlengkapan mendalam, derivasi peran senjata, visual battlefield, pixel art, animasi.
+- **Dependencies**: Phase 1 & Phase 2 approved.
+- **Acceptance Criteria**:
+  - Prototype scene berjalan lancar di Godot Editor dan headless.
+  - Seluruh alur state transisi tervalidasi.
+  - Zero duplicate combat engine.
+- **Tests**:
+  - `tests/test_architecture_boundaries.gd`: 5/5 PASSED.
+  - `tests/test_mathematical_prototype.gd`: 21/21 PASSED.
+  - `tests/test_gameplay_prototype.gd`: 11/11 PASSED.
+  - `tests/test_playtest_smoke.gd`: ALL PASS, 0 ERRORS.
+- **Exit Condition**: Baseline prototype stabil dan terverifikasi tanpa regresi.
+
+---
+
+### Phase 3B — Soldier Equipment & Warehouse Conservation
+- **Status**: **PLANNED (AWAITING DEVELOPER APPROVAL TO START)**
+- **Objective**: Menyelaraskan sistem serdadu dan gudang senjata dengan konsep desain target, di mana peran serdadu diturunkan dari senjata yang dipasang, serta menegakkan invariant konservasi perlengkapan secara ketat.
+- **Scope**:
+  - Menghapus pembuatan gear artifisial (`_ensure_equipment_quantity_for_role`).
+  - Menambahkan fungsi pembebasan tugas prajurit (*dismiss soldier*): prajurit dikembalikan menjadi warga sipil ($Soldiers - 1, Civilians + 1$), dan perlengkapannya dikembalikan ke gudang benteng.
+  - Menurunkan peran prajurit secara terstruktur dari perlengkapan:
+    - $\text{Sword} \rightarrow \text{Swordsman}$
+    - $\text{Sword + Shield} \rightarrow \text{Shield Infantry}$
+    - $\text{Spear} \rightarrow \text{Spearman}$
+    - $\text{Bow} \rightarrow \text{Archer}$
+    - $\text{Heavy Armor + Great Sword} \rightarrow \text{Heavy Infantry}$
+  - Mengimplementasikan API manajemen perlengkapan prajurit: `equip_soldier(role, weapon_type)`, `unequip_soldier(role)`, `swap_soldier_equipment()`.
+  - Menegakkan invariant konservasi gudang senjata:
+    $$\text{Total Owned Equipment} = \text{Equipment in Warehouse} + \text{Equipment Currently Equipped}$$
+  - Memvalidasi ketersediaan stok gudang: dilarang memasang gear jika stok gudang $= 0$.
+  - Mengembalikan gear lama ke gudang saat terjadi pertukaran (*swap*).
+- **Non-goals**:
+  - Durabilitas individu per prajurit (prajurit tetap menggunakan model durabilitas agregat peran per Phase 2).
+  - Crafting gear kompleks (Phase 7).
+  - Variasi senjata langka/legendary di luar starter types (Phase 8).
+- **Dependencies**: Phase 3A selesai.
+- **Acceptance Criteria**:
+  - Perekrutan prajurit hanya berhasil jika stok perlengkapan yang bersangkutan tersedia di gudang.
+  - Pembebasan prajurit mengembalikan warga sipil dan mengembalikan perlengkapan ke gudang.
+  - Invariant konservasi total perlengkapan terbukti konstan saat recruit, equip, unequip, swap, dan dismiss.
+  - Prajurit gugur memicu pelepasan gear dan evaluasi kehilangan/kerusakan deterministik sesuai Phase 2.
+- **Tests**:
+  - Unit test konservasi gudang & derivasi peran prajurit.
+  - Test pencegahan equip saat stok $= 0$.
+  - Test pengembalian gear pada pembebasan prajurit (*dismissal*).
+- **Exit Condition**: Konservasi gudang senjata dan derivasi peran prajurit tervalidasi 100% tanpa celah duplikasi item.
+
+---
+
+### Phase 3C — Hero Equipment Foundation
+- **Status**: **PLANNED**
+- **Objective**: Menyediakan fondasi slot perlengkapan minimal untuk entitas Hero agar terintegrasi secara harmonis dengan gudang benteng sebelum Phase 4 dimulai.
+- **Scope**:
+  - Menambahkan slot equipment minimal pada `HeroModel`: `weapon: EquipmentModel` dan `armor: EquipmentModel`.
+  - Mengimplementasikan fungsi equip/unequip/swap perlengkapan hero dari gudang benteng:
+    - `equip_hero(hero_id, slot, equipment_type)`
+    - `unequip_hero(hero_id, slot)`
+    - `swap_hero_equipment(hero_id, slot, new_equipment_type)`
+  - Menerapkan pengembalian perlengkapan hero ke gudang benteng secara otomatis saat hero gugur permanen (*permadeath*).
+  - Menghitung kontribusi stat dasar dari equipment hero terhadap `effective_atk` dan `effective_def`.
+  - Menyimpan data slot perlengkapan hero di dalam struktur `GameStateSnapshot.heroes_data`.
+- **Non-goals**:
+  - Sistem talent tree, skill khusus hero, ascension bintang, atau gacha/market (Scope murni Phase 4).
+  - Relik khusus, artefak sihir, atau equipment unik hero (Scope Phase 4 & Phase 8).
+- **Dependencies**: Phase 3B selesai.
+- **Acceptance Criteria**:
+  - Hero dapat memasang senjata dan baju zirah dari gudang jika stok tersedia.
+  - Stok gudang berkurang saat hero memakai gear, dan bertambah saat gear dilepas.
+  - Hero gugur secara deterministik mengembalikan senjatanya ke gudang benteng.
+  - Data gear hero tersimpan dalam snapshot state.
+- **Tests**:
+  - Unit test hero equip, unequip, dan swap.
+  - Unit test pengembalian gear hero saat permadeath.
+  - Regression check backward compatibility snapshot schema.
+- **Exit Condition**: Hero equipment foundation siap dan stabil sebagai landasan penerimaan Phase 4.
+
+---
+
+### Phase 3D — Prototype UX & Interaction Polish
+- **Status**: **PLANNED**
+- **Objective**: Memperbarui antarmuka telemetri debug teks agar mendukung seluruh kontrol interaktif baru (equip/unequip gear prajurit & hero, dismiss serdadu) dan mengeliminasi gameplay dead-ends.
+- **Scope**:
+  - Menambahkan tombol kontrol pembebasan tugas prajurit (*dismiss soldier*) pada kolom persiapan.
+  - Menambahkan panel kontrol pemilihan/penggantian perlengkapan prajurit & hero pada fase persiapan.
+  - Menampilkan informasi rincian persediaan gudang: jumlah di gudang (*in warehouse*) vs jumlah terpakai (*currently equipped*).
+  - Memperjelas umpan balik telemetri log pada setiap aksi player.
+  - Memastikan tidak ada kondisi buntu (*dead ends*) di mana player kehabisan kas dan tidak dapat melanjutkan wave.
+- **Non-goals**:
+  - Desain visual UI final, tema warna artistik, custom font, animasi UI, layout mobile final (Scope Phase 9).
+- **Dependencies**: Phase 3B dan Phase 3C selesai.
+- **Acceptance Criteria**:
+  - Player dapat melakukan seluruh manajemen prajurit, pekerja, dan hero via UI debug tanpa error.
+  - Dashboard teks menyajikan status konservasi gudang secara transparan.
+  - Sesi permainan dapat dimainkan berulang kali tanpa macet.
+- **Tests**:
+  - Pembaruan `test_playtest_smoke.gd` mencakup kontrol UI baru.
+  - Manual playtest verification via Godot Editor.
+- **Exit Condition**: UX prototipe responsif, intuitif bagi pengujian developer, dan bebas jalan buntu.
+
+---
+
+### Phase 3E — Final Prototype Verification & Phase 3 Exit Gate
+- **Status**: **PLANNED**
+- **Objective**: Melakukan audit akhir, pengujian stres menyeluruh, dan verifikasi gerbang keluar (*Exit Gate*) untuk secara resmi menutup Phase 3 dan membuka Phase 4.
+- **Scope**:
+  - Menjalankan seluruh rangkaian automated test suites (Phase 1, 2, 3A–3D).
+  - Menjalankan stress playtest 20 gelombang berturut-turut pada prototipe scene.
+  - Verifikasi ketat terhadap low-end hardware performance (CPU usage, zero frame polling, zero memory leak).
+  - Penyusunan dokumen finalisasi penutupan Phase 3 dan pelaporan ke developer untuk permohonan ACC Phase 3 Closure.
+- **Non-goals**:
+  - Memulai koding Phase 4.
+- **Dependencies**: Phase 3A, 3B, 3C, 3D selesai dan tervalidasi.
+- **Acceptance Criteria**:
+  - Seluruh kriteria penerimaan Phase 3 terpenuhi 100%.
+  - Zero regressions across all phases.
+  - Developer playtest memberikan review positif dan persetujuan formal.
+- **Tests**:
+  - Full automated regression suite.
+  - Smoke playtest scene integration.
+- **Exit Condition**: **PHASE 3 DITUTUP SECARA RESMI (PHASE 3 — COMPLETED)** dan developer memberikan izin pembukaan Phase 4.
+
+---
+
+## 22. Phase 3 Exit Criteria
+
+Phase 3 hanya boleh dinyatakan **COMPLETED** dan siap melangkah ke Phase 4 apabila seluruh kriteria berikut terpenuhi secara tuntas:
+
+### 22.1 Gameplay & Loop Criteria:
+1. Sesi permainan dapat dimainkan secara utuh dari gelombang 1 hingga seterusnya di Godot Editor (`main_prototype.tscn`).
+2. Siklus normal (`BOOT -> PREPARATION -> WAVE PREVIEW -> BATTLE -> RESULT -> RECOVERY -> PREPARATION`) berjalan mulus dan deterministik.
+3. Percabangan terminal (`RESULT -> GAME_OVER`) terbukti menghentikan sesi secara mutlak saat benteng runtuh ($HP \le 0$) tanpa pernah mengeksekusi Recovery.
+4. Player dapat merestart sesi baru secara bersih dari kondisi Game Over.
+
+### 22.2 Management & Invariant Criteria:
+1. Alokasi pekerja sipil mematuhi 4 peran sah (Repair, Smith, Constr, Idle) dengan zero passive income.
+2. Rekrutmen prajurit memotong warga sipil secara zero-sum, dan pembebasan prajurit mengembalikan warga sipil secara tertib.
+3. Peran prajurit terbukti diturunkan dari perlengkapan senjata yang dipasang.
+4. Invariant konservasi perlengkapan terbukti valid secara matematis tanpa celah eksploitasi:
+   $$\text{Total Owned} = \text{Warehouse Stock} + \text{Equipped Stock}$$
+5. Larangan keras memasang gear saat stok gudang $= 0$ ditegakkan.
+6. Entitas Hero memiliki slot perlengkapan minimal, mendukung equip/unequip dari gudang benteng, dan mengembalikan perlengkapan ke gudang saat gugur permanen.
+
+### 22.3 Architecture & Isolation Criteria:
+1. Seluruh batasan arsitektur Phase 1 tetap utuh dan terisolasi (**5/5 PASS**).
+2. Sistem simulasi Phase 2 tetap menjadi satu-satunya sumber kebenaran matematis (*Single Source of Truth*); **nol duplikasi combat engine**.
+3. Layer presentasi dan UI murni mengamati snapshot state reaktif tanpa pernah memutasi data domain atau mengambil alih logika otoritatif.
+4. Batas persistensi DTO terjaga dengan validasi versi skema data.
+
+### 22.4 Testing & Performance Criteria:
+1. Seluruh regression tests Phase 1 lulus 100% (**5/5**).
+2. Seluruh mathematical tests Phase 2 lulus 100% (**21/21**).
+3. Seluruh unit & integration tests Phase 3 lulus 100%.
+4. Prototype scene smoke playtest lulus tanpa peringatan atau assertion error.
+5. Kinerja prototipe terbukti sangat ringan pada hardware berspesifikasi rendah (Intel Celeron / 4 GB RAM / Android): nol polling di `_process()`, simulasi agregat, dan tanpa alokasi memori liar.
+
+---
+
+## 23. What Must NOT Enter Phase 3 (Explicit Non-Goals & Deferrals)
+
+Untuk mencegah terjadinya *scope creep* dan menjaga prototipe tetap terfokus pada validasi loop gameplay inti, seluruh fitur di bawah ini secara tegas **DILARANG MASUK KE PHASE 3**:
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│                   EXPLICIT PHASE BOUNDARY MAPPING                      │
+├───────────────────────┬────────────────────────────────────────────────┤
+│ Target Phase          │ Fitur yang DITUNDA dari Phase 3                │
+├───────────────────────┼────────────────────────────────────────────────┤
+│ Phase 4: Hero System  │ • Sistem gacha / recruitment market / tavern   │
+│                       │ • Hero talent trees & skill point allocation   │
+│                       │ • Active & passive combat skills hero          │
+│                       │ • Ascension bintang hero & awakening           │
+│                       │ • Dialog antar-hero & advanced chemistry story │
+│                       │ • UI manajemen roster hero artistik mendalam   │
+├───────────────────────┼────────────────────────────────────────────────┤
+│ Phase 5: Fortress &   │ • Fasilitas benteng / modul ruangan khusus     │
+│ Management Systems    │ • Sistem pertahanan gerbang, parit, jebakan    │
+│                       │ • Detailed workforce management / happiness    │
+│                       │ • Sistem upgrade arsitektur benteng visual     │
+├───────────────────────┼────────────────────────────────────────────────┤
+│ Phase 6: Combat &     │ • Efek numerik taktis mendalam 6 commander cmds│
+│ Tactical Systems      │ • Medan tempur 2D/grid visual (Battlefield)    │
+│                       │ • Pathfinding serdadu & AI musuh taktis        │
+│                       │ • Formasi barisan prajurit (Phalanx, Flank)    │
+│                       │ • Visual combat scene, particle VFX & SFX      │
+├───────────────────────┼────────────────────────────────────────────────┤
+│ Phase 7: Economy &    │ • Sistem crafting senjata & peleburan ore      │
+│ Progression           │ • Pasar komoditas & karavan dagang             │
+│                       │ • Mata uang ganda (gems, tokens, mana)         │
+├───────────────────────┼────────────────────────────────────────────────┤
+│ Phase 8: Content      │ • Ratusan variasi monster, bosses & elites     │
+│ Implementation        │ • Puluhan hero unik & senjata legendaris       │
+│                       │ • Data table balance konten cerita             │
+├───────────────────────┼────────────────────────────────────────────────┤
+│ Phase 9: Visual & UI  │ • Final pixel art spritesheet & animations     │
+│ Integration           │ • UI theme, typography, layout mobile polish   │
+│                       │ • Sound effects, ambient audio, music          │
+├───────────────────────┼────────────────────────────────────────────────┤
+│ Phase 10: Save/Load & │ • Penyimpanan file disk, enkripsi savegame     │
+│ Mobile Polish         │ • Touch control gestures, APK Android build    │
+│                       │ • Multi-threading & memory profiling mendalam  │
+└───────────────────────┴────────────────────────────────────────────────┘
+```
+
+> [!CAUTION]
+> Menambahkan salah satu fitur dari daftar di atas ke dalam Phase 3 adalah pelanggaran terhadap aturan utama `AGENTS.md` (No Scope Creep & Plan Before Implementation).

@@ -4,6 +4,24 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.4.1] - Phase 3: Comprehensive Audit & Finalized Iterative Roadmap (3A–3E)
+
+### Planned & Audited
+- **Phase 3 Comprehensive Audit**:
+  - Melakukan audit menyeluruh terhadap branch `main` pada commit `2452397` untuk memvalidasi isolasi arsitektur, integrasi simulasi Phase 2, dan kelengkapan konsep gameplay.
+  - Menyusun tabel analisis kesenjangan (*15-Area Gap Analysis*) yang mencakup Preparation, Soldier, Equipment, Warehouse, Hero, Worker, Wave Preview, Battle, Commander Commands, Result, Recovery, Game Over, Persistence, Tests, dan Prototype UI.
+- **Finalized Phase 3 Iterative Roadmap (3A–3E)**:
+  - **Phase 3A — Current Prototype Baseline & Stabilization**: Dinyatakan **COMPLETED** (Seluruh 41 pengujian otomatis lulus 100%, prototype playable stabil di Godot Editor).
+  - **Phase 3B — Soldier Equipment & Warehouse Conservation**: Direncanakan untuk mengimplementasikan derivasi peran prajurit dari senjata (Sword, Shield, Spear, Bow, Heavy Armor), pembebasan prajurit (*dismiss soldier*), dan penegakan invariant konservasi gudang ($\text{Total} = \text{Warehouse} + \text{Equipped}$).
+  - **Phase 3C — Hero Equipment Foundation**: Direncanakan untuk mengimplementasikan slot perlengkapan minimal hero (Weapon, Armor), integrasi equip/unequip dengan gudang benteng, dan pengembalian gear otomatis saat permadeath.
+  - **Phase 3D — Prototype UX & Interaction Polish**: Direncanakan untuk melengkapi kontrol UI pada fase persiapan dan mengeliminasi gameplay dead-ends.
+  - **Phase 3E — Final Prototype Verification & Phase 3 Exit Gate**: Pengujian regresi otomatis akhir, playtest stres 20 wave, dan validasi penutupan resmi Phase 3.
+- **Phase Boundary & Lock Enforcement**:
+  - Mengunci secara tegas **Phase 4 (Hero System)** dengan status **LOCKED** hingga Phase 3 menyelesaikan seluruh iterasi 3A–3E.
+  - Mendokumentasikan daftar *Explicit Non-Goals & Deferrals* ke Phase 4, Phase 5, Phase 6, Phase 7, Phase 8, Phase 9, dan Phase 10.
+
+---
+
 ## [0.4.0] - Phase 3: Playable Gameplay Prototype (Implemented & Validated)
 
 ### Added
