@@ -2,7 +2,8 @@
 
 ## Phase 3 — Gameplay Prototype
 
-Project saat ini berada pada tahap **Phase 3: Gameplay Prototype (IN PROGRESS — PHASE 3A COMPLETED / AUDIT & ITERATIVE ROADMAP 3B–3E FINALIZED)**.
+Project saat ini berada pada tahap **Phase 3: Gameplay Prototype — Sub-Phase 3B: Soldier Equipment & Warehouse Conservation (PLANNING ONLY / AWAITING DEVELOPER APPROVAL)**.
+Spesifikasi teknis implementasi tersedia di [docs/design/PHASE_3B_SOLDIER_EQUIPMENT_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_3B_SOLDIER_EQUIPMENT_PLAN.md).
 
 ---
 
@@ -23,10 +24,11 @@ Project saat ini berada pada tahap **Phase 3: Gameplay Prototype (IN PROGRESS �
     - Phase 2 Mathematical Regression: **21/21 PASSED, 0 FAILED** ([tests/test_mathematical_prototype.gd](tests/test_mathematical_prototype.gd))
     - Phase 3 Gameplay Unit & Integration Test Suite: **11/11 PASSED, 0 FAILED** ([tests/test_gameplay_prototype.gd](tests/test_gameplay_prototype.gd))
     - Prototype Scene Smoke Playtest: **ALL PASSED, 0 ERRORS** ([tests/test_playtest_smoke.gd](tests/test_playtest_smoke.gd))
-  - **Phase 3B — Soldier Equipment & Warehouse Conservation**: **PLANNED (AWAITING APPROVAL)**
+  - **Phase 3B — Soldier Equipment & Warehouse Conservation**: **PLANNED / IMPLEMENTATION NOT STARTED (AWAITING APPROVAL)**
+    - Spesifikasi implementasi lengkap selesai disusun ([PHASE_3B_SOLDIER_EQUIPMENT_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_3B_SOLDIER_EQUIPMENT_PLAN.md)).
     - Derivasi peran prajurit dari senjata (Sword, Shield, Spear, Bow, Heavy Armor).
     - Pembebasan prajurit (*dismiss soldier*) kembali ke warga sipil.
-    - Konservasi persediaan gudang ($\text{Total} = \text{Warehouse} + \text{Equipped}$).
+    - Konservasi persediaan gudang ($\text{Total} = \text{Warehouse} + \text{Equipped}$) & transaksi swap atomik.
   - **Phase 3C — Hero Equipment Foundation**: **PLANNED**
     - Slot perlengkapan hero minimal (Weapon, Armor) dan integrasi gudang.
     - Pengembalian perlengkapan hero saat permadeath.
