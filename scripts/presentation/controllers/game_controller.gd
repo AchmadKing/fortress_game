@@ -66,6 +66,42 @@ func recruit_soldier(role: String, count: int = 1) -> bool:
 	return coordinator.recruit_soldier(role, count)
 
 
+func create_deployment(count: int, primary: String, secondary: String = "NONE", armor: String = "NONE") -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.create_deployment(count, primary, secondary, armor)
+
+
+func remove_deployment(composition_id: String) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.remove_deployment(composition_id)
+
+
+func reconfigure_deployment(old_composition_id: String, new_count: int, new_primary: String, new_secondary: String = "NONE", new_armor: String = "NONE") -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.reconfigure_deployment(old_composition_id, new_count, new_primary, new_secondary, new_armor)
+
+
+func get_warehouse_stock(eq_type: String) -> int:
+	if coordinator == null:
+		return 0
+	return coordinator.get_warehouse_stock(eq_type)
+
+
+func get_available_soldiers() -> int:
+	if coordinator == null:
+		return 0
+	return coordinator.get_available_soldiers()
+
+
+func is_equipment_option_available(eq_type: String, count: int) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.is_equipment_option_available(eq_type, count)
+
+
 func inspect_wave() -> bool:
 	if coordinator == null:
 		return false

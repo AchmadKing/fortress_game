@@ -2,8 +2,8 @@
 
 ## Phase 3 — Gameplay Prototype
 
-Project saat ini berada pada tahap **Phase 3: Gameplay Prototype — Sub-Phase 3B: Soldier Deployment & Temporary Equipment Management (PLANNING ONLY / AWAITING DEVELOPER APPROVAL)**.
-Spesifikasi teknis implementasi tersedia di [docs/design/PHASE_3B_SOLDIER_DEPLOYMENT_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_3B_SOLDIER_DEPLOYMENT_PLAN.md).
+Project saat ini berada pada tahap **Phase 3: Gameplay Prototype — Sub-Phase 3B: COMPLETED / Sub-Phase 3C: PLANNED**.
+Spesifikasi teknis implementasi Phase 3B tersedia di [docs/design/PHASE_3B_SOLDIER_DEPLOYMENT_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_3B_SOLDIER_DEPLOYMENT_PLAN.md).
 
 ---
 
@@ -24,20 +24,22 @@ Spesifikasi teknis implementasi tersedia di [docs/design/PHASE_3B_SOLDIER_DEPLOY
     - Phase 2 Mathematical Regression: **21/21 PASSED, 0 FAILED** ([tests/test_mathematical_prototype.gd](tests/test_mathematical_prototype.gd))
     - Phase 3 Gameplay Unit & Integration Test Suite: **11/11 PASSED, 0 FAILED** ([tests/test_gameplay_prototype.gd](tests/test_gameplay_prototype.gd))
     - Prototype Scene Smoke Playtest: **ALL PASSED, 0 ERRORS** ([tests/test_playtest_smoke.gd](tests/test_playtest_smoke.gd))
-  - **Phase 3B — Soldier Deployment & Temporary Equipment Management**: **PLANNED / IMPLEMENTATION NOT STARTED (AWAITING APPROVAL)**
-    - Spesifikasi implementasi direvisi ke model alokasi sementara berbasis gelombang ([PHASE_3B_SOLDIER_DEPLOYMENT_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_3B_SOLDIER_DEPLOYMENT_PLAN.md)).
-    - Deployment regu tempur agregat (Soldier Count, Primary Weapon [Required], Secondary [Optional], Armor [Optional]).
-    - Seleksi perlengkapan sadar stok (*stock-aware selection*) dan reservasi seketika (*immediate reservation*).
-    - Derivasi peran tempur dinamis per gelombang (Sword $\rightarrow$ Swordsman, Sword+Shield $\rightarrow$ Shield Infantry, dll.).
-    - Siklus pengembalian gear pasca-wave ke gudang (aus normal & 65% gear korban rusak kembali; 35% gear korban hancur permanen per Phase 2).
-    - Prajurit selamat kembali ke kolam prajurit benteng; prajurit gugur permanen.
+  - **Phase 3B — Soldier Deployment & Temporary Equipment Management**: **COMPLETED**
+    - Model regu agregat sementara `DeploymentComposition` dengan identitas kanonikal `make_composition_id(p, s, a)` dan derivasi peran deterministik.
+    - Seleksi perlengkapan sadar stok (*stock-aware selection*) dan reservasi atomik seketika dari gudang senjata bersama.
+    - Penghapusan 100% pembuatan equipment otomatis (`_ensure_equipment_quantity_for_role` terhapus total).
+    - Snapshot perlengkapan terisolasi diteruskan ke `CombatEngine`; perlengkapan gudang yang tidak dibawa bertempur terlindungi 100% dari aus/kehilangan.
+    - Multi-slot equipment wear and casualty loss accounting (35% hancur permanen, 65% rusak berat diselamatkan) sesuai formula Phase 2.
+    - Seluruh gear selamat kembali ke gudang pasca-wave; seluruh serdadu selamat kembali ke kolam prajurit benteng.
+    - Prajurit gugur permanen memotong total populasi hidup.
+    - Invariant konservasi $\text{Warehouse} + \text{Reserved} == \text{Total Owned}$ terjaga 100%.
+    - Test Suite Phase 3B: **27/27 PASSED, 0 FAILED** ([tests/test_soldier_deployment_temporary.gd](tests/test_soldier_deployment_temporary.gd)).
+    - Regression Suites: Phase 1 (5/5), Phase 2 (21/21), Phase 3A (11/11), Scene Smoke (ALL PASS).
   - **Phase 3C — Hero Equipment Foundation**: **PLANNED**
-    - Slot perlengkapan hero minimal (Weapon, Armor) dan integrasi gudang.
-    - Pengembalian perlengkapan hero saat permadeath.
+    - Slot perlengkapan hero minimal (Primary Weapon, Secondary, Armor) dari gudang benteng bersama.
+    - Manajemen persistent gear hero lintas gelombang dan pengembalian otomatis saat permadeath.
   - **Phase 3D — Prototype UX & Interaction Polish**: **PLANNED**
-    - Kontrol UI untuk konfigurasi deployment regu dan reservasi gear.
   - **Phase 3E — Final Prototype Verification & Phase 3 Exit Gate**: **PLANNED**
-    - Automated tests deployment & reservasi gear, serta pengujian gerbang penutupan Phase 3.
 - **Phase 4 — Hero System**: **LOCKED**
 - **Phase 5 — Fortress & Management Systems**: **LOCKED**
 - **Phase 6 — Tactical Battle & Battlefield Systems**: **LOCKED**

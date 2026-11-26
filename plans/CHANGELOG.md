@@ -4,6 +4,29 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.4.3] - Phase 3B: Temporary Soldier Deployment & Equipment Management (Completed)
+
+### Added
+- **Deployment Composition Domain Model** (`scripts/domain/model/deployment_composition.gd`):
+  - Model agregat regu tempur sementara berbasis gelombang dengan identitas kanonikal `make_composition_id(p, s, a)` dan aturan presedensi derivasi peran deterministik (`resolve_role`).
+- **Temporary Soldier Deployment & Equipment Reservation**:
+  - `GameCoordinator.create_deployment()`, `remove_deployment()`, `reconfigure_deployment()`.
+  - Reservasi atomik perlengkapan dari gudang bersama seketika (*immediate reservation*).
+  - API seleksi sadar-stok: `get_warehouse_stock()`, `get_reserved_equipment_stock()`, `get_total_owned_stock()`, `is_equipment_option_available()`.
+  - Penghapusan 100% pembentukan perlengkapan gratis otomatis (`_ensure_equipment_quantity_for_role` terhapus total).
+- **Combat Adapter & Wear/Loss Accounting**:
+  - `execute_battle` mengeksekusi pertempuran menggunakan snapshot terisolasi HANYA dari perlengkapan yang direservasi regu aktif; perlengkapan di gudang terlindungi 100% dari aus/kehilangan.
+  - Multi-slot equipment casualty wear and loss processing (A11) untuk Primary, Secondary, dan Armor sesuai probabilitas deterministik Phase 2 (35% musnah, 65% rusak berat).
+  - Pengembalian seluruh gear selamat ke gudang dan serdadu selamat ke kolam prajurit benteng pada `proceed_from_result()`.
+- **Presentation Layer Updates**:
+  - `GameController` dispatch methods untuk deployment.
+  - `PrototypeDebugView` dashboard pemantauan serdadu (Total, Available, Deployed), status reservasi perlengkapan, tombol aksi deployment sadar stok, dan indikator Battle Lock.
+- **Phase 3B Automated Test Suite** (`tests/test_soldier_deployment_temporary.gd`):
+  - 27 pengujian otomatis tervalidasi 100% lulus (27/27 PASS, 0 FAIL) mencakup seluruh skenario A15.
+  - Zero regression pada test suite Phase 1 (5/5), Phase 2 (21/21), Phase 3A (11/11), dan Playtest Scene Smoke.
+
+---
+
 ## [0.4.2] - Phase 3B Plan Revision: Temporary Soldier Deployment & Equipment Management
 
 ### Changed (Design Plan Only)

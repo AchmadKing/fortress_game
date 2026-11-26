@@ -28,6 +28,11 @@ var battle_speed: float = 1.0
 var battle_paused: bool = false
 var battle_phase_name: String = ""
 
+# Phase 3B Temporary Soldier Deployment Fields
+var active_deployments_data: Array = []
+var available_soldiers_count: int = 0
+var total_living_soldiers_count: int = 0
+
 
 func _init(p_tick: int = 0, p_session_id: String = "", p_state_name: String = "INITIAL", p_metadata: Dictionary = {}) -> void:
 	tick = p_tick
@@ -47,6 +52,9 @@ func _init(p_tick: int = 0, p_session_id: String = "", p_state_name: String = "I
 	battle_speed = 1.0
 	battle_paused = false
 	battle_phase_name = ""
+	active_deployments_data = []
+	available_soldiers_count = 0
+	total_living_soldiers_count = 0
 
 
 func clone() -> GameStateSnapshot:
@@ -64,6 +72,9 @@ func clone() -> GameStateSnapshot:
 	copy.battle_speed = battle_speed
 	copy.battle_paused = battle_paused
 	copy.battle_phase_name = battle_phase_name
+	copy.active_deployments_data = active_deployments_data.duplicate(true)
+	copy.available_soldiers_count = available_soldiers_count
+	copy.total_living_soldiers_count = total_living_soldiers_count
 	return copy
 
 
@@ -85,7 +96,10 @@ func to_dictionary() -> Dictionary:
 		"last_commander_command": last_commander_command.duplicate(true),
 		"battle_speed": battle_speed,
 		"battle_paused": battle_paused,
-		"battle_phase_name": battle_phase_name
+		"battle_phase_name": battle_phase_name,
+		"active_deployments_data": active_deployments_data.duplicate(true),
+		"available_soldiers_count": available_soldiers_count,
+		"total_living_soldiers_count": total_living_soldiers_count
 	}
 
 
@@ -121,5 +135,10 @@ static func from_dictionary(data: Dictionary) -> GameStateSnapshot:
 	snapshot.battle_speed = float(data.get("battle_speed", 1.0))
 	snapshot.battle_paused = bool(data.get("battle_paused", false))
 	snapshot.battle_phase_name = str(data.get("battle_phase_name", ""))
+	
+	if data.has("active_deployments_data") and data["active_deployments_data"] is Array:
+		snapshot.active_deployments_data = (data["active_deployments_data"] as Array).duplicate(true)
+	snapshot.available_soldiers_count = int(data.get("available_soldiers_count", 0))
+	snapshot.total_living_soldiers_count = int(data.get("total_living_soldiers_count", 0))
 	
 	return snapshot

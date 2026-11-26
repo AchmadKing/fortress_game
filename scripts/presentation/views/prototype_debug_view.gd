@@ -297,8 +297,13 @@ func _on_state_changed(snapshot: GameStateSnapshot) -> void:
 	]
 
 	var s_dict: Dictionary = p_data.get("soldiers", {})
-	_lbl_soldiers.text = "Soldiers (Total: %d):\n- Swordsman: %d\n- Shield: %d\n- Archer: %d\n- Spearman: %d\n- Heavy: %d" % [
-		int(p_data.get("total_soldiers", 0)),
+	var avail_s: int = int(snapshot.available_soldiers_count)
+	var total_s: int = int(snapshot.total_living_soldiers_count)
+	var deployed_s: int = total_s - avail_s
+	_lbl_soldiers.text = "Soldiers (Total: %d | Avail: %d | Deployed: %d):\n- Swordsman: %d\n- Shield: %d\n- Archer: %d\n- Spearman: %d\n- Heavy: %d" % [
+		total_s,
+		avail_s,
+		deployed_s,
 		int(s_dict.get("SWORDSMAN", 0)),
 		int(s_dict.get("SHIELD_INFANTRY", 0)),
 		int(s_dict.get("ARCHER", 0)),
@@ -317,17 +322,24 @@ func _on_state_changed(snapshot: GameStateSnapshot) -> void:
 		heroes_text += "- %s (Lv %d)\n  Fatigue: %d/100 | %s\n" % [name_str, lvl, fat, status_str]
 	_lbl_heroes.text = heroes_text if not heroes_text.is_empty() else "No heroes"
 
-	var eq_text: String = ""
+	var eq_text: String = "--- WAREHOUSE STOCK ---\n"
 	for eq in snapshot.warehouse_data:
 		var role: String = str(eq.get("role_type", ""))
 		var tier: int = int(eq.get("tier", 1))
 		var dur: int = int(eq.get("durability", 100))
 		var qty: int = int(eq.get("quantity", 0))
 		var broken: bool = bool(eq.get("is_broken", false))
-		eq_text += "- %s (T%d): %d units\n  Durability: %d%% %s\n" % [
+		eq_text += "- %s (T%d): %d units (Dur: %d%% %s)\n" % [
 			role, tier, qty, dur, "[BROKEN]" if broken else ""
 		]
-	_lbl_warehouse.text = eq_text if not eq_text.is_empty() else "Warehouse empty"
+	if snapshot.active_deployments_data.size() > 0:
+		eq_text += "\n--- RESERVED IN DEPLOYMENT ---\n"
+		for dep in snapshot.active_deployments_data:
+			var d_count: int = int(dep.get("count", 0))
+			var d_role: String = str(dep.get("resolved_role", ""))
+			var d_comp: String = str(dep.get("composition_id", ""))
+			eq_text += "- [%dx] %s (%s)\n" % [d_count, d_role, d_comp]
+	_lbl_warehouse.text = eq_text
 
 	# Center Action Panel rendering
 	_render_stage_actions(snapshot)
@@ -380,6 +392,8 @@ func _render_stage_actions(snapshot: GameStateSnapshot) -> void:
 			btn_r_heavy.pressed.connect(func(): _recruit("HEAVY_INFANTRY"))
 			recruit_hbox.add_child(btn_r_heavy)
 
+			_render_deployment_controls(snapshot)
+
 			var btn_inspect := Button.new()
 			btn_inspect.text = ">> INSPECT NEXT WAVE (WAVE PREVIEW) >>"
 			btn_inspect.pressed.connect(func(): if controller: controller.inspect_wave())
@@ -406,6 +420,8 @@ func _render_stage_actions(snapshot: GameStateSnapshot) -> void:
 			]
 			_panel_stage_actions.add_child(info_lbl)
 
+			_render_deployment_controls(snapshot)
+
 			var btn_hbox := HBoxContainer.new()
 			_panel_stage_actions.add_child(btn_hbox)
 
@@ -423,6 +439,10 @@ func _render_stage_actions(snapshot: GameStateSnapshot) -> void:
 			var lbl := Label.new()
 			lbl.text = "=== BATTLE IN PROGRESS ==="
 			_panel_stage_actions.add_child(lbl)
+
+			var lock_lbl := Label.new()
+			lock_lbl.text = "[BATTLE LOCK: Deployment configuration is locked during active combat]"
+			_panel_stage_actions.add_child(lock_lbl)
 
 			var cmd_lbl := Label.new()
 			cmd_lbl.text = "Commander Commands (Intents):"
@@ -521,3 +541,64 @@ func _send_command(cmd_type: String) -> void:
 func _log(message: String) -> void:
 	if _txt_telemetry_log != null:
 		_txt_telemetry_log.append_text(message + "\n")
+
+
+func _render_deployment_controls(snapshot: GameStateSnapshot) -> void:
+	var dep_title := Label.new()
+	dep_title.text = "=== TEMPORARY SOLDIER DEPLOYMENT (Wave %d) ===" % snapshot.current_wave
+	_panel_stage_actions.add_child(dep_title)
+
+	var avail_cnt: int = int(snapshot.available_soldiers_count)
+	var tot_cnt: int = int(snapshot.total_living_soldiers_count)
+	var dep_info := Label.new()
+	dep_info.text = "Available Soldiers: %d | Deployed: %d / %d" % [
+		avail_cnt,
+		tot_cnt - avail_cnt,
+		tot_cnt
+	]
+	_panel_stage_actions.add_child(dep_info)
+
+	var dep_hbox := HBoxContainer.new()
+	_panel_stage_actions.add_child(dep_hbox)
+
+	var btn_dep_sword := Button.new()
+	btn_dep_sword.text = "+ Deploy 2x Sword"
+	btn_dep_sword.disabled = (controller == null) or (avail_cnt < 2) or (controller.get_warehouse_stock("SWORD") < 2)
+	btn_dep_sword.pressed.connect(func(): if controller: controller.create_deployment(2, "SWORD"))
+	dep_hbox.add_child(btn_dep_sword)
+
+	var btn_dep_shield := Button.new()
+	btn_dep_shield.text = "+ Deploy 2x Shield"
+	btn_dep_shield.disabled = (controller == null) or (avail_cnt < 2) or (controller.get_warehouse_stock("SWORD") < 2) or (controller.get_warehouse_stock("SHIELD") < 2)
+	btn_dep_shield.pressed.connect(func(): if controller: controller.create_deployment(2, "SWORD", "SHIELD"))
+	dep_hbox.add_child(btn_dep_shield)
+
+	var btn_dep_archer := Button.new()
+	btn_dep_archer.text = "+ Deploy 2x Archer"
+	btn_dep_archer.disabled = (controller == null) or (avail_cnt < 2) or (controller.get_warehouse_stock("BOW") < 2)
+	btn_dep_archer.pressed.connect(func(): if controller: controller.create_deployment(2, "BOW"))
+	dep_hbox.add_child(btn_dep_archer)
+
+	var btn_dep_spear := Button.new()
+	btn_dep_spear.text = "+ Deploy 2x Spear"
+	btn_dep_spear.disabled = (controller == null) or (avail_cnt < 2) or (controller.get_warehouse_stock("SPEAR") < 2)
+	btn_dep_spear.pressed.connect(func(): if controller: controller.create_deployment(2, "SPEAR"))
+	dep_hbox.add_child(btn_dep_spear)
+
+	if snapshot.active_deployments_data.size() > 0:
+		var active_lbl := Label.new()
+		active_lbl.text = "-- Active Groups --"
+		_panel_stage_actions.add_child(active_lbl)
+		for dep in snapshot.active_deployments_data:
+			var comp_id: String = str(dep.get("composition_id", ""))
+			var count_val: int = int(dep.get("count", 0))
+			var role_val: String = str(dep.get("resolved_role", ""))
+			var row := HBoxContainer.new()
+			_panel_stage_actions.add_child(row)
+			var row_lbl := Label.new()
+			row_lbl.text = "[%dx] %s (%s)" % [count_val, role_val, comp_id]
+			row.add_child(row_lbl)
+			var btn_cancel_dep := Button.new()
+			btn_cancel_dep.text = "Cancel"
+			btn_cancel_dep.pressed.connect(func(cid=comp_id): if controller: controller.remove_deployment(cid))
+			row.add_child(btn_cancel_dep)
