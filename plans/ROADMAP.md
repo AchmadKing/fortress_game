@@ -38,8 +38,8 @@ High-level roadmap pengembangan proyek `fortress_game`.
   - Simulasi 100-wave stabil tanpa eksploit ekonomi maupun death spiral.
 
 ## Phase 3 — Gameplay Prototype
-- **Status**: NOT STARTED / LOCKED
-- **Tujuan**: Prototipe interaksi gameplay minimum yang dapat dimainkan.
+- **Status**: PLANNING / AWAITING DEVELOPER APPROVAL
+- **Tujuan**: Prototipe interaksi gameplay minimum yang dapat dimainkan (playable prototype) di Godot berbasis arsitektur Phase 1 dan sistem matematika Phase 2.
 
 ## Phase 4 — Hero System
 - **Status**: NOT STARTED
