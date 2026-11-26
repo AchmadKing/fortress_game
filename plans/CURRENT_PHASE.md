@@ -2,7 +2,7 @@
 
 ## Phase 3 — Gameplay Prototype
 
-Project saat ini berada pada tahap **Phase 3: Gameplay Prototype — Sub-Phase 3B: COMPLETED / Sub-Phase 3C: COMPLETED / Sub-Phase 3D: PLANNED**.
+Project saat ini berada pada tahap **Phase 3: Gameplay Prototype — Sub-Phases 3A–3D: COMPLETED / Sub-Phase 3E: PLANNED**.
 Spesifikasi teknis implementasi Phase 3B tersedia di [docs/design/PHASE_3B_SOLDIER_DEPLOYMENT_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_3B_SOLDIER_DEPLOYMENT_PLAN.md).
 Spesifikasi teknis implementasi Phase 3C tersedia di [docs/design/PHASE_3C_HERO_EQUIPMENT_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_3C_HERO_EQUIPMENT_PLAN.md).
 
@@ -35,7 +35,7 @@ Spesifikasi teknis implementasi Phase 3C tersedia di [docs/design/PHASE_3C_HERO_
     - Prajurit gugur permanen memotong total populasi hidup.
     - Invariant konservasi $\text{Warehouse} + \text{Reserved} == \text{Total Owned}$ terjaga 100%.
     - Test Suite Phase 3B: **27/27 PASSED, 0 FAILED** ([tests/test_soldier_deployment_temporary.gd](tests/test_soldier_deployment_temporary.gd)).
-  - **Phase 3C — Hero Equipment Foundation**: **COMPLETED**
+  - **Phase 3C — Hero Equipment Foundation**: **COMPLETED** (Commit `1d3d51d`)
     - Integrasi perlengkapan Hero dengan gudang senjata bersama benteng (*Shared Fortress Warehouse*).
     - Slot perlengkapan hero minimal: Primary Weapon (`SWORD`, `SPEAR`, `BOW`), Secondary (`SHIELD`), dan Armor (`HEAVY_ARMOR`).
     - Kepemilikan perlengkapan persisten lintas gelombang bagi hero yang bertahan hidup.
@@ -44,7 +44,16 @@ Spesifikasi teknis implementasi Phase 3C tersedia di [docs/design/PHASE_3C_HERO_
     - Invariant konservasi global: $\text{Warehouse} + \text{Hero-held} + \text{Soldier-reserved} == \text{Total Owned}$.
     - Test Suite Phase 3C: **22/22 PASSED, 0 FAILED** ([tests/test_hero_equipment_foundation.gd](tests/test_hero_equipment_foundation.gd)).
     - Regression Suites: Phase 1 (5/5), Phase 2 (21/21), Phase 3A (11/11), Phase 3B (27/27), Scene Smoke (ALL PASS).
-  - **Phase 3D — Prototype UX & Interaction Polish**: **PLANNED**
+  - **Phase 3D — Prototype UX & Interaction Polish**: **COMPLETED**
+    - State & Phase guidance banner kontekstual pada header (`BOOT`, `PREPARATION`, `WAVE_PREVIEW`, `BATTLE`, `RESULT`, `RECOVERY`, `GAME_OVER`).
+    - Soldier Deployment Builder: custom count, primary weapon, secondary weapon, armor, preview derivasi peran dinamis, dan verifikasi ketersediaan stok & prajurit seketika.
+    - Active Deployment Groups List: tampilan transparan rincian regu, tombol Edit/Reconfigure atomik dengan rollback otomatis jika gagal, dan tombol Cancel/Remove untuk pengembalian instan.
+    - Hero Equipment UX: Hero roster interaktif dengan tombol Equip, Unequip, dan Swap sadar stok gudang bersama serta proteksi Battle Lock.
+    - Shared Warehouse Transparency: tabel telemetri konservasi gudang bersama membuktikan $\text{Warehouse} + \text{Hero-held} + \text{Soldier-reserved} == \text{Total Owned}$.
+    - Eliminasi dead-end interaction & feedback banner aksi sukses/gagal yang informatif.
+    - Hasil dan pemulihan (Result & Recovery) komprehensif: evaluasi kerusakan benteng, korban serdadu, status pahlawan, return gear hero permadeath, dan kepastian gear serdadu bersifat sementara.
+    - Test Suite Phase 3D: **10/10 PASSED, 0 FAILED** ([tests/test_prototype_ux_interaction.gd](tests/test_prototype_ux_interaction.gd)).
+    - Full Regression: 96 unit/integration tests PASS (Phase 1 5/5, Phase 2 21/21, Phase 3A 11/11, Phase 3B 27/27, Phase 3C 22/22, Phase 3D 10/10) + Scene Smoke Playtest ALL PASS.
   - **Phase 3E — Final Prototype Verification & Phase 3 Exit Gate**: **PLANNED**
 - **Phase 4 — Hero System**: **LOCKED**
 - **Phase 5 — Fortress & Management Systems**: **LOCKED**

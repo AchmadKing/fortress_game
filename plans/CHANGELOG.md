@@ -4,6 +4,38 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.4.5] - Phase 3D: Prototype UX & Interaction Polish (Completed)
+
+### Added
+- **State & Phase Guidance Contextual Banner** (`scripts/presentation/views/prototype_debug_view.gd`):
+  - Sub-header guidance interaktif dan jelas untuk seluruh 7 fase gameplay (`BOOT`, `PREPARATION`, `WAVE_PREVIEW`, `BATTLE`, `RESULT`, `RECOVERY`, `GAME_OVER`).
+- **Interactive Soldier Deployment Builder**:
+  - Konfigurasi regu dinamis: pemilih jumlah prajurit (count 1-5), senjata primer (`SWORD`, `SPEAR`, `BOW`), senjata sekunder (`NONE`, `SHIELD`), dan zirah (`NONE`, `HEAVY_ARMOR`).
+  - Preview derivasi peran seketika (`Role Preview: %dx %s`) melalui `DeploymentComposition.resolve_role()`.
+  - Validasi stok sadar-gudang seketika dengan pesan penolakan yang jelas sebelum submit jika stok atau prajurit tidak mencukupi.
+  - Tombol pintas cepat (*Quick Presets 2x*) untuk kenyamanan playtesting.
+- **Active Deployment Groups Management**:
+  - Tampilan mendalam setiap regu aktif (jumlah, peran turunan, gear yang dibawa, ID kanonikal).
+  - Form rekonfigurasi (*inline reconfigure*) atomik: memungkinkan penyesuaian jumlah dan gear dengan jaminan rollback utuh jika stok/kuota tidak memenuhi.
+  - Tombol batal (*Cancel / Remove*) untuk mengembalikan prajurit ke kolam cadangan dan senjata ke gudang bersama seketika.
+- **Interactive Hero Equipment Controls & Battle Lock**:
+  - Panel roster hero interaktif: slot Primary, Secondary, dan Armor menampilkan status terkini serta tombol pasang (*Equip*), lepas (*Unequip*), dan tukar (*Swap*) sadar stok.
+  - Penegakan ketat Battle Lock: seluruh kontrol gear hero dan penempatan serdadu dinonaktifkan secara eksplisit selama fase `BATTLE`.
+  - Penanganan visual hero permadeath: indikator pahlawan gugur permanen dengan konfirmasi pengembalian seluruh gear ke gudang.
+- **Shared Warehouse Conservation Transparency**:
+  - Tabel telemetri konservasi gudang bersama (`SWORD`, `SHIELD`, `SPEAR`, `BOW`, `HEAVY_ARMOR`) menampilkan kolom `WH` (stok gudang), `HERO` (terpasang di hero), `REGD` (direservasi regu serdadu), dan `TOTAL` (total kepemilikan fisik).
+  - Membuktikan secara kasat mata invariant: $\text{Warehouse} + \text{Hero-held} + \text{Soldier-reserved} == \text{Total Owned}$.
+- **Dead-end Prevention & Actionable Feedback**:
+  - Banner umpan balik visual `_lbl_feedback_banner` menampilkan status jelas `[SUKSES]`, `[DITOLAK]`, atau `[INFO]` untuk setiap aksi pemain tanpa kegagalan diam (*silent fail*).
+  - Peringatan dini pada `WAVE_PREVIEW` jika ada serdadu menganggur yang belum ditempatkan ke regu tempur.
+- **Detailed Result & Recovery Breakdown**:
+  - Laporan komprehensif pasca-tempur: damage benteng, korban serdadu permanen, rincian gear hancur/rusak, status hero, dan pengingat bahwa gear prajurit selamat telah kembali ke gudang benteng.
+- **Phase 3D Automated Test Suite** (`tests/test_prototype_ux_interaction.gd`):
+  - 10 pengujian otomatis tervalidasi 100% lulus (10/10 PASS, 0 FAIL) menguji seluruh alur interaksi, validasi stok, rollback atomik, Battle Lock, konservasi gudang, dan umpan balik dead-end.
+  - Full regression: 96 unit/integration tests PASS + Scene Smoke Playtest ALL PASS.
+
+---
+
 ## [0.4.4] - Phase 3C: Hero Equipment Foundation (Completed)
 
 ### Added

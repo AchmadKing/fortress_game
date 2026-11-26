@@ -90,10 +90,40 @@ func get_warehouse_stock(eq_type: String) -> int:
 	return coordinator.get_warehouse_stock(eq_type)
 
 
+func get_reserved_equipment_stock(eq_type: String) -> int:
+	if coordinator == null:
+		return 0
+	return coordinator.get_reserved_equipment_stock(eq_type)
+
+
+func get_total_owned_stock(eq_type: String) -> int:
+	if coordinator == null:
+		return 0
+	return coordinator.get_total_owned_stock(eq_type)
+
+
+func get_hero_held_equipment_stock(eq_type: String) -> int:
+	if coordinator == null:
+		return 0
+	return get_total_owned_stock(eq_type) - get_warehouse_stock(eq_type) - get_reserved_equipment_stock(eq_type)
+
+
 func get_available_soldiers() -> int:
 	if coordinator == null:
 		return 0
 	return coordinator.get_available_soldiers()
+
+
+func get_active_deployments() -> Array:
+	if coordinator == null:
+		return []
+	return coordinator.get_active_deployments()
+
+
+func get_hero(hero_id: String) -> RefCounted:
+	if coordinator == null:
+		return null
+	return coordinator.get_hero(hero_id)
 
 
 func is_equipment_option_available(eq_type: String, count: int) -> bool:
