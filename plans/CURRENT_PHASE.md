@@ -1,10 +1,11 @@
 # Current Development Phase
 
-## Phase 3 — Gameplay Prototype (COMPLETED)
+## Phase 4 — Hero System (AUTHORIZED / PLANNING)
 
-Project saat ini telah menyelesaikan **Phase 3: Gameplay Prototype secara menyeluruh (Sub-Phases 3A–3E: COMPLETED)**.
-Seluruh 16 kriteria gerbang keluar (*Phase 3 Exit Gate*) telah diverifikasi dan tervalidasi 100% lulus.
-**Phase 4 — Hero System saat ini berstatus LOCKED / NOT STARTED**, menunggu persetujuan eksplisit (*Explicit Approval*) dari developer.
+Project saat ini berada pada tahap **Phase 4 — Hero System (Status: AUTHORIZED / PLANNING)**.
+Phase 3 (Gameplay Prototype) telah resmi ditutup (**COMPLETED / CLOSED**) pada commit `e6c0c97`.
+
+Roadmap teknis dan spesifikasi arsitektur komprehensif Phase 4 tersedia di [docs/design/PHASE_4_HERO_SYSTEM_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_4_HERO_SYSTEM_PLAN.md).
 
 Spesifikasi teknis implementasi Phase 3B tersedia di [docs/design/PHASE_3B_SOLDIER_DEPLOYMENT_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_3B_SOLDIER_DEPLOYMENT_PLAN.md).
 Spesifikasi teknis implementasi Phase 3C tersedia di [docs/design/PHASE_3C_HERO_EQUIPMENT_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_3C_HERO_EQUIPMENT_PLAN.md).
@@ -72,7 +73,16 @@ Spesifikasi teknis implementasi Phase 3C tersedia di [docs/design/PHASE_3C_HERO_
     - Pengujian asap UI & Scene terintegrasi (*Scene Smoke Playtest*): **ALL PASS, 0 ERRORS** ([tests/test_playtest_smoke.gd](file:///d:/fortress_game/tests/test_playtest_smoke.gd)).
     - Full Regression Suite: **134 unit & integration tests PASSED, 0 FAILED (100% PASS)** across 8 automated test suites + 1 Scene Smoke Playtest suite.
     - Seluruh kriteria gerbang keluar (*Exit Gate Criteria*) Phase 3 terpenuhi secara mutlak.
-- **Phase 4 — Hero System**: **LOCKED / NOT STARTED** (Menunggu persetujuan eksplisit developer)
+- **Phase 4 — Hero System**: **AUTHORIZED / PLANNING**
+  - Dokumen Roadmap & Spesifikasi Arsitektur: **ESTABLISHED** ([docs/design/PHASE_4_HERO_SYSTEM_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_4_HERO_SYSTEM_PLAN.md))
+  - Sub-Phase 4A — Hero Domain & Lifecycle Foundation: **PLANNED**
+  - Sub-Phase 4B — Hero Progression & EXP: **PLANNED**
+  - Sub-Phase 4C — Hero Recruitment & Roster Management: **PLANNED**
+  - Sub-Phase 4D — Hero Training / Fatigue / Morale: **PLANNED**
+  - Sub-Phase 4E — Hero Skills & Talent Foundation: **PLANNED**
+  - Sub-Phase 4F — Hero Chemistry & Party Management: **PLANNED**
+  - Sub-Phase 4G — Hero Management UX: **PLANNED**
+  - Sub-Phase 4H — Hero System Integration & Verification: **PLANNED**
 - **Phase 5 — Fortress & Management Systems**: **LOCKED**
 - **Phase 6 — Tactical Battle & Battlefield Systems**: **LOCKED**
 
@@ -81,8 +91,9 @@ Spesifikasi teknis implementasi Phase 3C tersedia di [docs/design/PHASE_3C_HERO_
 ### Aturan & Batasan Saat Ini
 
 > [!IMPORTANT]
-> **PHASE 3 TELAH SELESAI SECARA RESMI (PHASE 3 CLOSED).**
-> **PHASE 4 BERSTATUS LOCKED / NOT STARTED**: DILARANG memulai implementasi Phase 4 (Hero System, Skill tree, Talent, Tavern/Recruitment, dll.) sebelum developer memberikan persetujuan eksplisit (*Explicit Approval*).
+> **PHASE 3 TELAH RESMI DITUTUP (OFFICIALLY CLOSED).**
+> **PHASE 4 TELAH DIBUKA (AUTHORIZED TO START)**: Pengembangan Phase 4 wajib mematuhi rencana kerja terstruktur (Sub-Phases 4A–4H), prinsip *Extend, Don't Break*, dan tidak boleh merusak baseline 134 pengujian Phase 1–3 yang telah lulus.
+> **PHASE 5 & 6 TETAP LOCKED**: DILARANG memulai implementasi sistem pertarungan taktis mendalam, battlefield physics, maupun konstruksi modul benteng.
 
 ---
 

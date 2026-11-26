@@ -4,6 +4,25 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.5.0] - Phase 4: Hero System (Planning & Architecture Specification)
+
+### Added
+- **Phase 4 Hero System Detailed Technical Plan & Roadmap** (`docs/design/PHASE_4_HERO_SYSTEM_PLAN.md`):
+  - Dokumen arsitektur dan perencanaan menyeluruh mencakup seluruh 25 aspek (A–Y):
+    - Audit fondasi Hero existing (`HeroModel`, `CombatEngine`, `GameCoordinator`, `GameStateSnapshot`).
+    - Batas arsitektur domain, aplikasi, simulasi, presentasi, dan persistensi.
+    - Definisi peran kanonikal (`KNIGHT`, `MAGE`, `ARCHER`, `PRIEST`), stat affinities, dan kompatibilitas perlengkapan.
+    - Model regu pahlawan (`PartyModel`) dan fondasi bakat/kemampuan (`HeroSkill`).
+    - Diagram siklus hidup pahlawan: rekrutmen Mercenary Guild, barak istirahat, latihan, penugasan regu, pertempuran, hingga kematian permanen.
+    - Formula matematis deterministik: EXP curve eksponensial, perolehan EXP tempur/latihan, pembatasan level bintang, ascension bintang, penalti kelelahan, dan dinamika moral.
+    - Penegakan mutlak konservasi gudang bersama dan pengembalian perlengkapan hero permadeath tepat 1 kali.
+    - Pembagian 8 sub-fase terkontrol: 4A (Domain Foundation) s/d 4H (Integration & Verification).
+- **Project Phase Status Transition**:
+  - Phase 3 (Gameplay Prototype) resmi berstatus COMPLETED / CLOSED.
+  - Phase 4 (Hero System) resmi berstatus AUTHORIZED / PLANNING.
+
+---
+
 ## [0.4.7] - Phase 3E: Final Prototype Verification & Phase 3 Exit Gate (Completed)
 
 ### Added
