@@ -18,7 +18,8 @@ Tujuan utama dari **Phase 3 — Gameplay Prototype** adalah membangun jembatan t
 
 Phase 3 bertujuan untuk:
 1. Membuktikan bahwa loop gameplay inti (*Core Gameplay Loop*) dapat berjalan secara mulus di Godot tanpa ketergantungan pada rendering frame visual yang berat:
-   $$\text{BOOT} \rightarrow \text{PREPARATION} \rightarrow \text{WAVE PREVIEW} \rightarrow \text{BATTLE} \rightarrow \text{RESULT} \rightarrow \text{RECOVERY} \rightarrow \text{PREPARATION / GAME OVER}$$
+   $$\text{Siklus Normal:} \quad \text{BOOT} \rightarrow \text{PREPARATION} \rightarrow \text{WAVE PREVIEW} \rightarrow \text{BATTLE} \rightarrow \text{RESULT} \rightarrow \text{RECOVERY} \rightarrow \text{PREPARATION}$$
+   $$\text{Kondisi Game Over:} \quad \text{BATTLE} \rightarrow \text{RESULT} \rightarrow \text{GAME OVER}$$
 2. Memvalidasi transisi state game secara aman dan deterministik melalui **Gameplay State Machine**.
 3. Menyediakan kontrol interaksi player dasar (manajemen alokasi pekerja & serdadu pada fase persiapan, kendali kecepatan dan jeda saat pertempuran, serta pengiriman abstraksi perintah komandan).
 4. Menyediakan antarmuka telemetri debug (*Debug Telemetry*) berbasis teks murni untuk mengamati state dan menguji stabilitas gameplay pada hardware berspesifikasi rendah (Intel Celeron / 4 GB RAM / Android).
@@ -105,25 +106,32 @@ Phase 3 **TIDAK MEMBUAT COMBAT ENGINE BARU**. Sistem simulasi Phase 2 adalah **s
 State Machine mengontrol otoritas alur permainan. State tidak bergantung pada SceneTree atau UI, dan transisi ilegal wajib ditolak secara tegas.
 
 ```text
-       ┌─────────┐
-       │  BOOT   │
-       └────┬────┘
-            │ (initialize_session)
-            ▼
-     ┌───────────────┐        (inspect wave)        ┌────────────────┐
-     │  PREPARATION  │ ───────────────────────────> │  WAVE_PREVIEW  │
-     └───────▲───────┘ <─────────────────────────── └───────┬────────┘
-             │               (cancel / back)                │
-             │                                              │ (start_battle)
-             │                                              ▼
-     ┌───────┴───────┐        (battle ends)         ┌────────────────┐
-     │   RECOVERY    │ <─────────────────────────── │     BATTLE     │
-     └───────────────┘                              └───────┬────────┘
-                                                            │ (fortress HP <= 0)
-                                                            ▼
-                                                    ┌────────────────┐
-                                                    │   GAME_OVER    │
-                                                    └────────────────┘
+                  ┌─────────┐
+                  │  BOOT   │
+                  └────┬────┘
+                       │ (initialize_session)
+                       ▼
+             ┌───────────────────┐  (inspect wave)  ┌───────────────────┐
+      ┌────> │    PREPARATION    │ ───────────────> │   WAVE_PREVIEW    │
+      │      └───────────────────┘ <─────────────── └─────────┬─────────┘
+      │                ▲                 (cancel)             │
+      │                │                                      │ (start_battle)
+      │                │                                      ▼
+      │      ┌───────────────────┐                  ┌───────────────────┐
+      │      │     RECOVERY      │                  │      BATTLE       │
+      │      └─────────▲─────────┘                  └─────────┬─────────┘
+      │                │                                      │ (battle ends)
+      │                │ (Fortress HP > 0)                    ▼
+      │                └─────────────────────────── ┌───────────────────┐
+      │                                             │      RESULT       │
+      │                                             └─────────┬─────────┘
+      │                                                       │ (Fortress HP <= 0)
+      │                                                       ▼
+      │                                             ┌───────────────────┐
+      │                                             │     GAME_OVER     │
+      │                                             └───────────────────┘
+      │ (advances to next wave: wave + 1)
+      └───────────────────────────────────────────────────────┘
 ```
 
 ### 4.1 Definisi State:
@@ -131,9 +139,11 @@ State Machine mengontrol otoritas alur permainan. State tidak bergantung pada Sc
 - **`PREPARATION`**: Player mengatur alokasi pekerja sipil (Repair, Blacksmith, Construction, Idle), merekrut serdadu dari warga sipil, mengatur kesiapan hero (Ready vs Rest), dan melakukan reparasi perlengkapan gudang.
 - **`WAVE_PREVIEW`**: Player melihat pratinjau informasi intelijen gelombang musuh yang akan datang, lalu memutuskan untuk memulai pertempuran atau kembali ke persiapan.
 - **`BATTLE`**: Simulasi pertempuran berjalan. Player dapat mengatur kecepatan (1x, 2x, 4x), menjeda (pause/resume), dan mengirimkan intensi perintah komandan.
-- **`RESULT`**: Penyajian hasil akhir pertempuran (menang/kalah, kerusakan benteng, korban serdadu gugur, kerusakan/kehilangan perlengkapan, kelangsungan hidup hero, EXP per hero, dan loot emas).
-- **`RECOVERY`**: Pemrosesan konsekuensi pasca-tempur: penambahan loot ke kas bendahara, pemotongan gaji rutin/upkeep, eksekusi reparasi benteng oleh Repair Worker, dan pembersihan korban jiwa. Jika benteng runtuh ($HP \le 0$), transisi ke `GAME_OVER`. Jika selamat, transisi kembali ke `PREPARATION` gelombang berikutnya.
-- **`GAME_OVER`**: Kondisi terminal saat benteng hancur ($HP \le 0$). Sesi permainan berhenti dan mencatat pencapaian gelombang akhir.
+- **`RESULT`**: Penyajian dan evaluasi hasil akhir pertempuran (menang/kalah, kerusakan benteng, korban serdadu gugur, kerusakan/kehilangan perlengkapan, kelangsungan hidup hero, EXP per hero, dan loot emas).
+  - Jika Fortress $HP \le 0$: Transisi langsung ke `GAME_OVER` (sesi berakhir, tidak ada fase recovery).
+  - Jika Fortress $HP > 0$: Transisi ke `RECOVERY`.
+- **`RECOVERY`**: Pemrosesan orkestrasi pasca-tempur (hanya diakses bila benteng bertahan, $HP_{fortress} > 0$): penambahan loot ke kas bendahara, pemotongan gaji rutin/upkeep via EconomyManager, eksekusi reparasi benteng oleh Repair Worker existing, dan pembersihan korban jiwa. Setelah pemrosesan selesai, transisi kembali ke `PREPARATION` untuk gelombang berikutnya (indeks wave bertambah $+1$).
+- **`GAME_OVER`**: Kondisi terminal saat benteng hancur ($HP \le 0$), ditransisikan langsung dari `RESULT` tanpa melewati `RECOVERY`. Sesi permainan berhenti dan mencatat pencapaian gelombang akhir.
 
 ### 4.2 Aturan Transisi:
 - **Transisi Sah (*Valid Transitions*)**:
@@ -245,19 +255,17 @@ Loop gameplay Phase 3 membuktikan transisi dan persistensi data antar-fase secar
 
 4. RESULT
    - Rangkuman pertempuran ditampilkan: status kemenangan, kerusakan benteng, korban serdadu gugur, kerusakan/kehilangan perlengkapan, kelangsungan hidup hero, EXP per hero, dan loot emas.
-   - Player konfirmasi -> transisi ke RECOVERY.
+   - Evaluasi kelangsungan hidup benteng:
+     - Jika Fortress HP <= 0 -> Transisi langsung ke GAME_OVER (sesi berakhir, TIDAK menjalankan recovery normal).
+     - Jika Fortress HP > 0  -> Transisi ke RECOVERY.
 
-5. RECOVERY
-   - Memproses siklus ekonomi Phase 2 (EconomyManager):
-     - Battle loot ditambahkan ke kas.
-     - Upkeep prajurit & warga sipil dipotong dari kas.
-     - Reparasi benteng dieksekusi oleh Repair Worker sesuai ketersediaan kas.
-     - Pemulihan fatigue hero yang beristirahat diproses.
-     - Pertumbuhan alami populasi diproses jika kapasitas hunian mencukupi.
-
-6. EVALUASI TERMINAL
-   - Jika Fortress HP <= 0 -> Transisi ke GAME_OVER (sesi berakhir).
-   - Jika Fortress HP > 0  -> Indeks Wave bertambah (+1), kembali ke PREPARATION.
+5. RECOVERY (Hanya jika Fortress HP > 0)
+   - Menjalankan orkestrasi pasca-tempur murni menggunakan sistem Phase 2 existing:
+     - Battle loot ditambahkan ke kas bendahara sebagai sumber ekonomi utama.
+     - Upkeep prajurit & warga sipil dipotong dari kas via EconomyManager.process_cycle().
+     - Reparasi benteng dieksekusi oleh Repair Worker yang sudah dialokasikan sesuai ketersediaan kas.
+     - Pemanggilan pemulihan fatigue hero yang beristirahat (HeroModel.rest()) dan pertumbuhan alami populasi (PopulationModel.grow_population()) diorkestrasikan menggunakan method Phase 2 existing untuk menjaga kontinuitas state.
+   - Setelah siklus recovery selesai, indeks wave bertambah (+1) dan permainan kembali ke PREPARATION untuk gelombang berikutnya.
 ```
 
 ---
@@ -308,22 +316,47 @@ Konsep "Scout / Scouting System" **DIHAPUS SEPENUHNYA** dari Phase 3. Player lan
 
 ---
 
-## 10. Recovery Prototype
+## 10. Recovery Prototype (Post-Battle Orchestration / Integration Proof)
 
-Fase Recovery membuktikan penanganan pasca-pertempuran tanpa membuat model reparasi baru.
+Fase Recovery pada Phase 3 dirancang secara ketat sebagai **Post-Battle Orchestration / Integration Proof**, BUKAN implementasi sistem manajemen baru.
 
-### 10.1 Model Reparasi Phase 2 yang Wajib Digunakan:
-$$\text{Worker} + \text{Repair Job} + \text{Material/Budget} + \text{Duration} \rightarrow \text{Fortress HP Recovery}$$
+Tujuannya adalah membuktikan bahwa konsekuensi pertempuran dapat dialirkan kembali ke state domain secara tertib melalui koordinasi sistem Phase 2 yang sudah ada:
+$$\text{Battle} \rightarrow \text{Result} \rightarrow \text{Recovery} \rightarrow \text{Preparation} \rightarrow \text{Next Wave}$$
 
-- Menggunakan method existing `EconomyManager.process_cycle(population, fortress)`.
-- Reparasi hanya terjadi jika ada warga sipil yang dialokasikan ke pekerjaan `REPAIR`.
-- Biaya reparasi dipotong dari kas bendahara ($0.15 \text{ gold per HP}$).
-- Jika kas bendahara tidak mencukupi, reparasi benteng dilakukan secara parsial sesuai batas dana yang tersedia.
+### 10.1 Alur Orkestrasi Recovery:
+1. **Konsekuensi Pertempuran Dihasilkan di Result**: Evaluasi `CombatEngine` menghasilkan DTO hasil pertempuran (damage benteng, korban serdadu gugur, equipment wear/loss, hero survival, loot emas).
+2. **Aplikasi ke Domain State**: Konsekuensi tersebut diaplikasikan langsung ke instance domain models (`FortressModel`, `PopulationModel`, `HeroModel`, `EquipmentModel`).
+3. **Pemanggilan `EconomyManager` Existing**: `EconomyManager.process_cycle(population, fortress)` dipanggil untuk memproses siklus rutin upkeep militer/sipil dan reparasi benteng sesuai ketersediaan kas.
+4. **Reparasi via Repair Worker Phase 2**:
+   $$\text{Worker} + \text{Repair Job} + \text{Material/Budget} + \text{Duration} \rightarrow \text{Fortress HP Recovery}$$
+   Reparasi benteng HANYA mengandalkan alokasi pekerja pada tugas `REPAIR` yang telah ditetapkan sejak Phase 2. Tidak ada formula atau sistem reparasi baru.
+5. **Aplikasi Loot Pertempuran**: Loot emas dari pertempuran ditambahkan ke bendahara sebagai sumber pendapatan ekonomi utama (tanpa pendapatan pasif).
+6. **Kontinuitas ke Gelombang Berikutnya**: Setelah seluruh pemrosesan recovery selesai dan benteng masih bertahan ($HP > 0$), state bertransisi kembali ke `PREPARATION` gelombang berikutnya ($Wave = Wave + 1$).
+7. **Pemisahan Tegas dari Keruntuhan Benteng**: Jika Fortress $HP \le 0$ pada evaluasi pertempuran, game bertransisi langsung dari `RESULT` ke `GAME_OVER`. Fase Recovery **TIDAK PERNAH DIJALANKAN** saat benteng hancur, memastikan tidak ada recovery loop yang secara tidak sengaja menghidupkan kembali benteng yang telah runtuh.
 
-### 10.2 Batasan Scope Recovery:
-- Hanya membuktikan kelangsungan loop gameplay:
-  $$\text{Battle} \rightarrow \text{Result} \rightarrow \text{Recovery} \rightarrow \text{Preparation} \rightarrow \text{Next Wave}$$
-- Tidak mengimplementasikan sistem manajemen fasilitas benteng yang mendalam (ditunda ke Phase 5).
+### 10.2 Batasan Hero Recovery dan Pertumbuhan Populasi (Orchestration Only):
+Source code Phase 2 telah memiliki fungsi bawaan:
+- `HeroModel.rest(recovery_amount)`: Pemulihan fatigue hero yang tidak bertarung.
+- `PopulationModel.grow_population(growth_rate)`: Pertumbuhan alami warga sipil jika kapasitas hunian mencukupi.
+
+**Batasan Mutlak Phase 3**:
+- Phase 3 **TIDAK MENGEMBANGKAN ATAU MEMPERLUAS** mekanisme-mekanisme tersebut.
+- Keberadaan fungsi existing ini dipertahankan, dan Phase 3 **HANYA MENGORKESTRASIKAN PEMANGGILAN BEHAVIOR EXISTING** tersebut demi menjaga kontinuitas state antar-gelombang.
+- **DILARANG MEMBUAT**:
+  - Formula fatigue recovery baru.
+  - Formula pertumbuhan populasi baru.
+  - Balancing atau re-tuning ekonomi baru.
+  - UI manajemen detail untuk hero recovery atau demografi.
+- Prinsip utama: **Existing Phase 2 Behavior $\rightarrow$ Dipanggil/Diorgestrasikan oleh Phase 3**, bukan Phase 3 menciptakan behavior management baru.
+
+### 10.3 Larangan Penambahan Sub-Sistem Manajemen Baru:
+Pada Phase 3, secara tegas **DILARANG MEMBUAT**:
+- Formula reparasi benteng baru di luar Phase 2.
+- Sistem ekonomi atau sumber mata uang baru di luar kas bendahara emas.
+- Sistem manajemen populasi atau penugasan tenaga kerja mendalam (*detailed workforce management*).
+- Sistem manajemen fasilitas benteng (*facility/room management*).
+- Sistem manajemen inventaris sumber daya material (*resource/warehouse inventory management*).
+Seluruh perluasan sistem manajemen tersebut ditunda ke fase-fase berikutnya sesuai roadmap (Phase 4 untuk Hero System, Phase 5 untuk Fortress Management, Phase 7 untuk Economy).
 
 ---
 
@@ -420,7 +453,7 @@ Target hardware pengembangan dan rilis adalah perangkat berspesifikasi rendah:
 | **Battle Simulation Execution** | Ya (CombatEngine Phase 2) | Formula battle power baru |
 | **Battle Speed & Pause Control** | Ya (Pause, 1x, 2x, 4x) | - |
 | **Commander Command Abstraction** | Ya (6 Intent DTOs) | Tactical AI & formasi mendalam (Phase 6) |
-| **Result & Recovery Loop** | Ya (Loot, gaji, repair) | Sistem ekonomi makro/perdagangan (Phase 7) |
+| **Result & Recovery Loop** | Ya (Post-battle result application, existing economy cycle orchestration, existing Repair Worker behavior, existing loot application, state continuity ke persiapan berikutnya) | Advanced economy, facility management, detailed workforce management, advanced population simulation, advanced hero recovery, formula reparasi baru, formula ekonomi baru, sistem resource baru |
 | **Debug Telemetry HUD** | Ya (Label teks murni) | UI/HUD artistik final (Phase 9) |
 | **Unit & Integration Tests** | Ya (Headless suite) | - |
 | **Visual Art, Sprite, & Animasi** | **TIDAK** | Pixel art, VFX, animasi (Phase 9) |
@@ -462,9 +495,9 @@ Implementasi Phase 3 hanya dapat dinyatakan selesai jika seluruh checklist berik
 - [ ] Kontrol pertempuran berfungsi lancar: Pause, Resume, Kecepatan 1x, Kecepatan 2x, dan Kecepatan 4x.
 - [ ] Keenam perintah komandan (`HOLD`, `ADVANCE`, `RETREAT`, `PROTECT`, `FOCUS`, `FOLLOW`) dapat dikirimkan ke coordinator dan dicatat pada telemetri.
 - [ ] Hasil pertempuran (`RESULT`) dilaporkan dan memutasi state benteng, populasi, dan hero secara tepat.
-- [ ] Fase `RECOVERY` memproses loot emas, pemotongan gaji rutin, dan reparasi benteng berbasis Repair Worker Phase 2.
-- [ ] Gelombang berikutnya dapat dimulai dan state bertahan secara konsisten (*state persistence across waves*).
-- [ ] Keruntuhan benteng ($HP \le 0$) memicu kondisi terminal `GAME_OVER`.
+- [ ] Evaluasi terminal di `RESULT`: jika Fortress $HP \le 0$, game langsung masuk ke `GAME_OVER` tanpa melewati Recovery (tidak ada recovery loop yang secara tidak sengaja menghidupkan kembali benteng yang sudah hancur).
+- [ ] Fase `RECOVERY` murni mengorkestrasi sistem Phase 2 yang ada (`EconomyManager`, `FortressModel`, `PopulationModel`): mengaplikasikan loot battle, memotong upkeep rutin, mereparasi benteng via Repair Worker existing, dan memanggil existing rest/growth behavior tanpa formula ekonomi/reparasi/manajemen baru.
+- [ ] State dapat kembali ke `PREPARATION` untuk gelombang berikutnya setelah recovery selesai (kontinuitas state terjaga, indeks wave bertambah +1).
 - [ ] Tidak ada pembuatan `CombatEngine` baru, duplikasi formula, atau refactor terhadap archetype musuh Phase 2.
 - [ ] Seluruh test Phase 1 tetap lulus (**5/5 PASSED, 0 FAILED**).
 - [ ] Seluruh test Phase 2 tetap lulus (**21/21 PASSED, 0 FAILED**).
