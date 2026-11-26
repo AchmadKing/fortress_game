@@ -7,19 +7,19 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 ## [0.5.0] - Phase 4: Hero System (Planning & Architecture Specification)
 
 ### Added
-- **Phase 4 Hero System Detailed Technical Plan & Roadmap** (`docs/design/PHASE_4_HERO_SYSTEM_PLAN.md`):
-  - Dokumen arsitektur dan perencanaan menyeluruh mencakup seluruh 25 aspek (A–Y):
-    - Audit fondasi Hero existing (`HeroModel`, `CombatEngine`, `GameCoordinator`, `GameStateSnapshot`).
-    - Batas arsitektur domain, aplikasi, simulasi, presentasi, dan persistensi.
-    - Definisi peran kanonikal (`KNIGHT`, `MAGE`, `ARCHER`, `PRIEST`), stat affinities, dan kompatibilitas perlengkapan.
-    - Model regu pahlawan (`PartyModel`) dan fondasi bakat/kemampuan (`HeroSkill`).
-    - Diagram siklus hidup pahlawan: rekrutmen Mercenary Guild, barak istirahat, latihan, penugasan regu, pertempuran, hingga kematian permanen.
-    - Formula matematis deterministik: EXP curve eksponensial, perolehan EXP tempur/latihan, pembatasan level bintang, ascension bintang, penalti kelelahan, dan dinamika moral.
-    - Penegakan mutlak konservasi gudang bersama dan pengembalian perlengkapan hero permadeath tepat 1 kali.
-    - Pembagian 8 sub-fase terkontrol: 4A (Domain Foundation) s/d 4H (Integration & Verification).
+- **Phase 4 Hero System Detailed Technical Plan & Roadmap Finalization** (`docs/design/PHASE_4_HERO_SYSTEM_PLAN.md`):
+  - Audit dan finalisasi dokumen arsitektur dan perencanaan menyeluruh sebelum implementasi dimulai:
+    - **Lock Existing Hero Foundation**: Mengunci fondasi Hero Phase 3 (`HeroModel`, `CombatEngine`, `GameCoordinator`, `GameStateSnapshot`). Dilarang membuat `HeroModelV2`, inventaris terpisah, atau gudang kedua.
+    - **Single Source of Truth**: Menetapkan domain `HeroModel` sebagai otoritas tunggal untuk seluruh kalkulasi stat efektif, EXP, bintang, fatigue, moral, dan bonus chemistry. Application mengoordinasikan, `CombatEngine` mengonsumsi, dan UI hanya menampilkan.
+    - **Equipment Scope**: Menegaskan item perlengkapan kanonikal Phase 3 (`SWORD`, `SPEAR`, `BOW`, `SHIELD`, `HEAVY_ARMOR`) tetap dipertahankan; tipe baru (`STAFF`, `MACE`, `LIGHT_ARMOR`, `CLOTH`) adalah ekstensi data non-breaking di masa depan.
+    - **Party Management Scope**: Maksimal 2 party dalam manajemen (Party 1 dan Party 2), maksimal 3 hero per party, hero hanya boleh berada di maksimal 1 party, hero yang tidak ditugaskan berstatus `RESERVE`. Pembatasan sementara Phase 4: hanya Party 1 yang diteruskan ke simulasi pertempuran `CombatEngine`.
+    - **Training Anti-Exploit Rule**: Mengklarifikasi bahwa batas maksimal 1 sesi pelatihan per hero per wave adalah aturan anti-eksploit game balance (bukan limitasi kapasitas bangunan barak/fasilitas).
+    - **Strict 4A Scope & Out-of-Scope**: Menetapkan batasan ketat Sub-Phase 4A (lifecycle domain model, star cap/potential, in-memory roster foundation) dan secara eksplisit melarang ekspansi premature ke tavern UI, skill tree, atau save/load.
+    - **Strict Sub-Phase Workflow**: Menerapkan 8 langkah wajib untuk setiap sub-fase (Inspect -> Plan -> Test Spec -> Approval Gate -> Implementation -> Verification -> Documentation -> Commit) dengan rantai dependensi sekuensial (4A -> 4B -> ... -> 4H).
+    - **Preserved Baseline Verification**: Menjaga baseline 134 unit/integration tests dan Scene Smoke Playtest agar tetap 100% PASS tanpa regresi.
 - **Project Phase Status Transition**:
   - Phase 3 (Gameplay Prototype) resmi berstatus COMPLETED / CLOSED.
-  - Phase 4 (Hero System) resmi berstatus AUTHORIZED / PLANNING.
+  - Phase 4 (Hero System) resmi berstatus AUTHORIZED / PLANNING (implementasi belum dimulai).
 
 ---
 

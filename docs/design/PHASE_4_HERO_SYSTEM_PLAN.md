@@ -12,7 +12,7 @@
 
 ## A. Phase Objective
 
-Phase 4 bertujuan membangun **Hero System (Sistem Pahlawan & Komandan)** yang utuh, mendalam, dan modular, memperluas fondasi hero minimal yang telah divalidasi pada Phase 1, Phase 2, dan Phase 3C/3D.
+Phase 4 bertujuan membangun **Hero System (Sistem Pahlawan & Komandan)** yang utuh, mendalam, dan modular, memperluas fondasi hero minimal yang telah divalidasi pada Phase 1, Phase 2, dan Phase 3C/3D/3E.
 
 Sistem pahlawan dirancang dengan kedalaman *character-management strategy RPG* yang berfokus pada:
 1. Identitas dan perkembangan individual setiap pahlawan (level, EXP, stat, bintang saat ini vs potensi).
@@ -29,68 +29,61 @@ Sistem pahlawan dirancang dengan kedalaman *character-management strategy RPG* y
 
 ---
 
-## B. Existing Hero Foundation Audit
+## B. Existing Hero Foundation Audit & Inviolable Rules
 
-Hasil audit menyeluruh terhadap repositori pada commit `e6c0c97`:
+### 1. Existing Hero Foundation (Yang Wajib Dipertahankan)
+Repositori pada commit `e6c0c97` telah memiliki fondasi pahlawan fungsional:
+- **Model Domain (`scripts/domain/model/hero_model.gd`):**
+  - Identitas: `hero_id: String`, `hero_name: String`.
+  - Tingkat & EXP: `level: int = 1`, `current_exp: int = 0`.
+  - Sistem Bintang: `current_star: int = 1`, `potential_star: int = 3`.
+  - Stat Dasar: `base_hp: int = 250`, `base_atk: int = 35`, `base_def: int = 20`.
+  - Kondisi: `fatigue: int = 0` (0–100), `morale: int = 100` (0–150), `is_alive: bool = true`.
+  - Kemitraan: `chemistry_map: Dictionary` (`partner_hero_id -> points`).
+  - Slot Perlengkapan (Phase 3C): `primary_equipment`, `secondary_equipment`, `armor_equipment`.
+  - Metode: `equip()`, `unequip()`, `has_equipment()`, `get_equipment()`, `get_equipped_items()`, `clear_equipment()`, `get_required_exp()`, `add_exp()`, `add_fatigue()`, `rest()`, `train()`, `add_chemistry()`, `get_chemistry_bonus()`, `get_fatigue_multiplier()`, `get_effective_atk()`, `get_effective_def()`, `mark_dead()`, `clone()`.
+- **Koordinasi Aplikasi (`scripts/application/coordinators/game_coordinator.gd`):**
+  - Koleksi pahlawan benteng: `_heroes: Array` (default awal: `hero_alder` dan `hero_lyra`).
+  - Slot perlengkapan terintegrasi gudang bersama: `equip_hero()`, `unequip_hero()`, `swap_hero_equipment()`, `get_hero()`.
+  - Proteksi Battle Lock: mutasi perlengkapan hero dilarang keras saat state `BATTLE`.
+  - Pengembalian perlengkapan hero permadeath tepat 1 kali pada fase `proceed_from_result()`.
+  - Pemulihan kelelahan pasca-tempur (`hero.rest(20)` jika `fatigue >= 30`).
+  - Serialisasi data pahlawan ke `GameStateSnapshot.heroes_data`.
+- **Simulasi Pertempuran (`scripts/simulation/combat_engine.gd`):**
+  - Kontribusi ATK hero ke fase pertempuran jarak dekat (*melee engagement*).
+  - Penambahan kelelahan pertempuran: `hero.add_fatigue(15)`.
+  - Peningkatan sinergi chemistry pahlawan dalam party tempur: `+2` poin per pertempuran.
+  - Resolusi kelangsungan hidup / kematian hero deterministik berbasis bahaya jebolan, pertahanan, dan kelelahan.
+  - Pembagian EXP tempur rata ke seluruh pahlawan hidup.
 
-### 1. Model Domain Existing (`scripts/domain/model/hero_model.gd`)
-`HeroModel` mewarisi `RefCounted` dengan implementasi aktif saat ini:
-- **Identitas & Tingkat:** `hero_id: String`, `hero_name: String`, `level: int = 1`, `current_exp: int = 0`.
-- **Sistem Bintang:** `current_star: int = 1`, `potential_star: int = 3`.
-- **Stat Dasar:** `base_hp: int = 250`, `base_atk: int = 35`, `base_def: int = 20`.
-- **Kondisi:** `fatigue: int = 0` (0–100), `morale: int = 100` (0–150), `is_alive: bool = true`.
-- **Kemitraan:** `chemistry_map: Dictionary` (`partner_id -> points`).
-- **Slot Perlengkapan (Phase 3C):**
-  - `primary_equipment: RefCounted` (`SWORD`, `SPEAR`, `BOW`)
-  - `secondary_equipment: RefCounted` (`SHIELD`)
-  - `armor_equipment: RefCounted` (`HEAVY_ARMOR`)
-  - Metode: `equip()`, `unequip()`, `has_equipment()`, `get_equipment()`, `get_equipped_items()`, `clear_equipment()`.
-- **Formula Matematika Aktif:**
-  - EXP Dibutuhkan: $\text{ReqEXP}(L) = \lfloor 120.0 \times L^{1.55} \rfloor$.
-  - Multiplier Kelelahan: $\text{Mult}_{\text{fatigue}} = \max(0.40, 1.0 - \frac{\text{fatigue} - 20}{80} \times 0.60)$ jika $\text{fatigue} > 20$.
-  - Skalasi ATK Efektif: $\text{Effective ATK} = \lfloor \text{base\_atk} \times (1 + (L-1) \times 0.12) \times (1 + (\text{star}-1) \times 0.20) \times \text{chem\_bonus} \times \text{fat\_mult} \times \text{gear\_mult} \rfloor$.
-  - Skalasi DEF Efektif: $\text{Effective DEF} = \lfloor \text{base\_def} \times (1 + (L-1) \times 0.10) \times (1 + (\text{star}-1) \times 0.20) \times \text{fat\_mult} \times \text{gear\_def} \rfloor$.
-  - Bonus Chemistry: $1.0 + (\text{Total Chemistry Points} \times 0.005)$.
-
-### 2. Koordinasi Aplikasi Existing (`scripts/application/coordinators/game_coordinator.gd`)
-- Memiliki koleksi pahlawan: `_heroes: Array` (default awal: `hero_alder` dan `hero_lyra`).
-- Integrasi slot perlengkapan dengan gudang senjata bersama benteng: `equip_hero()`, `unequip_hero()`, `swap_hero_equipment()`.
-- Proteksi Battle Lock: mutasi perlengkapan hero dilarang keras saat state `BATTLE`.
-- Pengembalian perlengkapan hero permadeath tepat 1 kali pada fase `proceed_from_result()`.
-- Pemulihan kelelahan otomatis saat istirahat pasca-tempur (`hero.rest(20)` jika `fatigue >= 30`).
-- Serialisasi snapshot ke `GameStateSnapshot.heroes_data`.
-
-### 3. Simulasi Pertempuran Existing (`scripts/simulation/combat_engine.gd`)
-- Menghitung kontribusi ATK hero hidup ke fase pertempuran jarak dekat (*melee engagement*).
-- Menambah kelelahan pertempuran: `hero.add_fatigue(15)`.
-- Menambah chemistry pahlawan yang bertarung bersama di party: `+2` poin per pertempuran.
-- Menghitung evaluasi permadeath deterministik berbasis rasio jebolan benteng, pertahanan hero, dan penalti kelelahan.
-- Membagikan perolehan EXP pertempuran secara merata ke seluruh pahlawan hidup.
-
-### 4. Baseline Pengujian Existing
-- 134 unit & integration test passing 100% (termasuk 22 test khusus Phase 3C dan 15 test Phase 3E).
-- 1 Scene Smoke Playtest passing 100% tanpa error.
+### 2. Aturan Penguncian Mutlak (Inviolable Rules)
+- **NEVER** membuat `HeroModelV2` atau kelas paralel pengganti `HeroModel`.
+- **NEVER** membuat sistem inventaris kedua khusus hero.
+- **NEVER** membuat gudang (*Warehouse*) kedua. Gudang senjata benteng bersama (`_warehouse`) adalah satu-satunya sumber kepemilikan fisik perlengkapan.
+- **NEVER** menduplikasi kalkulasi chemistry di luar domain `HeroModel`.
+- **NEVER** menduplikasi kalkulasi EXP di luar domain `HeroModel`.
+- **NEVER** menduplikasi logika kepemilikan perlengkapan hero.
+- **NEVER** mengganti API Phase 3 yang sudah berjalan tanpa alasan kompatibilitas yang terbukti melalui pengujian regresi.
 
 ---
 
-## C. Architecture Boundary
+## C. Architecture Boundary & Stat Ownership
 
-Mengikuti aturan batas arsitektur Phase 1:
-
+### 1. Batas Tanggung Jawab Lapisan (*Layer Boundaries*)
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     PRESENTATION LAYER                      │
 │   (GameController, PrototypeDebugView, HeroManagementView)  │
-│      - Hanya menampilkan data snapshot                      │
+│      - MURNI menampilkan data snapshot                     │
 │      - Menangkap input aksi pemain (Train, Rest, Assign)    │
-│      - Bebas kalkulasi gameplay / rumus stat                │
+│      - DILARANG menghitung gameplay/rumus stat di UI        │
 └──────────────────────────────▲──────────────────────────────┘
                                │ (Commands & Signals)
 ┌──────────────────────────────┴──────────────────────────────┐
 │                     APPLICATION LAYER                       │
 │                     (GameCoordinator)                       │
 │      - Mengorkestrasi siklus hidup Hero                     │
-│      - Mengelola Roster Pahlawan & Formasi Party            │
+│      - Mengelola Roster Pahlawan & Penugasan Party          │
 │      - Menegakkan Battle Lock & State Transitions           │
 │      - Mengkoordinasikan Gudang Bersama & Kas Emas Benteng  │
 └──────────────────────────────▲──────────────────────────────┘
@@ -98,60 +91,70 @@ Mengikuti aturan batas arsitektur Phase 1:
 ┌──────────────────────────────┴──────────────────────────────┐
 │                    DOMAIN & SIMULATION                      │
 │         (HeroModel, HeroRole, PartyModel, CombatEngine)     │
-│      - Single Source of Truth rumus stat & EXP              │
+│      - Single Source of Truth rumus stat, EXP, & kondisi    │
 │      - Model data individual murni (RefCounted)             │
 │      - Deterministik, bebas dependensi visual/Node          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
+### 2. Otoritas Tunggal Kalkulasi Stat (*Stat Calculation Ownership*)
+DILARANG KERAS membiarkan `HeroModel`, `GameCoordinator`, `CombatEngine`, dan `UI` masing-masing menghitung stat versinya sendiri.
+
+**Single Source of Truth Rules:**
+- **`HeroModel`** adalah pemilik tunggal dan otoritas absolut untuk seluruh formula stat pahlawan:
+  - `get_effective_atk()` mengintegrasikan `base_atk`, level scaling, star scaling, chemistry bonus, fatigue multiplier, dan gear multiplier.
+  - `get_effective_def()` mengintegrasikan `base_def`, level scaling, star scaling, fatigue multiplier, dan gear def multiplier.
+  - `get_fatigue_multiplier()` adalah otoritas tunggal penalti kelelahan.
+  - `get_chemistry_bonus()` adalah otoritas tunggal pengali sinergi kemitraan.
+- **`CombatEngine`** MURNI membaca hasil `hero.get_effective_atk(party_ids)` dan `hero.get_effective_def()` dari domain. Tidak boleh menghitung ulang formula pengali stat hero secara terpisah.
+- **`GameCoordinator`** hanya meneruskan nilai stat efektif ke `GameStateSnapshot` untuk keperluan telemetri.
+- **`Presentation / UI`** hanya menampilkan nilai dari snapshot tanpa kalkulasi ulang.
+
 ---
 
-## D. Domain Models
+## D. Domain Models & Equipment/Role Scope
 
-### 1. Ekstensi `HeroModel` (`scripts/domain/model/hero_model.gd`)
-Mempertahankan seluruh field dan API existing, menambahkan field baru secara aditif:
-- `role: String = "KNIGHT"`: Peran kanonikal pahlawan (`KNIGHT`, `MAGE`, `ARCHER`, `PRIEST`).
-- `party_id: String = ""`: Penugasan regu aktif (`"party_1"`, `"party_2"`, atau `""` jika cadangan/istirahat).
-- `unlocked_skills: Array[String] = []`: Daftar ID skill yang telah dibuka.
-- `talent_points: int = 0`: Poin bakat yang dapat dialokasikan.
-- `allocated_talents: Dictionary = {}`: Pemetaan ID bakat ke tingkat alokasi.
-- `training_sessions_wave: int = 0`: Pelacak sesi latihan per gelombang.
+### 1. Pemisahan Tegas Perlengkapan Existing vs Rencana Masa Depan
+- **Perlengkapan Sah Existing (Phase 3 Equipment — UNTOUCHED):**
+  - Senjata: `SWORD`, `SPEAR`, `BOW`.
+  - Sekunder: `SHIELD`, `NONE`.
+  - Zirah: `HEAVY_ARMOR`, `NONE`.
+  - Seluruh perlengkapan ini berada di gudang bersama dan berlaku untuk serdadu maupun pahlawan.
+- **Kategori Perlengkapan Masa Depan (*Future Data Extensions Only*):**
+  - Konsep perlengkapan seperti `STAFF`, `MACE`, `LIGHT_ARMOR`, `CLOTH` adalah rencana data masa depan.
+  - **Sub-Phase 4A DILARANG** membuat sistem inventaris baru atau menginstansiasi item jenis baru tersebut.
+  - Pada Phase 4 MVP, peran pahlawan menggunakan perlengkapan Phase 3 existing yang kompatibel:
+    - `KNIGHT`: `SWORD` / `SPEAR` (Primary), `SHIELD` (Secondary), `HEAVY_ARMOR` (Armor).
+    - `ARCHER`: `BOW` (Primary), `NONE` (Secondary), `NONE` / `HEAVY_ARMOR` (Armor).
+    - `MAGE`: `SPEAR` / `BOW` / `SWORD` (Primary) sebagai senjata dasar hingga perlengkapan magis ditambahkan resmi.
+    - `PRIEST`: `SWORD` / `SPEAR` (Primary), `SHIELD` (Secondary), `NONE` / `HEAVY_ARMOR` (Armor).
+- **Aturan Gudang & Durabilitas:**
+  - Perlengkapan pahlawan tetap mengambil fisik dari gudang bersama benteng (`_warehouse`).
+  - Perlengkapan pahlawan **TIDAK TERPENGARUH** oleh formula keausan serdadu maupun resolusi korban serdadu (35% hancur / 65% rusak). Perlengkapan pahlawan tetap utuh selama pahlawan hidup.
 
-### 2. Definisi Peran Pahlawan Kanonikal (`HeroRole`)
-Didefinisikan secara konstan dan data-driven:
-- **`KNIGHT`**:
-  - Stat Affinity: HP Tinggi, DEF Tinggi, ATK Sedang.
-  - Kompatibilitas Senjata: `SWORD`, `SPEAR`.
-  - Kompatibilitas Perlengkapan: Wajib `SHIELD` (Secondary) & `HEAVY_ARMOR`.
-- **`MAGE`**:
-  - Stat Affinity: HP Rendah, DEF Rendah, ATK Sangat Tinggi.
-  - Kompatibilitas Senjata: `STAFF` (atau `SPEAR`/`BOW` dalam batas Phase 3).
-  - Kompatibilitas Perlengkapan: `LIGHT_ARMOR` / `CLOTH`.
-- **`ARCHER`**:
-  - Stat Affinity: HP Sedang, DEF Rendah, ATK Tinggi, Ranged Priority.
-  - Kompatibilitas Senjata: `BOW`.
-  - Kompatibilitas Perlengkapan: `LIGHT_ARMOR`.
-- **`PRIEST`**:
-  - Stat Affinity: HP Sedang, DEF Sedang, Healing/Support Aura.
-  - Kompatibilitas Senjata: `MACE` / `STAFF`.
-  - Kompatibilitas Perlengkapan: `SHIELD`, `LIGHT_ARMOR`.
+### 2. Ekstensi `HeroModel` (`scripts/domain/model/hero_model.gd`)
+Mempertahankan 100% kompatibilitas backward, menambahkan field secara modular:
+- `role: String = "KNIGHT"`: Nilai peran kanonikal (`KNIGHT`, `MAGE`, `ARCHER`, `PRIEST`).
+- `lifecycle_state: String = "ROSTER_ACTIVE"`: Status siklus hidup pahlawan.
+- `party_id: String = ""` (`"party_1"`, `"party_2"`, atau `""` jika Reserve).
+- `unlocked_skills: Array[String] = []`: Daftar ID skill aktif/pasif.
+- `talent_points: int = 0`: Poin bakat yang tersedia.
+- `allocated_talents: Dictionary = {}`: Peta bakat teralokasi (`talent_id -> level`).
+- `training_sessions_wave: int = 0`: Pelacak anti-exploit latihan per gelombang.
 
-### 3. Model Regu Pahlawan (`PartyModel`)
-Model data murni (`RefCounted`):
-- `party_id: String` (misal: `"party_alpha"`, `"party_bravo"`).
-- `party_name: String`.
-- `leader_hero_id: String`.
-- `member_hero_ids: Array[String]` (maksimal 3 pahlawan per regu pada MVP).
-- `is_deployed_to_battle: bool`: Penanda regu yang aktif terjun ke medan laga.
+### 3. Peran Pahlawan Kanonikal (`HeroRole`)
+Didefinisikan sebagai konstanta data-driven murni:
+- Konstanta: `ROLE_KNIGHT = "KNIGHT"`, `ROLE_MAGE = "MAGE"`, `ROLE_ARCHER = "ARCHER"`, `ROLE_PRIEST = "PRIEST"`.
+- Validasi peran melalui method statis: `HeroRole.is_valid_role(role: String) -> bool`.
+- Kompatibilitas slot senjata/zirah diperiksa secara deterministik tanpa duplikasi kode.
 
-### 4. Fondasi Kemampuan Pahlawan (`HeroSkill`)
-Model struktur data murni (`RefCounted`):
-- `skill_id: String`.
-- `skill_name: String`.
-- `role_requirement: String`.
-- `level_requirement: int`.
-- `skill_type: String` (`PASSIVE_STAT`, `COMBAT_AURA`, `TRIGGERED_SPECIAL`).
-- `power_multiplier: float`.
+### 4. Model Regu Pahlawan (`PartyModel`)
+- Model data murni (`RefCounted`):
+  - `party_id: String` (misal: `"party_1"`, `"party_2"`).
+  - `party_name: String`.
+  - `leader_hero_id: String`.
+  - `member_hero_ids: Array[String]`.
+  - `is_deployed_to_battle: bool`.
 
 ---
 
@@ -159,104 +162,103 @@ Model struktur data murni (`RefCounted`):
 
 | Komponen Data | Otoritas Kepemilikan (*Owner*) | Hak Mutasi |
 | :--- | :--- | :--- |
-| **Identitas & Stat Hero** | `HeroModel` | Murni internal `HeroModel` melalui metode domain. |
+| **Identitas, Stat, & EXP Hero** | `HeroModel` | Murni internal `HeroModel` via metode domain. |
 | **Peralatan Terpasang** | `HeroModel` (Referensi) | Dikendalikan via `GameCoordinator` (Single Source Gudang Bersama). |
 | **Roster Pahlawan Benteng** | `GameCoordinator` (`_heroes`) | `recruit_hero()`, `dismiss_hero()`, `proceed_from_result()`. |
 | **Penugasan Party** | `GameCoordinator` / `PartyModel` | `assign_hero_to_party()`, `remove_hero_from_party()`. |
 | **Fasilitas Latihan** | `GameCoordinator` & `EconomyManager` | `train_hero()`, konsumsi Gold dan kelelahan. |
-| **Perhitungan Tempur** | `CombatEngine` | Murni membacakan data snapshot pahlawan saat pertempuran. |
+| **Perhitungan Tempur** | `CombatEngine` | Murni membaca stat efektif pahlawan saat pertempuran. |
 
 ---
 
-## F. Hero Lifecycle
+## F. Hero Lifecycle & States
 
+### 1. State Siklus Hidup Pahlawan (`HeroLifecycleState`)
+- `RECRUITABLE`: Berada di bursa Mercenary Guild, belum menjadi bagian benteng.
+- `ROSTER_ACTIVE`: Terdaftar resmi di benteng sebagai cadangan (*Reserve*) atau bertugas di barak.
+- `IN_PARTY`: Ditugaskan ke dalam salah satu regu tempur pahlawan.
+- `IN_TRAINING`: Sedang menjalani sesi latihan pada fase persiapan.
+- `BATTLE_ACTIVE`: Sedang berada di medan laga aktif (berlaku Battle Lock).
+- `PERMADEATH`: Gugur di medan laga; seluruh perlengkapan dikembalikan ke gudang, status `is_alive = false`.
+
+### 2. Diagram Transisi Siklus Hidup
 ```mermaid
 stateDiagram-v2
-    [*] --> GUILD_POOL: Generator Rekrutmen
-    GUILD_POOL --> ROSTER_ACTIVE: recruit_hero() (Bayar Gold)
+    [*] --> RECRUITABLE: Pool Mercenary Guild
+    RECRUITABLE --> ROSTER_ACTIVE: recruit_hero() (Kas Emas Terpotong)
     
     state ROSTER_ACTIVE {
-        [*] --> IDLE_RESERVE: Istirahat di Barak
-        IDLE_RESERVE --> IN_TRAINING: train_hero() (+EXP, +Fatigue)
-        IN_TRAINING --> IDLE_RESERVE: Selesai Gelombang
-        IDLE_RESERVE --> IN_PARTY: assign_to_party()
-        IN_PARTY --> IDLE_RESERVE: remove_from_party()
+        [*] --> RESERVE: Berada di Barak
+        RESERVE --> IN_TRAINING: train_hero() (+EXP, +Fatigue)
+        IN_TRAINING --> RESERVE: Selesai Latihan
+        RESERVE --> IN_PARTY: assign_hero_to_party()
+        IN_PARTY --> RESERVE: remove_hero_from_party()
     }
     
-    IN_PARTY --> BATTLE_DEPLOYED: Wave Preview -> Start Battle
+    IN_PARTY --> BATTLE_ACTIVE: Wave Preview -> Start Battle
     
-    state BATTLE_DEPLOYED {
-        [*] --> FIGHTING: Battle Active (Battle Lock)
+    state BATTLE_ACTIVE {
+        [*] --> FIGHTING: Battle Lock Aktif
         FIGHTING --> SURVIVED: Resolusi Bertahan
         FIGHTING --> CASUALTY: Resolusi Kematian Deterministik
     }
     
-    SURVIVED --> ROSTER_ACTIVE: Recovery Phase (+EXP, +Chemistry, Rest)
+    SURVIVED --> IN_PARTY: Recovery Phase (+EXP, +Chemistry, Rest)
     CASUALTY --> PERMADEATH: proceed_from_result()
     
     state PERMADEATH {
-        [*] --> RETURN_EQUIPMENT: Return Gear ke Gudang (Tepat 1x)
-        RETURN_EQUIPMENT --> REMOVED_FROM_ROSTER: Hapus dari _heroes
+        [*] --> RETURN_GEAR: Kembalikan Gear ke Gudang (Tepat 1x)
+        RETURN_GEAR --> REMOVED: Dikeluarkan dari Roster Aktif
     }
     
-    REMOVED_FROM_ROSTER --> [*]
+    REMOVED --> [*]
 ```
 
 ---
 
 ## G. Recruitment Flow (Mercenary Guild)
 
-1. **Penyegaran Kandidat Rekrutmen:**
-   - Pada setiap awal fase `PREPARATION`, `GameCoordinator` menyediakan daftar 2–3 kandidat hero yang dapat direkrut di Mercenary Guild.
+1. **Penyegaran Kandidat Deterministik:**
+   - Awal fase `PREPARATION`: `GameCoordinator` menyediakan 2–3 kandidat hero di bursa sewa.
    - Kandidat dibuat secara deterministik berbasis `_session_seed + current_wave`.
-2. **Atribut Kandidat:**
-   - Memiliki `hero_id` unik, `hero_name` tematik, `role` sah, `current_star` (1–3), `potential_star` (current s/d 5), dan `level` dasar.
-3. **Biaya Rekrutmen (Gold):**
+2. **Biaya Rekrutmen (Gold):**
    $$\text{Hiring Cost} = \text{base\_cost} \times \text{current\_star} \times (1 + (\text{potential\_star} - \text{current\_star}) \times 0.35)$$
-   - Contoh Hero Bintang 1 (Potensi 3): $50 \times 1 \times (1 + 2 \times 0.35) = 85 \text{ Gold}$.
-4. **Validasi Transaksi:**
-   - Kas benteng harus mencukupi ($\text{Treasury Gold} \ge \text{Cost}$).
-   - Kapasitas roster pahlawan benteng belum penuh (maksimal 6 pahlawan pada MVP).
-   - Pengurangan kas emas benteng dilakukan seketika dan pahlawan ditambahkan ke `_heroes`.
+   - Hero Bintang 1 (Potensi 3): $50 \times 1 \times (1 + 2 \times 0.35) = 85 \text{ Gold}$.
+3. **Validasi:**
+   - Kas benteng mencukupi ($\text{Treasury Gold} \ge \text{Cost}$).
+   - Roster pahlawan benteng belum penuh (maksimal 6 pahlawan pada MVP).
+   - `hero_id` unik terverifikasi (mencegah ID duplikat).
 
 ---
 
-## H. Progression Flow
+## H. Progression Flow & Level Caps
 
-1. **Perolehan EXP:**
-   - Melalui pertempuran aktif (dibagikan ke pahlawan yang bertahan hidup).
-   - Melalui fasilitas latihan benteng (*Training Facility*).
-2. **Kenaikan Level (*Level Up*):**
-   - Saat $\text{current\_exp} \ge \text{ReqEXP}(\text{level})$, level bertambah $+1$.
+1. **Kenaikan Level (*Level Up*):**
+   - Saat $\text{current\_exp} \ge \text{ReqEXP}(\text{level})$, level pahlawan naik $+1$.
    - Kelebihan EXP diteruskan (*carry-over*) ke tingkat berikutnya.
-   - Peningkatan stat dasar otomatis berbasis pertumbuhan peran.
-   - Menghasilkan $+1$ Poin Bakat (*Talent Point*) setiap level ganjil.
-3. **Batas Level Maksimal (*Level Cap*):**
-   - Dibatasi oleh `current_star`:
-     - Bintang 1: Level Maksimal $10$.
-     - Bintang 2: Level Maksimal $20$.
-     - Bintang 3: Level Maksimal $30$.
-     - Bintang 4: Level Maksimal $40$.
-     - Bintang 5: Level Maksimal $50$.
+   - Peningkatan stat otomatis: $+12\%$ ATK dan $+10\%$ DEF per level.
+   - Mendapatkan $+1$ Poin Bakat (*Talent Point*) setiap level ganjil.
+2. **Batas Level Maksimal Berbasis Bintang (*Star Level Cap*):**
+   - Bintang 1: Level Maksimal $10$.
+   - Bintang 2: Level Maksimal $20$.
+   - Bintang 3: Level Maksimal $30$.
+   - Bintang 4: Level Maksimal $40$.
+   - Bintang 5: Level Maksimal $50$.
+   - Pahlawan yang mencapai level cap tidak dapat memperoleh EXP lebih lanjut sampai melakukan kenaikan bintang (*Ascension*).
 
 ---
 
-## I. EXP Formula
+## I. EXP Formulas
 
 ### 1. Kebutuhan EXP per Level
-Formula eksponensial halus kanonikal Phase 2 yang telah tervalidasi:
 $$\text{ReqEXP}(L) = \lfloor 120.0 \times L^{1.55} \rfloor$$
-
-| Level Target | Kebutuhan EXP | Total Akumulasi |
-| :---: | :---: | :---: |
-| Level 1 $\rightarrow$ 2 | $120$ | $120$ |
-| Level 2 $\rightarrow$ 3 | $351$ | $471$ |
-| Level 3 $\rightarrow$ 4 | $655$ | $1,126$ |
-| Level 4 $\rightarrow$ 5 | $1,021$ | $2,147$ |
-| Level 9 $\rightarrow$ 10 | $3,630$ | $14,942$ |
+- Lv 1 $\rightarrow$ 2: $120$ EXP
+- Lv 2 $\rightarrow$ 3: $351$ EXP
+- Lv 3 $\rightarrow$ 4: $655$ EXP
+- Lv 4 $\rightarrow$ 5: $1,021$ EXP
 
 ### 2. Perolehan EXP Tempur
-Dibagikan secara merata kepada pahlawan yang bertarung dan bertahan hidup:
+Dibagikan secara merata kepada seluruh pahlawan yang bertarung dan bertahan hidup:
 $$\text{EXP}_{\text{battle}} = \left\lfloor 60.0 \times \left(1.0 + \frac{\text{Wave}}{15.0}\right) \right\rfloor$$
 
 ---
@@ -265,12 +267,11 @@ $$\text{EXP}_{\text{battle}} = \left\lfloor 60.0 \times \left(1.0 + \frac{\text{
 
 1. **Integritas Bintang:**
    $$1 \le \text{current\_star} \le \text{potential\_star} \le 5$$
-2. **Mekanisme Kenaikan Bintang (*Ascension*):**
-   - Syarat 1: Pahlawan telah mencapai level maksimal pada bintangnya saat ini (misal Lv 10 untuk Bintang 1).
-   - Syarat 2: Pahlawan belum mencapai batas `potential_star` ($\text{current\_star} < \text{potential\_star}$).
-   - Syarat 3: Biaya emas benteng terpenuhi:
-     $$\text{Ascension Cost} = \text{current\_star} \times 150 \text{ Gold}$$
-3. **Efek Kenaikan Bintang:**
+2. **Syarat Kenaikan Bintang (*Ascension*):**
+   - Pahlawan mencapai level cap pada bintangnya saat ini ($\text{level} == \text{current\_star} \times 10$).
+   - Pahlawan belum mencapai batas potensi ($\text{current\_star} < \text{potential\_star}$).
+   - Membayar biaya emas benteng: $\text{Ascension Cost} = \text{current\_star} \times 150 \text{ Gold}$.
+3. **Efek Ascension:**
    - `current_star` bertambah $+1$.
    - Batas level terbuka ke tingkat berikutnya.
    - Pengali stat tempur bertambah $+20\%$ per bintang:
@@ -282,213 +283,206 @@ $$\text{EXP}_{\text{battle}} = \left\lfloor 60.0 \times \left(1.0 + \frac{\text{
 
 1. **Batas Nilai:** Integer $0$ hingga $100$.
 2. **Penumpukan Kelelahan:**
-   - Pertempuran aktif: $+15$ poin per pertempuran.
-   - Sesi latihan benteng: $+25$ poin per sesi latihan.
+   - Bertempur di medan laga: $+15$ poin per pertempuran.
+   - Sesi latihan di benteng: $+25$ poin per sesi latihan.
 3. **Dampak Kelelahan:**
    - **Kinerja Tempur:** Jika $\text{fatigue} > 20$, daya serang dan pertahanan tereduksi linier hingga batas bawah $40\%$ ($\text{fatigue} = 100$).
    - **Risiko Permadeath:** Kelelahan memperbesar peluang gugur deterministik saat tembok benteng jebol hingga $+60\%$.
    - **Kesiapan Latihan:** Jika $\text{fatigue} \ge 75$, pahlawan dilarang berlatih (*exhausted*).
 4. **Pemulihan Kelelahan:**
    - Istirahat pasca-tempur normal (fase RECOVERY): $-20$ poin.
-   - Istirahat di barak (tidak ditugaskan ke party tempur): $-40$ poin.
+   - Istirahat penuh di barak (status `RESERVE`): $-40$ poin.
 
 ---
 
 ## L. Morale Rules
 
 1. **Batas Nilai:** Integer $0$ hingga $150$ (baseline normal = $100$).
-2. **Perubahan Moral:**
-   - Kemenangan gelombang tanpa benteng rusak parah: $+5$ poin.
-   - Gelombang dengan benteng mengalami jebolan berat: $-10$ poin.
-   - Rekan satu party gugur permanen (*Permadeath*): $-25$ poin.
-3. **Pengaruh Moral:**
-   - **Semangat Tinggi ($\text{morale} \ge 120$):** Bonus $+5\%$ ATK dan $+5\%$ DEF.
-   - **Moral Normal ($80 \le \text{morale} < 120$):** Tanpa modifikator.
-   - **Moral Rendah ($\text{morale} < 80$):** Penalti $-10\%$ efektivitas tempur.
+2. **Dinamika Moral:**
+   - Kemenangan gelombang: $+5$ poin.
+   - Jebolan tembok parah: $-10$ poin.
+   - Rekan pahlawan gugur permanen: $-25$ poin.
+3. **Efek Moral:**
+   - **Tinggi ($\text{morale} \ge 120$):** Bonus $+5\%$ efektivitas stat.
+   - **Normal ($80 \le \text{morale} < 120$):** Tanpa modifikator.
+   - **Rendah ($\text{morale} < 80$):** Penalti $-10\%$ efektivitas stat.
 
 ---
 
 ## M. Training Rules (Training Facility)
 
-1. **Akses Latihan:** Dilakukan pada fase `PREPARATION`.
-2. **Syarat Latihan:**
+1. **Waktu Akses:** Dilakukan secara interaktif pada fase `PREPARATION`.
+2. **Biaya & Hasil:**
+   - Biaya: $25$ Gold dari kas bendahara benteng.
+   - Hasil: $+150$ EXP seketika dan $+25$ poin kelelahan (*fatigue*).
+3. **Syarat & Larangan:**
    - Pahlawan dalam keadaan hidup dan $\text{fatigue} < 75$.
-   - Kas benteng memiliki minimal $25$ Gold untuk biaya instruktur/fasilitas.
-   - Pahlawan belum mencapai level maksimal bintang saat ini.
-3. **Hasil Latihan:**
-   - Pahlawan memperoleh $150$ EXP seketika.
-   - Kelelahan bertambah $+25$ poin.
-   - Kas benteng terpotong $25$ Gold.
-   - Batasan: Maksimal 1 sesi latihan per pahlawan per gelombang untuk mencegah eksploitasi instan.
+   - Kas benteng mencukupi ($\ge 25$ Gold).
+   - Pahlawan belum mencapai level cap bintang saat ini.
+4. **Klarifikasi Batasan Anti-Exploit:**
+   - Aturan `maksimal 1 sesi latihan per pahlawan per gelombang` adalah **aturan pembatasan anti-exploit** agar pemain tidak menghabiskan seluruh kas emas untuk menaikkan level instan dalam satu gelombang.
+   - Ini **BUKAN** batasan kapasitas gedung fasilitas latihan benteng. Fasilitas benteng itu sendiri tidak memiliki batasan kapasitas kuota pahlawan pada MVP.
 
 ---
 
-## N. Chemistry Rules
+## N. Chemistry Rules & Ownership
 
-1. **Sifat Sistem:** Murni mekanik perkembangan positif (*positive cooperative synergy*).
-2. **Akumulasi Poin:**
-   - Pasangan pahlawan yang bertarung bersama dalam satu party memperoleh $+2$ poin chemistry per gelombang kemenangan.
-   - Batas maksimum chemistry per pasangan pahlawan: $50$ poin.
-3. **Bonus Sinergi:**
-   $$\text{Chemistry Multiplier} = 1.0 + (\text{Total Chemistry Points with Active Party} \times 0.005)$$
-   - Pada 50 poin chemistry dengan 1 rekan: bonus $+25\%$ efektivitas tempur.
-   - Pahlawan gugur permanen menghapus poin chemistry yang bersangkutan.
-
----
-
-## O. Party Model (Struktur Regu Tempur)
-
-1. **Kapasitas Regu:**
-   - Benteng mendukung hingga 2 regu tempur (Party 1: Regu Utama, Party 2: Regu Sekunder/Cadangan).
-   - Setiap regu menampung maksimal 3 pahlawan.
-2. **Aturan Penugasan:**
-   - Satu pahlawan hanya boleh terdaftar di maksimal 1 regu pada saat yang sama.
-   - Pahlawan yang tidak masuk ke regu mana pun berstatus `RESERVE` (beristirahat di barak dan memulihkan kelelahan lebih cepat).
-3. **Otoritas Tempur:**
-   - Hanya pahlawan di regu aktif (`Party 1`) yang diteruskan ke `CombatEngine` untuk bertempur, menerima kelelahan, dan menghadapi risiko kematian.
+1. **Otoritas Tunggal Chemistry:**
+   - `HeroModel` adalah pemilik tunggal peta kemitraan (`chemistry_map`) dan kalkulasi bonus (`get_chemistry_bonus`).
+   - Dilarang membuat peta chemistry paralel di `CombatEngine` maupun `GameCoordinator`.
+2. **Mekanik Perkembangan Positif:**
+   - Pasangan pahlawan yang bertarung bersama dalam satu party memperoleh $+2$ poin per pertempuran (maksimal $50$ poin per pasangan).
+   - Bonus efektivitas tempur:
+     $$\text{Chemistry Multiplier} = 1.0 + (\text{Total Chemistry Points with Active Party} \times 0.005)$$
+   - Murni mekanik sinergi positif tanpa penalti kecemburuan atau permusuhan.
+   - Pahlawan yang gugur permanen menghapus catatan kemitraannya.
 
 ---
 
-## P. Skill System Foundation
+## O. Party Model Scope & Limitations
 
-1. **Arsitektur Skill Ringan:**
-   - Berbasis data konstan deterministik (`HeroSkill`), tanpa script terpisah yang membebani memori.
-2. **Tipe Kemampuan:**
-   - `PASSIVE_STAT`: Peningkatan stat dasar permanen (misal: *Iron Skin* $+15\%$ DEF).
-   - `COMBAT_AURA`: Memberikan bonus stat ke seluruh anggota party (misal: *Commander's Shout* $+10\%$ ATK).
-3. **Alokasi Bakat (*Talent*):**
-   - Pahlawan memiliki pohon bakat minimal (3 pilihan cabang per peran).
-   - Alokasi bakat diverifikasi secara atomik dan tidak dapat melebihi poin bakat yang dimiliki.
+1. **Batasan Manajemen Regu Phase 4:**
+   - Maksimal **2 regu** dalam fondasi manajemen (`Party 1` dan `Party 2`).
+   - Maksimal **3 pahlawan** per regu.
+   - Setiap pahlawan hanya boleh terdaftar di maksimal satu regu.
+   - Pahlawan yang tidak ditugaskan ke regu berstatus `RESERVE` (istirahat di barak).
+2. **Batasan Tempur Sementara Phase 4 (*Temporary Management Limitation*):**
+   - Pada Phase 4, **hanya `Party 1` yang diteruskan ke `CombatEngine` sebagai regu tempur aktif**.
+   - `Party 2` berfungsi murni sebagai struktur data organisasi cadangan dan persiapan rotasi pemain di barak. `Party 2` belum memiliki fungsi taktis medan laga di Phase 4.
+3. **Batas Tegas (Out of Scope untuk Phase 4):**
+   - DILARANG mengimplementasikan pergerakan taktis medan tempur, pergantian party saat pertempuran berlangsung (*mid-battle party switching*), pathfinding, formasi fisik visual, dan perintah taktis party. Seluruh aspek tersebut milik Phase 6.
+
+---
+
+## P. Skill & Talent Foundation
+
+1. **Arsitektur Ringan:**
+   - Model data `HeroSkill` mewarisi `RefCounted`.
+   - Menampung nama, peran, syarat level, tipe (Pasif Stat / Aura), dan pengali kekuatan.
+2. **Pohon Bakat Sederhana (*Simple Talent Tree*):**
+   - Tiga cabang bakat dasar per peran (contoh Knight: *Offense, Defense, Leadership*).
+   - Alokasi menggunakan Poin Bakat (*Talent Points*) yang diperoleh saat naik level ganjil.
 
 ---
 
 ## Q. Equipment Integration & Shared Warehouse Invariant
 
-1. **Konservasi Mutlak:**
-   Pahlawan menggunakan stok fisik nyata dari gudang bersama benteng. Invariant Phase 3 tetap berlaku tanpa kompromi:
+1. **Konservasi Kepemilikan Fisik:**
    $$\text{Total Owned} = \text{Warehouse Usable} + \text{Warehouse Damaged} + \text{Hero Held} + \text{Soldier Reserved}$$
 2. **Persistensi Pahlawan Selamat:**
-   Perlengkapan hero yang selamat tetap terpasang lintas gelombang dan TIDAK kembali ke gudang kecuali dilepas manual oleh pemain.
+   - Perlengkapan pahlawan yang selamat tetap terpasang lintas gelombang dan tidak kembali ke gudang kecuali dilepas manual.
 3. **Isolasi dari Aturan Aus Serdadu:**
-   Perlengkapan pahlawan TIDAK terkena aturan 35% hancur / 65% rusak milik prajurit reguler. Pahlawan merawat perlengkapannya secara mandiri.
+   - Perlengkapan pahlawan tidak mengalami degradasi keausan tempur rutin dan tidak terkena aturan korban 35% musnah / 65% rusak.
 4. **Proteksi Battle Lock:**
-   Seluruh fungsi `equip`, `unequip`, dan `swap` dilarang keras saat state `BATTLE`.
+   - Seluruh mutasi perlengkapan hero (`equip`, `unequip`, `swap`) dilarang keras saat state `BATTLE`.
 
 ---
 
 ## R. Death / Permadeath Handling
 
 1. **Evaluasi Deterministik:**
-   Dihitung murni di `CombatEngine._resolve_hero_survival_and_death`.
+   - Dihitung saat pertempuran di `CombatEngine._resolve_hero_survival_and_death`.
 2. **Prosedur Pasca-Kematian:**
    - Status diubah menjadi `is_alive = false`.
    - Pada fase `proceed_from_result()`:
-     - Seluruh item yang terpasang pada pahlawan yang gugur diambil dan dikembalikan ke gudang bersama benteng **tepat satu kali**.
-     - Slot perlengkapan pahlawan dikosongkan.
-     - Pahlawan dikeluarkan dari regu tempur aktif.
-     - Invariant kepemilikan gudang bersama terbukti tetap seimbang.
+     - Seluruh perlengkapan yang terpasang pada pahlawan gugur dikembalikan ke gudang benteng **tepat satu kali**.
+     - Slot perlengkapan pahlawan dikosongkan (`clear_equipment()`).
+     - Pahlawan dikeluarkan dari regu tempur.
+     - Invariant gudang bersama terbukti tetap seimbang.
 
 ---
 
 ## S. UI & Interaction Scope (Prototype Debug View)
 
-Pengembangan visual Phase 4 difokuskan pada perluasan fungsional pada `prototype_debug_view.gd` tanpa memerlukan visual art berat:
-1. **Hero Roster Drawer / List:**
-   - Menampilkan kartu identitas pahlawan: nama, peran, level, EXP bar, bintang saat ini vs potensi, stamina (kelelahan), moral, dan perlengkapan.
-2. **Party Management Panel:**
-   - Tombol penugasan pahlawan ke regu tempur aktif atau cadangan.
-3. **Training & Ascension Actions:**
-   - Tombol interaktif `[Latih Pahlawan]` (dengan biaya emas dan peringatan kelelahan).
-   - Tombol interaktif `[Ascension Bintang]` saat syarat level maksimal terpenuhi.
-4. **Mercenary Guild Recruitment Panel:**
-   - Tampilan pahlawan yang siap direkrut pada fase PREPARATION dengan tombol sewa.
+Perluasan visual interaktif pada `prototype_debug_view.gd` dirancang fungsional dan modular:
+1. **Hero Roster List:** Menampilkan kartu pahlawan, level, EXP, bintang/potensi, kelelahan, moral, peran, dan perlengkapan.
+2. **Party Management Panel:** Penugasan pahlawan ke `Party 1`, `Party 2`, atau `Reserve`.
+3. **Training & Ascension Controls:** Tombol `[Latih Pahlawan]` dan `[Ascension Bintang]`.
+4. **Mercenary Guild Board:** Daftar pahlawan yang dapat disewa pada fase PREPARATION.
 
 ---
 
 ## T. Test Strategy
 
 Setiap sub-fase Phase 4 wajib menyertakan automated headless test suite:
-1. **Unit Test Domain:** Memvalidasi logika stat, EXP curve, batas kelelahan, dan alokasi poin bakat.
-2. **Integration Test:** Memvalidasi rekrutmen, penugasan party, eksekusi latihan, dan persistensi perlengkapan lintas gelombang.
-3. **Permadeath & Conservation Test:** Memvalidasi pengembalian perlengkapan hero gugur dan integritas invarian gudang bersama.
+1. **Unit Test Domain:** Logika stat, EXP curve, batas kelelahan, dan alokasi poin bakat.
+2. **Integration Test:** Perekrutan, penugasan party, eksekusi latihan, dan persistensi perlengkapan lintas gelombang.
+3. **Permadeath & Conservation Test:** Pengembalian perlengkapan hero gugur dan integritas invarian gudang bersama.
 4. **Stress & Stability Test:** Menjalankan multi-wave hero progression tanpa kebocoran memori atau loop tak terbatas.
 
 ---
 
-## U. Regression Strategy
+## U. Regression Strategy & Inviolable Baseline
 
-- Baseline pengujian yang wajib dipertahankan tetap 100% HIJAU:
-  - Phase 1 Architecture Boundaries: 5/5 PASS
-  - Phase 2 Mathematical Systems: 21/21 PASS
-  - Phase 3A Gameplay Baseline: 11/11 PASS
-  - Phase 3B Soldier Deployment: 27/27 PASS
-  - Phase 3C Hero Equipment Foundation: 22/22 PASS
-  - Phase 3D Prototype UX & Polish: 10/10 PASS
-  - Phase 3D Follow-up Corrections: 23/23 PASS
-  - Phase 3E Final Verification: 15/15 PASS
-  - Scene Smoke Playtest: ALL PASS
-- **Total Baseline:** **134 Unit/Integration Tests + 1 Smoke Playtest Suite (100% PASS)**.
-- Setiap sub-fase Phase 4 menambahkan pengujian secara aditif tanpa menghapus atau memodifikasi pengujian fase sebelumnya.
+- **Baseline Pengujian Wajib (100% PASS):**
+  - Phase 1 Architecture Boundaries: **5/5 PASS**
+  - Phase 2 Mathematical Systems: **21/21 PASS**
+  - Phase 3A Gameplay Baseline: **11/11 PASS**
+  - Phase 3B Soldier Deployment: **27/27 PASS**
+  - Phase 3C Hero Equipment Foundation: **22/22 PASS**
+  - Phase 3D Prototype UX & Polish: **10/10 PASS**
+  - Phase 3D Follow-up Corrections: **23/23 PASS**
+  - Phase 3E Final Verification: **15/15 PASS**
+  - Scene Smoke Playtest: **ALL PASS**
+- **Total Baseline:** **134 Unit & Integration Tests + 1 Smoke Playtest Suite (100% PASS)**.
+- Dilarang menghapus atau mengubah pengujian existing hanya agar kode Phase 4 terlihat lulus.
 
 ---
 
 ## V. Performance Constraints
 
-1. **Hardware Ramah Mobile:**
-   - Pahlawan direpresentasikan sebagai objek domain ringan (`RefCounted`).
-   - Dilarang membuat node visual Godot per pahlawan di luar elemen UI yang sedang ditampilkan.
-2. **Kalkulasi Deterministik & Non-Polling:**
-   - Tidak ada perhitungan stat pahlawan yang dijalankan setiap frame (`_process` / `_physics_process`).
-   - Stat dihitung ulang secara reaktif hanya saat ada mutasi level, perlengkapan, bintang, atau kelelahan.
-3. **Batas Kapasitas Array:**
-   - Roster pahlawan benteng dibatasi maksimal 6 pahlawan pada prototipe.
-   - Pahlawan rekrutmen di Mercenary Guild dibatasi maksimal 3 kandidat per gelombang.
+1. Pahlawan direpresentasikan sebagai objek domain ringan (`RefCounted`).
+2. Dilarang menghitung stat pahlawan setiap frame (`_process` / `_physics_process`). Kalkulasi hanya dilakukan secara reaktif saat ada mutasi state.
+3. Kapasitas roster pahlawan benteng dibatasi maksimal 6 pahlawan pada MVP.
+4. Perekrutan Mercenary Guild dibatasi maksimal 3 kandidat per gelombang.
 
 ---
 
-## W. Phase 4 Sub-Phases & Execution Plan
+## W. Phase 4 Sub-Phases & Explicit Dependencies
 
-Untuk menjamin eksekusi yang terkontrol dan bebas regresi, Phase 4 dibagi menjadi 8 sub-fase berurutan:
-
-```mermaid
-flowchart TD
-    subgraph Phase 4 Implementation Pipeline
-        P4A["4A: Hero Domain & Lifecycle Foundation<br/>(Role, Identity, Lifecycle States)"]
-        P4B["4B: Hero Progression & EXP<br/>(Level curve, Stat scaling, Star Ascension)"]
-        P4C["4C: Hero Recruitment & Roster Management<br/>(Mercenary Guild, Hiring, Capacity)"]
-        P4D["4D: Hero Training / Fatigue / Morale<br/>(Training Facility, Rest, Exhaustion)"]
-        P4E["4E: Hero Skills & Talent Foundation<br/>(Passive traits, Auras, Talent trees)"]
-        P4F["4F: Hero Chemistry & Party Management<br/>(Party formation, Synergy calculation)"]
-        P4G["4G: Hero Management UX<br/>(Roster UI, Recruitment Board, Party View)"]
-        P4H["4H: Hero System Integration & Verification<br/>(Full regression, 20-wave multi-hero stress)"]
-    end
-
-    P4A --> P4B
-    P4B --> P4C
-    P4C --> P4D
-    P4D --> P4E
-    P4E --> P4F
-    P4F --> P4G
-    P4G --> P4H
+### 1. Rantai Ketergantungan (*Dependency Chain*)
+```
+[4A: Domain Foundation] 
+       └──> [4B: Progression & Ascension] 
+                 └──> [4C: Recruitment & Roster] 
+                           └──> [4D: Training & Fatigue] 
+                                     └──> [4E: Skills & Talents] 
+                                               └──> [4F: Party & Chemistry] 
+                                                         └──> [4G: Management UX] 
+                                                                   └──> [4H: Integration & Verification]
 ```
 
-### Rincian Sub-Fase:
-- **Sub-Phase 4A — Hero Domain & Lifecycle Foundation**:
-  - Penambahan enum/konstanta peran (`HeroRole`), validasi peran pada slot perlengkapan, penegasan siklus hidup pahlawan.
-- **Sub-Phase 4B — Hero Progression & EXP**:
-  - Implementasi kenaikan bintang (*Ascension*), pembatasan level berdasarkan bintang saat ini, pertumbuhan stat per level berbasis peran.
-- **Sub-Phase 4C — Hero Recruitment & Roster Management**:
-  - Implementasi papan sewa Mercenary Guild di `GameCoordinator`, validasi kas emas, pembuatan hero deterministik, batas kapasitas roster.
-- **Sub-Phase 4D — Hero Training, Fatigue, & Morale**:
-  - Implementasi aksi latihan di benteng, konsumsi emas & kelelahan, pencegahan eksploitasi latihan saat exhausted, mekanik moral.
-- **Sub-Phase 4E — Hero Skills & Talent Foundation**:
-  - Implementasi struktur bakat/kemampuan ringan (`HeroSkill`), pohon bakat 3-cabang per peran, pengalokasian poin bakat.
-- **Sub-Phase 4F — Hero Chemistry & Party Management**:
-  - Implementasi `PartyModel`, pemilihan pahlawan ke regu tempur aktif, pemisahan pahlawan cadangan, penguatan akumulasi sinergi chemistry.
-- **Sub-Phase 4G — Hero Management UX**:
-  - Integrasi panel kontrol interaktif pada `prototype_debug_view.gd`: tab Roster, panel Perekrutan, formasi Party, dan tombol Latihan.
-- **Sub-Phase 4H — Hero System Integration & Verification**:
-  - Verifikasi menyeluruh lintas sistem: regresi 134 test lama, suite verifikasi Phase 4, playtest stres multi-hero 20 wave.
+### 2. Aturan Kerja Wajib Setiap Sub-Fase (8-Step Workflow):
+1. **Inspect First:** Periksa kondisi kode dan ketergantungan existing terlebih dahulu.
+2. **Define Exact Scope:** Batasi cakupan secara ketat sesuai rencana sub-fase.
+3. **Implement Only That Scope:** Kerjakan hanya cakupan yang disepakati tanpa mendahului sub-fase berikutnya.
+4. **Add Tests:** Buat test suite baru khusus untuk sub-fase tersebut.
+5. **Run Regression:** Jalankan seluruh pengujian lama (baseline 134 test) dan test baru.
+6. **Verify Smoke Playtest:** Pastikan scene prototipe tetap berfungsi tanpa regresi.
+7. **Commit:** Buat git commit dengan pesan yang jelas dan terstandarisasi.
+8. **Stop & Report:** Berhenti dan tunggu tinjauan/persetujuan developer sebelum membuka sub-fase berikutnya.
+
+### 3. Batas Eksplisit Sub-Phase 4A (Hero Domain & Lifecycle Foundation)
+- **IN SCOPE FOR 4A:**
+  - Definisi peran kanonikal (`HeroRole`: `KNIGHT`, `MAGE`, `ARCHER`, `PRIEST`).
+  - Representasi state siklus hidup pahlawan (`HeroLifecycleState`).
+  - Validasi domain hero (memastikan ID sah, nama tidak kosong, peran valid, bintang $\le$ potensi).
+  - Validasi kompatibilitas peran terhadap perlengkapan Phase 3 existing.
+  - Ekstensi aman pada `HeroModel` tanpa mematahkan API atau field existing.
+  - Test suite mandiri untuk validasi di atas.
+  - Sinkronisasi dokumentasi teknis.
+- **OUT OF SCOPE FOR 4A (DILARANG PADA 4A):**
+  - Rekrutmen dan bursa Mercenary Guild (Milik 4C).
+  - UI rekrutmen dan roster (Milik 4G).
+  - Perubahan EXP curve dan leveling (Milik 4B).
+  - Kenaikan bintang / ascension (Milik 4B).
+  - Aksi latihan fasilitas benteng (Milik 4D).
+  - Redesain kelelahan atau moral (Milik 4D).
+  - Sistem skill dan pohon bakat (Milik 4E).
+  - Model party dan chemistry baru (Milik 4F).
+  - Taktik pertempuran dan AI musuh baru (Milik Phase 6).
+  - Inventaris atau jenis perlengkapan baru (Dilarang).
+  - Pixel art dan visual mobile final (Milik Phase 9).
 
 ---
 
