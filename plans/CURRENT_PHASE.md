@@ -2,8 +2,8 @@
 
 ## Phase 3 — Gameplay Prototype
 
-Project saat ini berada pada tahap **Phase 3: Gameplay Prototype — Sub-Phase 3B: Soldier Equipment & Warehouse Conservation (PLANNING ONLY / AWAITING DEVELOPER APPROVAL)**.
-Spesifikasi teknis implementasi tersedia di [docs/design/PHASE_3B_SOLDIER_EQUIPMENT_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_3B_SOLDIER_EQUIPMENT_PLAN.md).
+Project saat ini berada pada tahap **Phase 3: Gameplay Prototype — Sub-Phase 3B: Soldier Deployment & Temporary Equipment Management (PLANNING ONLY / AWAITING DEVELOPER APPROVAL)**.
+Spesifikasi teknis implementasi tersedia di [docs/design/PHASE_3B_SOLDIER_DEPLOYMENT_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_3B_SOLDIER_DEPLOYMENT_PLAN.md).
 
 ---
 
@@ -24,18 +24,20 @@ Spesifikasi teknis implementasi tersedia di [docs/design/PHASE_3B_SOLDIER_EQUIPM
     - Phase 2 Mathematical Regression: **21/21 PASSED, 0 FAILED** ([tests/test_mathematical_prototype.gd](tests/test_mathematical_prototype.gd))
     - Phase 3 Gameplay Unit & Integration Test Suite: **11/11 PASSED, 0 FAILED** ([tests/test_gameplay_prototype.gd](tests/test_gameplay_prototype.gd))
     - Prototype Scene Smoke Playtest: **ALL PASSED, 0 ERRORS** ([tests/test_playtest_smoke.gd](tests/test_playtest_smoke.gd))
-  - **Phase 3B — Soldier Equipment & Warehouse Conservation**: **PLANNED / IMPLEMENTATION NOT STARTED (AWAITING APPROVAL)**
-    - Spesifikasi implementasi lengkap selesai disusun ([PHASE_3B_SOLDIER_EQUIPMENT_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_3B_SOLDIER_EQUIPMENT_PLAN.md)).
-    - Derivasi peran prajurit dari senjata (Sword, Shield, Spear, Bow, Heavy Armor).
-    - Pembebasan prajurit (*dismiss soldier*) kembali ke warga sipil.
-    - Konservasi persediaan gudang ($\text{Total} = \text{Warehouse} + \text{Equipped}$) & transaksi swap atomik.
+  - **Phase 3B — Soldier Deployment & Temporary Equipment Management**: **PLANNED / IMPLEMENTATION NOT STARTED (AWAITING APPROVAL)**
+    - Spesifikasi implementasi direvisi ke model alokasi sementara berbasis gelombang ([PHASE_3B_SOLDIER_DEPLOYMENT_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_3B_SOLDIER_DEPLOYMENT_PLAN.md)).
+    - Deployment regu tempur agregat (Soldier Count, Primary Weapon [Required], Secondary [Optional], Armor [Optional]).
+    - Seleksi perlengkapan sadar stok (*stock-aware selection*) dan reservasi seketika (*immediate reservation*).
+    - Derivasi peran tempur dinamis per gelombang (Sword $\rightarrow$ Swordsman, Sword+Shield $\rightarrow$ Shield Infantry, dll.).
+    - Siklus pengembalian gear pasca-wave ke gudang (aus normal & 65% gear korban rusak kembali; 35% gear korban hancur permanen per Phase 2).
+    - Prajurit selamat kembali ke kolam prajurit benteng; prajurit gugur permanen.
   - **Phase 3C — Hero Equipment Foundation**: **PLANNED**
     - Slot perlengkapan hero minimal (Weapon, Armor) dan integrasi gudang.
     - Pengembalian perlengkapan hero saat permadeath.
   - **Phase 3D — Prototype UX & Interaction Polish**: **PLANNED**
-    - Kontrol UI untuk pasang/tukar gear dan pembebasan prajurit.
+    - Kontrol UI untuk konfigurasi deployment regu dan reservasi gear.
   - **Phase 3E — Final Prototype Verification & Phase 3 Exit Gate**: **PLANNED**
-    - Automated tests gear conservation dan pengujian gerbang penutupan Phase 3.
+    - Automated tests deployment & reservasi gear, serta pengujian gerbang penutupan Phase 3.
 - **Phase 4 — Hero System**: **LOCKED**
 - **Phase 5 — Fortress & Management Systems**: **LOCKED**
 - **Phase 6 — Tactical Battle & Battlefield Systems**: **LOCKED**

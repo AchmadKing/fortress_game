@@ -4,6 +4,20 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.4.2] - Phase 3B Plan Revision: Temporary Soldier Deployment & Equipment Management
+
+### Changed (Design Plan Only)
+- **Phase 3B Architectural Revision**:
+  - Merevisi dokumen perencanaan Phase 3B ([docs/design/PHASE_3B_SOLDIER_DEPLOYMENT_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_3B_SOLDIER_DEPLOYMENT_PLAN.md)) menggantikan konsep kepemilikan perlengkapan permanen individual prajurit dengan konsep **Alokasi Perlengkapan Sementara Berbasis Gelombang (*Temporary Wave Deployment*)**.
+  - Mengonfigurasi regu tempur agregat (*Deployment Compositions*): `Soldier Count`, `Primary Weapon` (Wajib), `Secondary Weapon` (Opsional), `Armor` (Opsional).
+  - Menerapkan seleksi perlengkapan sadar stok (*stock-aware selection*) dengan menonaktifkan opsi jika stok gudang $< N$, serta reservasi seketika (*immediate reservation*).
+  - Menetapkan aturan presedensi derivasi peran dinamis per gelombang (Sword $\rightarrow$ Swordsman, Sword+Shield $\rightarrow$ Shield Infantry, dll.).
+  - Mendefinisikan siklus pengembalian gear pasca-wave ke gudang benteng dengan preservasi penuh aturan Phase 2 (aus normal & 65% gear korban rusak kembali; 35% gear korban hancur permanen).
+  - Menegaskan pemisahan prajurit gugur (terpotong permanen dari populasi) dengan prajurit selamat (kembali ke kolam prajurit benteng).
+  - Menghapus dokumen usang `PHASE_3B_SOLDIER_EQUIPMENT_PLAN.md`.
+
+---
+
 ## [0.4.1] - Phase 3: Comprehensive Audit & Finalized Iterative Roadmap (3A–3E)
 
 ### Planned & Audited

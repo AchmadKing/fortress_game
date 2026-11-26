@@ -613,7 +613,7 @@ Untuk menyelesaikan seluruh kesenjangan (*gaps*) yang ditemukan dalam audit tanp
 ```text
 Phase 3 — Gameplay Prototype
  ├── Phase 3A — Current Prototype Baseline & Stabilization [COMPLETED]
- ├── Phase 3B — Soldier Equipment & Warehouse Conservation [PLANNED]
+ ├── Phase 3B — Soldier Deployment & Temporary Equipment Management [PLANNED]
  ├── Phase 3C — Hero Equipment Foundation [PLANNED]
  ├── Phase 3D — Prototype UX & Interaction Polish [PLANNED]
  └── Phase 3E — Final Prototype Verification & Phase 3 Exit Gate [PLANNED]
@@ -647,32 +647,39 @@ Phase 3 — Gameplay Prototype
 
 ---
 
-### Phase 3B — Soldier Equipment & Warehouse Conservation
+### Phase 3B — Soldier Deployment & Temporary Equipment Management
 - **Status**: **PLANNED (AWAITING DEVELOPER APPROVAL TO START)**
-- **Objective**: Menyelaraskan sistem serdadu dan gudang senjata dengan konsep desain target, di mana peran serdadu diturunkan dari senjata yang dipasang, serta menegakkan invariant konservasi perlengkapan secara ketat.
+- **Spesifikasi Lengkap**: [docs/design/PHASE_3B_SOLDIER_DEPLOYMENT_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_3B_SOLDIER_DEPLOYMENT_PLAN.md)
+- **Objective**: Menerapkan sistem alokasi perlengkapan sementara berbasis gelombang (*temporary wave deployment*), di mana serdadu dikonfigurasi ke dalam regu tempur dengan reservasi stok gudang seketika dan pengembalian gear pasca-wave.
 - **Scope**:
   - Menghapus pembuatan gear artifisial (`_ensure_equipment_quantity_for_role`).
-  - Menambahkan fungsi pembebasan tugas prajurit (*dismiss soldier*): prajurit dikembalikan menjadi warga sipil ($Soldiers - 1, Civilians + 1$), dan perlengkapannya dikembalikan ke gudang benteng.
-  - Menurunkan peran prajurit secara terstruktur dari perlengkapan:
+  - Mengonfigurasi regu deployment agregat: Soldier Count, Primary Weapon (Wajib), Secondary Weapon (Opsional), Armor (Opsional).
+  - Seleksi perlengkapan sadar stok (*stock-aware selection*): opsi dinonaktifkan di UI jika stok gudang $< N$.
+  - Reservasi seketika (*immediate reservation*): stok gudang langsung dipotong saat regu dibentuk untuk mencegah alokasi ganda.
+  - Identitas kanonikal regu: `(primary, secondary, armor)`.
+  - Derivasi peran tempur dinamis per gelombang:
     - $\text{Sword} \rightarrow \text{Swordsman}$
     - $\text{Sword + Shield} \rightarrow \text{Shield Infantry}$
     - $\text{Spear} \rightarrow \text{Spearman}$
     - $\text{Bow} \rightarrow \text{Archer}$
-    - $\text{Heavy Armor + Great Sword} \rightarrow \text{Heavy Infantry}$
-  - Mengimplementasikan API manajemen perlengkapan prajurit: `equip_soldier(role, weapon_type)`, `unequip_soldier(role)`, `swap_soldier_equipment()`.
-  - Menegakkan invariant konservasi gudang senjata:
-    $$\text{Total Owned Equipment} = \text{Equipment in Warehouse} + \text{Equipment Currently Equipped}$$
-  - Memvalidasi ketersediaan stok gudang: dilarang memasang gear jika stok gudang $= 0$.
-  - Mengembalikan gear lama ke gudang saat terjadi pertukaran (*swap*).
+    - $\text{Sword + Heavy Armor} \rightarrow \text{Heavy Infantry}$
+  - Reorientasi dan pembatalan regu atomik sebelum pertempuran (PREPARATION & WAVE_PREVIEW).
+  - Penguncian mutlak (*Battle Lock*) saat pertempuran dimulai.
+  - Integrasi CombatEngine Phase 2: mengevaluasi regu aktif tanpa modifikasi formula matematika Phase 2.
+  - Pemrosesan pasca-wave: gear selamat (aus normal) & gear korban rusak (65%) kembali ke gudang; gear korban musnah (35%) terhapus permanen.
+  - Prajurit selamat kembali ke kolam prajurit benteng (*available pool*); prajurit gugur terpotong permanen.
+  - Penegakan invariant konservasi:
+    $$\text{Total Owned Equipment} = \text{Warehouse Stock} + \text{Reserved Deployment Equipment}$$
 - **Non-goals**:
-  - Durabilitas individu per prajurit (prajurit tetap menggunakan model durabilitas agregat peran per Phase 2).
-  - Crafting gear kompleks (Phase 7).
-  - Variasi senjata langka/legendary di luar starter types (Phase 8).
+  - Kepemilikan senjata permanen prajurit atau inventaris individual.
+  - Slot equipment hero (Phase 3C).
+  - Crafting gear, merchant, atau rarity (Phase 7).
 - **Dependencies**: Phase 3A selesai.
 - **Acceptance Criteria**:
-  - Perekrutan prajurit hanya berhasil jika stok perlengkapan yang bersangkutan tersedia di gudang.
-  - Pembebasan prajurit mengembalikan warga sipil dan mengembalikan perlengkapan ke gudang.
-  - Invariant konservasi total perlengkapan terbukti konstan saat recruit, equip, unequip, swap, dan dismiss.
+  - Seluruh 15 kriteria penerimaan pada `PHASE_3B_SOLDIER_DEPLOYMENT_PLAN.md` terpenuhi.
+  - Invariant konservasi perlengkapan terbukti konstan di setiap fase.
+  - Prajurit gugur memicu pelepasan gear dan kehilangan/kerusakan deterministik sesuai Phase 2.
+  - Test suite baru `test_soldier_deployment_temporary.gd` lulus 100%.
   - Prajurit gugur memicu pelepasan gear dan evaluasi kehilangan/kerusakan deterministik sesuai Phase 2.
 - **Tests**:
   - Unit test konservasi gudang & derivasi peran prajurit.

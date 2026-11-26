@@ -46,11 +46,14 @@ High-level roadmap pengembangan proyek `fortress_game`.
     - Kontrol tempo battle (pause, resume, speed 1x/2x/4x) dan pengiriman 6 commander commands intent.
     - Scene prototype playable (`scenes/prototype/main_prototype.tscn`) & debug HUD.
     - Seluruh pengujian regression Phase 1 (5/5), Phase 2 (21/21), Phase 3 (11/11), dan Playtest Smoke 100% PASS.
-  - **Phase 3B — Soldier Equipment & Warehouse Conservation**: **PLANNED**
-    - Derivasi peran prajurit dari perlengkapan senjata (Sword, Shield, Spear, Bow, Heavy Armor).
-    - Pembebasan tugas prajurit (*dismiss soldier*) kembali ke warga sipil.
-    - Manajemen perlengkapan prajurit: equip, unequip, swap.
-    - Penegakan ketat invariant konservasi gudang senjata ($\text{Total} = \text{Warehouse} + \text{Equipped}$) dan pencegahan equip saat stok $= 0$.
+  - **Phase 3B — Soldier Deployment & Temporary Equipment Management**: **PLANNED**
+    - Alokasi perlengkapan sementara berbasis gelombang (*temporary wave deployment*), bukan kepemilikan permanen.
+    - Konfigurasi regu agregat: Soldier Count, Primary Weapon (Wajib), Secondary Weapon (Opsional), Armor (Opsional).
+    - Seleksi perlengkapan sadar stok (*stock-aware selection*) dan reservasi seketika (*immediate reservation*).
+    - Derivasi peran prajurit dinamis per gelombang (Sword $\rightarrow$ Swordsman, Sword+Shield $\rightarrow$ Shield Infantry, dll.).
+    - Kembalinya gear selamat ke gudang pasca-wave (aus normal & 65% gear korban rusak kembali; 35% gear korban hancur permanen per Phase 2).
+    - Prajurit selamat kembali ke kolam prajurit benteng; prajurit gugur terpotong permanen.
+    - Penegakan ketat invariant konservasi: $\text{Total Owned} = \text{Warehouse} + \text{Reserved Deployment}$.
   - **Phase 3C — Hero Equipment Foundation**: **PLANNED**
     - Slot perlengkapan minimal Hero (Weapon, Armor).
     - Integrasi equip/unequip/swap hero dengan gudang benteng.
