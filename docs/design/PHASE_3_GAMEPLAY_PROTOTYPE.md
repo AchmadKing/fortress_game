@@ -7,20 +7,22 @@
 **Dependencies**: Phase 0 (Completed), Phase 1 (Completed), Phase 2 (Completed)
 
 > [!IMPORTANT]
-> Dokumen ini adalah **Rencana Implementasi Teknis (Technical Implementation Plan)**.
-> Sesuai aturan utama `AGENTS.md`, **TIDAK ADA KODE GAMEPLAY, SCENE BARU, MAUPUN MODIFIKASI SOURCE CODE** yang diimplementasikan pada tahap audit & perencanaan ini. Implementasi teknis hanya akan dimulai setelah developer memberikan persetujuan eksplisit (*Explicit Approval*).
+> Dokumen ini adalah **Rencana Implementasi Teknis (Technical Implementation Plan / Design Plan)**.
+> Sesuai aturan utama `AGENTS.md`: **DILARANG MENULIS KODE GAMEPLAY, MEMBUAT SCENE GAMEPLAY FINAL, MEMBUAT BATTLE SCENE FINAL, MEMBUAT UI FINAL, MAUPUN MEMBUAT ASSET** pada tahap ini. Implementasi teknis hanya akan dimulai setelah developer memberikan persetujuan eksplisit (*Explicit Approval*).
 
 ---
 
-## 1. Objective
+## 1. Phase Objective
 
-Tujuan utama dari **Phase 3 — Gameplay Prototype** adalah membangun jembatan teknis yang menghubungkan arsitektur terisolasi (Phase 1) dengan model matematika & simulasi deterministik (Phase 2) menjadi sebuah **siklus gameplay yang dapat dimainkan (*playable prototype*)** di Godot Engine 4.x.
+Tujuan utama dari **Phase 3 — Gameplay Prototype** adalah membangun jembatan teknis yang menghubungkan arsitektur terisolasi (Phase 1) dengan sistem matematika & simulasi deterministik (Phase 2) menjadi sebuah **siklus gameplay prototype yang dapat dimainkan (*playable prototype*)** secara headless maupun dalam Godot Engine 4.x.
 
 Phase 3 bertujuan untuk:
-1. Membuktikan bahwa loop gameplay inti (*Core Gameplay Loop*) dapat berjalan secara mulus di Godot tanpa ketergantungan pada rendering frame visual yang berat.
-2. Memvalidasi transisi state game secara aman dan deterministik melalui Game State Machine.
-3. Menyediakan kontrol interaksi player dasar (manajemen alokasi pekerja & serdadu pada fase persiapan, kendali kecepatan dan jeda saat pertempuran, serta abstraksi perintah komandan).
-4. Menyediakan antarmuka telemetri debug (*Debug / Prototype View*) berbasis teks murni untuk mengamati state dan menguji stabilitas gameplay pada hardware berspesifikasi rendah.
+1. Membuktikan bahwa loop gameplay inti (*Core Gameplay Loop*) dapat berjalan secara mulus di Godot tanpa ketergantungan pada rendering frame visual yang berat:
+   $$\text{BOOT} \rightarrow \text{PREPARATION} \rightarrow \text{WAVE PREVIEW} \rightarrow \text{BATTLE} \rightarrow \text{RESULT} \rightarrow \text{RECOVERY} \rightarrow \text{PREPARATION / GAME OVER}$$
+2. Memvalidasi transisi state game secara aman dan deterministik melalui **Gameplay State Machine**.
+3. Menyediakan kontrol interaksi player dasar (manajemen alokasi pekerja & serdadu pada fase persiapan, kendali kecepatan dan jeda saat pertempuran, serta pengiriman abstraksi perintah komandan).
+4. Menyediakan antarmuka telemetri debug (*Debug Telemetry*) berbasis teks murni untuk mengamati state dan menguji stabilitas gameplay pada hardware berspesifikasi rendah (Intel Celeron / 4 GB RAM / Android).
+5. Memastikan **zero duplicate simulation logic**: seluruh kalkulasi combat, ekonomi, dan gelombang musuh murni mengeksekusi sistem Phase 2 yang sudah teruji.
 
 ---
 
@@ -28,469 +30,442 @@ Phase 3 bertujuan untuk:
 
 ### 2.1 Hasil Audit Phase 1 (Core Architecture)
 - **Status Evaluasi**: `NEEDS EXTENSION`
-- **Domain Isolation**: `GameStateSnapshot` beroperasi sebagai `RefCounted` murni tanpa dependensi ke `Node`, `SceneTree`, atau rendering visual. Batas ini 100% terjaga.
-- **Unidirectional Data Flow**: `GameCoordinator` telah mengimplementasikan pola aliran data satu arah dengan memancarkan sinyal `state_changed(snapshot)` dan mengembalikan salinan `clone()` dari state internal untuk mencegah mutasi liar dari layer presentasi.
-- **Simulation Boundary**: `SimulationRunner` terbukti dapat berjalan tanpa `_process()` dan frame rate.
-- **Persistence DTO**: `SaveSnapshotDto` memvalidasi integritas data plain dictionary dengan validasi `schema_version`.
-- **Temuan & Kebutuhan Ekstensi**:
-  - `GameStateSnapshot` pada Phase 1 hanya memuat field primitif (`tick`, `session_id`, `state_name`, `metadata`). Untuk Phase 3, snapshot perlu diperluas secara terstruktur untuk mengemas entitas domain Phase 2 (populasi, benteng, hero, gudang senjata, bendahara, indeks wave, dan status state machine).
-  - `SimulationRunner` pada Phase 1 hanya melakukan increment `tick`. Perlu dihubungkan dengan engine simulasi Phase 2 (`WaveGenerator`, `CombatEngine`, `EconomyManager`).
-  - `GameCoordinator` perlu diperkaya dengan metode penanganan perintah player (*command handlers*) yang divalidasi terhadap state machine.
+- **Domain Isolation (`PASS`)**: `GameStateSnapshot` beroperasi sebagai `RefCounted` murni tanpa dependensi ke `Node`, `SceneTree`, atau rendering visual. Batas isolasi ini terjaga 100%.
+- **Unidirectional Data Flow (`PASS`)**: `GameCoordinator` mengimplementasikan pola aliran data satu arah dengan memancarkan sinyal `state_changed(snapshot)` dan mengembalikan salinan `clone()` dari state internal untuk mencegah mutasi liar dari layer presentasi.
+- **Simulation Boundary (`PASS`)**: `SimulationRunner` terbukti dapat berjalan deterministik tanpa mengandalkan `_process()` atau delta rendering frame.
+- **Persistence Boundary (`PASS`)**: `SaveSnapshotDto` memvalidasi integritas data plain dictionary dengan validasi `schema_version`.
+- **Kebutuhan Ekstensi**:
+  - `GameStateSnapshot` Phase 1 saat ini hanya memuat field primitif (`tick`, `session_id`, `state_name`, `metadata`). Untuk Phase 3, snapshot perlu diperluas secara terstruktur untuk mengemas entitas domain Phase 2 (Fortress, Population, Heroes, Equipment, Economy, Wave, State Enum) dengan tetap mempertahankan backward compatibility method `clone()`, `to_dictionary()`, dan `from_dictionary()`.
+  - `SimulationRunner` perlu dihubungkan dengan engine simulasi Phase 2 (`WaveGenerator`, `CombatEngine`, `EconomyManager`).
+  - `GameCoordinator` perlu diintegrasikan dengan `GameplayStateMachine` dan command handler gameplay.
 
 ### 2.2 Hasil Audit Phase 2 (Mathematical Systems Prototype)
-- **Status Evaluasi**: `READY FOR INTEGRATION`
-- Seluruh 4 temuan *Conditional Review* Phase 2 telah tervalidasi 100% (21/21 test lolos):
-  - Model kuantitas equipment gudang senjata membatasi efektivitas tier (Kasus A, B, C, D).
-  - Kehilangan equipment akibat gugurnya prajurit (35% hancur, 65% rusak parah) dan kelangsungan hidup hero deterministik berbasis bahaya/fatigue.
+- **Status Evaluasi**: `READY FOR INTEGRATION (SINGLE SOURCE OF TRUTH)`
+- Seluruh 4 temuan *Conditional Review* Phase 2 telah tervalidasi 100% (21/21 unit & scenario test lulus, 5/5 Phase 1 regression test lulus):
+  - Model kuantitas equipment gudang senjata membatasi efektivitas tier secara agregat (Kasus A, B, C, D).
+  - Kehilangan equipment akibat gugurnya prajurit (35% destroyed, 65% damaged) dan kelangsungan hidup hero deterministik berbasis bahaya breach, fatigue, dan pertahanan.
   - Penghapusan total *production worker* dan pendapatan pasif (ekonomi bertumpu pada *Battle Loot* gelombang musuh).
   - Konservasi populasi sipil-ke-militer dengan kematian permanen (*permadeath*).
-- Simulasi 100-wave deterministik membuktikan tidak adanya keruntuhan benteng (*fortress survived*), tidak ada eksploitasi ekonomi, dan tidak ada kebocoran alokasi.
+- Simulasi 100-wave deterministik membuktikan stabilitas sistem tanpa kebocoran alokasi atau death spiral.
 
 ---
 
-## 3. Existing Systems Reused
+## 3. Phase 2 Integration Boundary
 
-Phase 3 **TIDAK AKAN MEMBUAT DUPLIKASI IMPLEMENTASI** dari sistem-sistem yang telah teruji di Phase 2. Seluruh sistem berikut akan digunakan kembali (*reused*) secara langsung:
+Phase 3 **TIDAK MEMBUAT COMBAT ENGINE BARU**. Sistem simulasi Phase 2 adalah **satu-satunya sumber kebenaran matematis (*Single Source of Truth*)**.
 
-| Sistem / File Existing | Peran dalam Phase 3 |
-| :--- | :--- |
-| `scripts/domain/model/population_model.gd` | Mengelola demografi sipil, alokasi peran serdadu, serdadu bayaran, dan pemrosesan korban pertempuran. |
-| `scripts/domain/model/fortress_model.gd` | Melacak HP benteng persisten, mitigasi kerusakan armor, dan trigger Game Over saat HP $\le 0$. |
-| `scripts/domain/model/hero_model.gd` | Mengelola atribut stat hero, level/EXP, penumpukan fatigue per battle, dan status hidup/mati (*permadeath*). |
-| `scripts/domain/model/equipment_model.gd` | Mengelola inventaris kuantitas senjata/armor di gudang, degradasi durabilitas, dan penalti barang rusak. |
-| `scripts/simulation/economy_manager.gd` | Mengelola gaji pekerja/militer, alokasi 4 tugas pekerja (Repair, Blacksmith, Construction, Idle), dan reparasi benteng. |
-| `scripts/simulation/wave_generator.gd` | Menghasilkan komposisi ancaman musuh (Minion, Raider, Brute, Flyer, Siege, Boss) dengan kurva anti-spike. |
-| `scripts/simulation/combat_engine.gd` | Mengeksekusi resolusi pertempuran 5-fase deterministik, pembagian EXP, attrition equipment, dan loot hasil pertempuran. |
-| `scripts/infrastructure/persistence/save_snapshot_dto.gd` | Standar serialisasi DTO berbasis `schema_version`. |
-
----
-
-## 4. Required Extensions
-
-Untuk menghubungkan gameplay loop tanpa merusak sistem existing, ekstensi berikut direncanakan:
-
-### 4.1 Ekstensi `GameStateSnapshot` (`scripts/domain/state/game_state_snapshot.gd`)
-Menyediakan wadah terstruktur untuk data runtime game:
-- `current_wave: int`
-- `game_phase: String` (BOOT, PREPARATION, WAVE_PREVIEW, BATTLE, RESULT, RECOVERY, GAME_OVER)
-- `fortress_data: Dictionary` (snapshot FortressModel)
-- `population_data: Dictionary` (snapshot PopulationModel)
-- `heroes_data: Array` (array snapshot HeroModel)
-- `warehouse_data: Array` (array snapshot EquipmentModel)
-- `economy_data: Dictionary` (treasury_gold, worker_allocation)
-- `current_wave_data: Dictionary` (ancaman & komposisi musuh aktif)
-- `last_battle_result: Dictionary` (hasil pertempuran terkini)
-- *Catatan backward compatibility*: Seluruh field Phase 1 (`tick`, `session_id`, `state_name`, `metadata`) tetap dipertahankan agar test Phase 1 tetap 100% lulus.
-
-### 4.2 Game State Machine (`scripts/application/state_machine/gameplay_state_machine.gd`)
-State machine terisolasi yang mengontrol otoritas transisi fase game dan memvalidasi perintah yang masuk.
-
-### 4.3 Ekstensi `SimulationRunner` (`scripts/simulation/simulation_runner.gd`)
-Menyediakan method eksekusi deterministik untuk:
-- Mengorkestrasi siklus ekonomi & pemulihan benteng (`run_economy_cycle`).
-- Menggenerasi data wave terkini (`prepare_wave`).
-- Mengeksekusi langkah pertempuran multi-fase (`execute_battle_phase` atau `run_full_battle`).
-
-### 4.4 Abstraksi Perintah Komandan (`scripts/domain/command/commander_command.gd`)
-Struktur data ringan (DTO) untuk menangkap intensi taktis komandan:
-- Enum: `HOLD`, `ADVANCE`, `RETREAT`, `PROTECT`, `FOCUS`, `FOLLOW`.
-
----
-
-## 5. Game State Machine
-
-State Machine memastikan alur permainan bergerak secara tertib tanpa kemungkinan terjadinya *state desynchronization*.
-
-```
-   ┌─────────┐
-   │  BOOT   │
-   └────┬────┘
-        │ (initialize_session)
-        ▼
- ┌───────────────┐        (inspect wave)        ┌────────────────┐
- │  PREPARATION  │ ───────────────────────────> │  WAVE_PREVIEW  │
- └───────▲───────┘ <─────────────────────────── └───────┬────────┘
-         │               (cancel / back)                │
-         │                                              │ (start_battle)
-         │                                              ▼
- ┌───────┴───────┐        (battle ends)         ┌────────────────┐
- │   RECOVERY    │ <─────────────────────────── │     BATTLE     │
- └───────────────┘                              └───────┬────────┘
-                                                        │ (fortress HP <= 0)
-                                                        ▼
-                                                ┌────────────────┐
-                                                │   GAME_OVER    │
-                                                └────────────────┘
+```text
+┌────────────────────────────────────────────────────────┐
+│            Presentation / Prototype Input              │
+└──────────────────────────┬─────────────────────────────┘
+                           │ (sends intent / commands)
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│                    GameCoordinator                     │
+│               (Application Orchestrator)               │
+└──────────────────────────┬─────────────────────────────┘
+                           │ (delegates execution)
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│            Existing Phase 2 Simulation                 │
+│  ├── WaveGenerator   (threat curve & enemy budget)     │
+│  ├── EconomyManager  (cycle upkeep & worker repair)    │
+│  └── CombatEngine    (5-phase deterministic battle)    │
+└──────────────────────────┬─────────────────────────────┘
+                           │ (returns battle result / cycle)
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│           Domain Models & GameStateSnapshot            │
+│  (FortressModel, PopulationModel, HeroModel, Equip)    │
+└──────────────────────────┬─────────────────────────────┘
+                           │ (state_changed signal)
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│                  Prototype View / HUD                  │
+└────────────────────────────────────────────────────────┘
 ```
 
-### 5.1 Definisi State
-1. **BOOT**: Inisialisasi session baru, pembacaan starter heroes, persediaan gudang awal, dan benteng baseline.
-2. **PREPARATION**: Player melakukan rekrutmen serdadu, pengaturan alokasi pekerja sipil (Repair, Blacksmith, Construction, Idle), istirahat hero, dan reparasi perlengkapan gudang.
-3. **WAVE_PREVIEW**: Player memeriksa laporan intelijen/scouting ancaman musuh (Threat Budget, jenis musuh yang akan datang), menyusun komandan hero, dan menekan tombol konfirmasi tempur.
-4. **BATTLE**: Pertempuran berlangsung. Simulasi berjalan per tick/fase. Player dapat mengatur kecepatan (1x, 2x, 4x), menjeda (pause/resume), dan mengeluarkan perintah taktis dasar.
-5. **RESULT**: Menampilkan rangkuman pertempuran: status kemenangan, kerusakan benteng, korban serdadu gugur, kerusakan/kehilangan senjata, status kelangsungan hidup hero, EXP didapat, dan loot emas.
-6. **RECOVERY**: Pemrosesan konsekuensi pertempuran: penerimaan loot emas ke kas, pemotongan gaji rutin/upkeep, pembersihan slot korban jiwa, dan perbaikan benteng otomatis oleh pekerja reparasi. Jika benteng runtuh, transisi ke `GAME_OVER`. Jika selamat, transisi kembali ke `PREPARATION` gelombang berikutnya.
-7. **GAME_OVER**: Kondisi terminal benteng hancur ($HP \le 0$). Menampilkan statistik gelombang akhir yang dicapai dan opsi memulai sesi baru.
+### 3.1 Aturan Integrasi Mutlak:
+1. **Dilarang membuat `CombatEngineV2` atau `BattleEngine` Baru**: Phase 3 tidak boleh menduplikasi kalkulasi damage, formula casualty, formula equipment loss, formula hero survival, maupun formula threat generation.
+2. **Lima Fase Combat Phase 2 adalah Existing Simulation**:
+   - Fase 1: Ranged Volley (Archer vs Flyers/Minions)
+   - Fase 2: Frontline Clash (Shield & Spearman vs Brutes)
+   - Fase 3: Melee & Hero Engagement (Swordsmen, Heavy, Heroes vs Raiders/Minions)
+   - Fase 4: Wall Breach & Siege Assault (Residual Threat vs Fortress Wall)
+   - Fase 5: Casualties, Gear Loss, Hero Survival, EXP & Loot Resolution
+   Phase 3 hanya menjalankan (*run*) dan mengekspos progres simulasi ini secara bertahap via timer untuk kebutuhan interaksi/debug, bukan mendesain ulang atau menulis ulang formulanya.
+3. **Enemy Archetype Phase 2 Tetap Utuh**:
+   - Archetype internal yang digunakan tetap: `MINION`, `RAIDER`, `BRUTE`, `FLYER`, `SIEGE`, `BOSS`.
+   - Tidak ada rename enum atau refactor sistem musuh di Phase 3. Penamaan tematik visual (Goblin, Orc, Troll) adalah *future content mapping* untuk fase produksi konten mendatang.
 
-### 5.2 Otoritas & Validasi Transisi
-- **Otoritas Tunggal**: Hanya `GameCoordinator` (melalui `GameplayStateMachine`) yang berhak mengubah state.
+---
+
+## 4. Gameplay State Machine
+
+State Machine mengontrol otoritas alur permainan. State tidak bergantung pada SceneTree atau UI, dan transisi ilegal wajib ditolak secara tegas.
+
+```text
+       ┌─────────┐
+       │  BOOT   │
+       └────┬────┘
+            │ (initialize_session)
+            ▼
+     ┌───────────────┐        (inspect wave)        ┌────────────────┐
+     │  PREPARATION  │ ───────────────────────────> │  WAVE_PREVIEW  │
+     └───────▲───────┘ <─────────────────────────── └───────┬────────┘
+             │               (cancel / back)                │
+             │                                              │ (start_battle)
+             │                                              ▼
+     ┌───────┴───────┐        (battle ends)         ┌────────────────┐
+     │   RECOVERY    │ <─────────────────────────── │     BATTLE     │
+     └───────────────┘                              └───────┬────────┘
+                                                            │ (fortress HP <= 0)
+                                                            ▼
+                                                    ┌────────────────┐
+                                                    │   GAME_OVER    │
+                                                    └────────────────┘
+```
+
+### 4.1 Definisi State:
+- **`BOOT`**: Inisialisasi awal session, registrasi starter heroes, persediaan gudang awal, dan status benteng baseline.
+- **`PREPARATION`**: Player mengatur alokasi pekerja sipil (Repair, Blacksmith, Construction, Idle), merekrut serdadu dari warga sipil, mengatur kesiapan hero (Ready vs Rest), dan melakukan reparasi perlengkapan gudang.
+- **`WAVE_PREVIEW`**: Player melihat pratinjau informasi intelijen gelombang musuh yang akan datang, lalu memutuskan untuk memulai pertempuran atau kembali ke persiapan.
+- **`BATTLE`**: Simulasi pertempuran berjalan. Player dapat mengatur kecepatan (1x, 2x, 4x), menjeda (pause/resume), dan mengirimkan intensi perintah komandan.
+- **`RESULT`**: Penyajian hasil akhir pertempuran (menang/kalah, kerusakan benteng, korban serdadu gugur, kerusakan/kehilangan perlengkapan, kelangsungan hidup hero, EXP per hero, dan loot emas).
+- **`RECOVERY`**: Pemrosesan konsekuensi pasca-tempur: penambahan loot ke kas bendahara, pemotongan gaji rutin/upkeep, eksekusi reparasi benteng oleh Repair Worker, dan pembersihan korban jiwa. Jika benteng runtuh ($HP \le 0$), transisi ke `GAME_OVER`. Jika selamat, transisi kembali ke `PREPARATION` gelombang berikutnya.
+- **`GAME_OVER`**: Kondisi terminal saat benteng hancur ($HP \le 0$). Sesi permainan berhenti dan mencatat pencapaian gelombang akhir.
+
+### 4.2 Aturan Transisi:
 - **Transisi Sah (*Valid Transitions*)**:
   - `BOOT` $\rightarrow$ `PREPARATION`
   - `PREPARATION` $\rightarrow$ `WAVE_PREVIEW`
-  - `WAVE_PREVIEW` $\rightarrow$ `BATTLE` atau `WAVE_PREVIEW` $\rightarrow$ `PREPARATION`
+  - `WAVE_PREVIEW` $\rightarrow$ `BATTLE`
+  - `WAVE_PREVIEW` $\rightarrow$ `PREPARATION` (batal/kembali)
   - `BATTLE` $\rightarrow$ `RESULT`
-  - `RESULT` $\rightarrow$ `RECOVERY` (bila $HP > 0$)
-  - `RESULT` $\rightarrow$ `GAME_OVER` (bila $HP \le 0$)
+  - `RESULT` $\rightarrow$ `RECOVERY` (bila $HP_{fortress} > 0$)
+  - `RESULT` $\rightarrow$ `GAME_OVER` (bila $HP_{fortress} \le 0$)
   - `RECOVERY` $\rightarrow$ `PREPARATION` (indeks wave bertambah $+1$)
-- **Transisi Ilegal (*Invalid Transitions*)**:
+- **Transisi Ilegal (*Invalid Transitions - Wajib Ditolak*)**:
   - `PREPARATION` $\rightarrow$ `BATTLE` langsung tanpa melalui preview.
-  - `BATTLE` $\rightarrow$ `PREPARATION` tanpa resolusi result & recovery.
-  - `GAME_OVER` $\rightarrow$ `PREPARATION` langsung tanpa re-boot session.
+  - `BATTLE` $\rightarrow$ `PREPARATION` tanpa melewati Result dan Recovery.
+  - `GAME_OVER` $\rightarrow$ `PREPARATION` langsung tanpa re-boot session baru.
 
 ---
 
-## 6. Gameplay Loop
+## 5. GameCoordinator Responsibilities
 
-Loop inti gameplay Phase 3 menjamin kontinuitas state antar-gelombang:
-
-```text
-[Loop Gelombang Gameplay]
-1. PREPARATION
-   - Player mengalokasikan pekerja: Repair, Blacksmith, Construction.
-   - Player merekrut serdadu dari warga sipil.
-   - Player memilih hero yang aktif bertarung vs beristirahat.
-   - Konfirmasi persiapan selesai.
-
-2. WAVE PREVIEW
-   - Sistem men-generate ancaman gelombang musuh (WaveGenerator).
-   - Player melihat komposisi musuh dan threat level.
-   - Player menekan tombol "Start Wave".
-
-3. BATTLE
-   - Simulasi 5-fase dijalankan (Ranged -> Frontline -> Melee/Heroes -> Breach -> Resolution).
-   - Timer simulasi mengeksekusi tick langkah pertempuran.
-   - Player mengamati log/status pertempuran.
-   - Player dapat pause, ubah kecepatan (1x/2x/4x), atau kirim basic command.
-
-4. RESULT
-   - Hasil pertempuran dievaluasi: Kemenangan, Kerusakan Benteng, Korban Jiwa, Equipment Loss, Kelangsungan Hero.
-
-5. RECOVERY
-   - Kas bertambah dari Battle Loot.
-   - Siklus ekonomi diproses (Gaji prajurit & pekerja dipotong).
-   - Pekerja reparasi memperbaiki HP benteng jika kas mencukupi.
-   - Moral warga sipil diperbarui.
-   - Pertumbuhan alami populasi diproses jika kapasitas hunian mencukupi.
-
-6. EVALUASI GAME OVER vs NEXT WAVE
-   - Jika Fortress HP <= 0 -> GAME OVER.
-   - Jika Fortress HP > 0 -> Wave Counter bertambah (+1), kembali ke PREPARATION.
-```
-
----
-
-## 7. Scene Architecture
-
-Arsitektur scene prototipe dirancang minimal, ringan, dan bebas dari aset visual berat:
-
-```text
-res://scenes/prototype/
-└── main_prototype.tscn (Root: Node)
-    ├── GameController (Node: scripts/presentation/controllers/game_controller.gd)
-    ├── SimulationTimer (Timer: pengendali tick rate pertempuran & speed)
-    └── PrototypeDebugView (CanvasLayer: scripts/presentation/views/prototype_debug_view.gd)
-        └── MarginContainer
-            └── HBoxContainer
-                ├── LeftPanel (VBoxContainer: Status benteng, ekonomi, populasi)
-                ├── CenterPanel (VBoxContainer: Status pertempuran, log phase, battle controls)
-                └── RightPanel (VBoxContainer: Hero party, gudang perlengkapan, tombol aksi)
-```
-
-### Tanggung Jawab Node:
-1. **`main_prototype.tscn` (Root)**:
-   - Node root pembungkus session prototype. Bertanggung jawab menginisialisasi `GameCoordinator`.
-2. **`GameController` (`game_controller.gd`)**:
-   - Menangkap input player (tombol UI/shortcut keyboard), memetakannya menjadi command, dan memanggil method `GameCoordinator`.
-   - Mengontrol `SimulationTimer` untuk fitur pause, resume, dan kecepatan (1x = 1.0s/tick, 2x = 0.5s/tick, 4x = 0.25s/tick).
-3. **`PrototypeDebugView` (`prototype_debug_view.gd`)**:
-   - Menghubungkan dirinya ke sinyal `GameCoordinator.state_changed`.
-   - Menampilkan data teks langsung (*reactive label updating*) tanpa polling di `_process()`.
-
----
-
-## 8. Coordinator Responsibilities
-
-Untuk mencegah `GameCoordinator` menjadi *God Object*, tanggung jawab dibagi secara tegas:
+`GameCoordinator` adalah **Application Orchestration Layer**, BUKAN *God Object*.
 
 ```text
 ┌────────────────────────────────────────────────────────┐
 │                   GameCoordinator                      │
-│  - Otoritas orchestrasi application layer              │
-│  - Menampung instance Domain Models & Sub-Systems      │
-│  - Memvalidasi perintah via GameplayStateMachine       │
+│  - Menerima intent/command dari presentation           │
+│  - Memvalidasi legalitas command via State Machine     │
+│  - Memanggil SimulationRunner / Sub-Systems            │
+│  - Mengupdate GameStateSnapshot                        │
 │  - Memancarkan state_changed(snapshot)                 │
-└───────┬───────────────────┬───────────────────┬────────┘
-        │                   │                   │
-        ▼                   ▼                   ▼
-┌───────────────┐   ┌───────────────┐   ┌───────────────┐
-│ State Machine │   │  Simulation   │   │ Domain Models │
-│  - Validasi   │   │  - Wave Gen   │   │  - Fortress   │
-│    transisi   │   │  - Combat     │   │  - Population │
-│    state game │   │  - Economy    │   │  - Heroes     │
-└───────────────┘   └───────────────┘   └───────────────┘
+└────────────────────────────────────────────────────────┘
 ```
 
-- **Yang dilakukan `GameCoordinator`**:
-  - Menerima intent dari `GameController` (`recruit_soldier`, `assign_workers`, `start_battle`, dll).
-  - Memverifikasi apakah aksi diizinkan pada state aktif.
-  - Memutasi domain model atau memanggil service simulasi terkait.
-  - Menghasilkan `GameStateSnapshot` baru dan memancarkannya ke listener via sinyal.
-- **Yang TIDAK dilakukan `GameCoordinator`**:
-  - Tidak memuat logika perhitungan damage atau formula matematika (milik `CombatEngine`).
-  - Tidak mengelola rendering frame, timer Godot, atau manipulasi node visual (milik presentation).
-  - Tidak melakukan file I/O langsung (milik persistence).
+### 5.1 Tanggung Jawab yang Dimiliki:
+- Menerima panggilan perintah player dari controller/presentation layer (`recruit_soldier`, `assign_workers`, `start_battle`, `step_battle`, `send_commander_command`).
+- Memvalidasi apakah perintah sah dijalankan pada state saat ini menggunakan `GameplayStateMachine`.
+- Menginstruksikan `SimulationRunner` untuk mengeksekusi langkah simulasi deterministik.
+- Memutasi domain models sesuai hasil simulasi yang valid.
+- Menghasilkan salinan immutable `GameStateSnapshot.clone()` dan memancarkannya via sinyal `state_changed`.
+
+### 5.2 Hal yang DILARANG di dalam `GameCoordinator`:
+- **DILARANG** memuat formula perhitungan combat, formula damage, formula casualty, atau RNG combat (tanggung jawab `CombatEngine`).
+- **DILARANG** memuat formula perhitungan ekonomi, gaji, atau diskon pandai besi (tanggung jawab `EconomyManager`).
+- **DILARANG** memuat logika kurva threat gelombang musuh (tanggung jawab `WaveGenerator`).
+- **DILARANG** memuat manipulasi Node visual, UI element, font, atau SceneTree (tanggung jawab presentation layer).
+- **DILARANG** melakukan I/O file disk langsung (tanggung jawab persistence layer).
 
 ---
 
-## 9. Input Model
+## 6. Commander Command Abstraction
 
-Model input prototipe berfokus pada kelengkapan fungsional, bukan estetika UI:
+Sesuai konsep game di mana player berperan sebagai komandan benteng, Phase 3 menyediakan abstraksi perintah komandan sebagai **Commander Intent / Command Data**.
 
-### 9.1 Kontrol Fase Persiapan & Preview
-- **Tombol / Aksi**:
-  - `[+] / [-]` Alokasi Pekerja (Repair, Blacksmith, Construction).
-  - `[Recruit]` Rekrut serdadu spesifik (Swordsman, Shield, Archer, Spearman, Heavy).
-  - `[Rest / Ready]` Toggle status istirahat hero.
-  - `[Inspect Wave]` Melanjutkan dari `PREPARATION` ke `WAVE_PREVIEW`.
-  - `[Start Battle]` Memulai pertempuran dari `WAVE_PREVIEW`.
-  - `[Cancel]` Kembali dari `WAVE_PREVIEW` ke `PREPARATION`.
+### 6.1 Daftar 6 Perintah Komandan:
+Seluruh 6 perintah komandan berikut wajib didukung oleh struktur data `CommanderCommand`:
 
-### 9.2 Kontrol Pertempuran
-- **Tombol / Shortcut Keyboard**:
-  - `Space`: Pause / Resume simulasi pertempuran.
-  - `1`: Kecepatan normal (1x).
-  - `2`: Kecepatan ganda (2x).
-  - `3` / `4`: Kecepatan tinggi (4x).
-  - `[Hold]`, `[Advance]`, `[Retreat]`: Tombol perintah taktis komandan dasar.
+1. **`HOLD`**: Intensi menahan posisi pertahanan rapat.
+2. **`ADVANCE`**: Intensi mendorong garis depan secara agresif.
+3. **`RETREAT`**: Intensi menarik pasukan mendekat ke perlindungan benteng.
+4. **`PROTECT`**: Intensi mengawal dan melindungi hero yang kelelahan/terancam.
+5. **`FOCUS`**: Intensi memusatkan serangan pada target prioritas tertentu.
+6. **`FOLLOW`**: Intensi barisan serdadu mengikuti komando hero utama.
 
----
+### 6.2 Struktur Data Abstraksi (DTO Murni):
+```text
+class_name CommanderCommand
+extends RefCounted
 
-## 10. Battle Prototype
+var command_type: String = "HOLD" # HOLD, ADVANCE, RETREAT, PROTECT, FOCUS, FOLLOW
+var target_group: String = "ALL"  # ALL, SHIELD, MELEE, ARCHER, HEROES
+var target_id: String = ""        # ID entitas target (misal hero_id atau enemy type)
+var issued_at_tick: int = 0
+```
 
-Prototipe pertempuran Phase 3 membuktikan jalannya simulasi pertempuran secara interaktif tanpa memerlukan aset sprite atau animasi:
-
-1. **Resolusi Multi-Tick Interaktif**:
-   - Daripada menyelesaikan seluruh pertempuran dalam 1 frame instan, `SimulationTimer` menjalankan resolusi pertempuran langkah-demi-langkah:
-     - *Tick 1*: Ranged Volley (Archer vs Flyers/Minions).
-     - *Tick 2*: Frontline Clash (Shield & Spearman vs Brutes).
-     - *Tick 3*: Melee & Hero Engagement (Swordsmen, Heavy, Heroes vs Raiders/Minions).
-     - *Tick 4*: Wall Breach Assault (Sisa ancaman menyerang benteng).
-     - *Tick 5*: Casualty & Aftermath Resolution (Evaluasi korban jiwa, gear loss, hero survival, loot).
-2. **Keterlibatan Player**:
-   - Player dapat mengamati jalannya fase di log telemetri teks.
-   - Player dapat mengubah kecepatan atau menjeda jalannya fase pertempuran kapan saja.
-3. **Penggunaan Sistem Phase 2 Utuh**:
-   - Menggunakan formula `CombatEngine` dan `_seeded_float()` yang sama persis sehingga hasil pertempuran tetap 100% deterministik dan teruji.
+### 6.3 Aturan Phase 3 Tanpa Formula Combat Final:
+- **TIDAK ADA FORMULA COMBAT FINAL DI PHASE 3**: Dilarang menetapkan formula seperti `HOLD = +15% defense`, `ADVANCE = +15% melee`, dsb.
+- **Tujuan Phase 3**: Memvalidasi pipeline arsitektur bahwa intensi perintah dapat dikirimkan dan tercatat:
+  $$\text{Player Input} \rightarrow \text{Command Intent DTO} \rightarrow \text{GameCoordinator} \rightarrow \text{Simulation Runner} \rightarrow \text{Result}$$
+- **Status Eksekusi di Phase 3**:
+  - Command diterima oleh coordinator dan dicatat dalam telemetri tempur.
+  - Perintah yang belum memiliki efek simulasi di Phase 3 diperlakukan sebagai **deferred / no-op / placeholder behavior** yang terdokumentasi rapi.
+  - Implementasi matematis dan perilaku taktis mendalam secara penuh **DITUNDA KE PHASE 6 (Tactical Battle & Battlefield Systems)**.
 
 ---
 
-## 11. Commander Command Abstraction
+## 7. Gameplay Loop
 
-Sesuai konsep desain game, player adalah seorang komandan benteng:
-
-### 11.1 Abstraksi Phase 3 (Minimal Command Modifier)
-Dibuat kelas DTO `CommanderCommand` dengan tipe:
-- `HOLD`: Memerintahkan pasukan bertahan rapat di gerbang. Efek: Pertahanan Shield $+15\%$, serangan jarak dekat $-10\%$.
-- `ADVANCE`: Serangan ofensif agresif. Efek: Serangan melee $+15\%$, namun risiko korban prajurit gugur meningkat $+10\%$.
-- `RETREAT`: Pasukan mundur ke balik perlindungan benteng. Efek: Menghindari korban serdadu, namun residual threat langsung menghantam tembok benteng.
-- `PROTECT`: Seluruh barisan mengawal hero yang kelelahan. Efek: Hero survival rate meningkat $+25\%$.
-
-### 11.2 Batasan Scope
-- Di Phase 3, perintah ini hanya memodifikasi koefisien pengali kalkulasi pertempuran di `CombatEngine`.
-- Implementasi penuh medan tempur multi-zona, pergerakan unit real-time, dan AI musuh ditunda ke **Phase 6 (Tactical Battle & Battlefield Systems)**.
-
----
-
-## 12. Debug / Prototype View
-
-Antarmuka prototipe dibangun menggunakan node bawaan UI Godot (`Label`, `Button`, `VBoxContainer`, `HBoxContainer`) tanpa custom shader, gambar tekstur, atau font eksternal:
+Loop gameplay Phase 3 membuktikan transisi dan persistensi data antar-fase secara utuh:
 
 ```text
-================================================================================
-FORTRESS GAME — PHASE 3 GAMEPLAY PROTOTYPE (DEBUG VIEW)
-================================================================================
-State: [PREPARATION]     | Wave: 3 / 100          | Speed: [1x] [2x] [4x] [PAUSE]
---------------------------------------------------------------------------------
-[FORTRESS]               | [POPULATION & WORKERS] | [MILITARY & WAREHOUSE]
-HP: 850 / 1000           | Civilians: 12          | Swordsmen: 4  (Sword T1: 10)
-Armor: 40                | Repair: 2              | Shield:    3  (Shield T1: 10)
-Status: INTACT           | Blacksmith: 1          | Archers:   3  (Bow T1: 10)
-Treasury: 180 Gold       | Construction: 0        | Spearman:  2  (Spear T1: 10)
-Upkeep/Cycle: 45 Gold    | Idle: 9                | Mercenaries: 0
---------------------------------------------------------------------------------
-[HERO ROSTER]
-- Alder Ironclad (Lv 2) | Fatigue: 15/100 | Morale: 100 | Status: ALIVE [READY]
-- Lyra Windwalker (Lv 1)| Fatigue: 45/100 | Morale: 95  | Status: ALIVE [REST]
---------------------------------------------------------------------------------
-[BATTLE / EVENT TELEMETRY LOG]
-> Wave 2 Cleared. Battle Loot: +65 Gold. Fortress took 45 damage (Repaired +25).
-> 1 Shield Infantry casualty reported. Gear salvaged with heavy wear.
---------------------------------------------------------------------------------
-[ACTIONS]
-[Allocate Workers] [Recruit Soldier] [Manage Equipment] [INSPECT NEXT WAVE]
-================================================================================
+[Loop Gelombang Gameplay Phase 3]
+1. PREPARATION
+   - Player mengalokasikan pekerja sipil (Repair, Blacksmith, Construction, Idle).
+   - Player merekrut serdadu (Swordsman, Shield, Archer, Spearman, Heavy) dari warga sipil.
+   - Player mengatur kesiapan hero (Ready vs Rest).
+   - Player konfirmasi selesai persiapan -> transisi ke WAVE_PREVIEW.
+
+2. WAVE PREVIEW
+   - Sistem mengambil data gelombang aktif dari WaveGenerator.
+   - Player memeriksa estimasi ancaman dan jenis musuh yang akan datang.
+   - Player menekan "Start Battle" -> transisi ke BATTLE.
+   - (Atau player menekan "Back" -> kembali ke PREPARATION).
+
+3. BATTLE
+   - Simulasi pertempuran 5-fase dijalankan menggunakan CombatEngine Phase 2.
+   - Player dapat mengatur kecepatan simulasi (1x, 2x, 4x) atau pause/resume.
+   - Player dapat mengirimkan intent perintah komandan (HOLD, ADVANCE, RETREAT, PROTECT, FOCUS, FOLLOW).
+   - Pertempuran selesai -> transisi ke RESULT.
+
+4. RESULT
+   - Rangkuman pertempuran ditampilkan: status kemenangan, kerusakan benteng, korban serdadu gugur, kerusakan/kehilangan perlengkapan, kelangsungan hidup hero, EXP per hero, dan loot emas.
+   - Player konfirmasi -> transisi ke RECOVERY.
+
+5. RECOVERY
+   - Memproses siklus ekonomi Phase 2 (EconomyManager):
+     - Battle loot ditambahkan ke kas.
+     - Upkeep prajurit & warga sipil dipotong dari kas.
+     - Reparasi benteng dieksekusi oleh Repair Worker sesuai ketersediaan kas.
+     - Pemulihan fatigue hero yang beristirahat diproses.
+     - Pertumbuhan alami populasi diproses jika kapasitas hunian mencukupi.
+
+6. EVALUASI TERMINAL
+   - Jika Fortress HP <= 0 -> Transisi ke GAME_OVER (sesi berakhir).
+   - Jika Fortress HP > 0  -> Indeks Wave bertambah (+1), kembali ke PREPARATION.
 ```
 
 ---
 
-## 13. Data Flow
+## 8. Battle Prototype
 
-Seluruh interaksi mematuhi arsitektur aliran data satu arah (*Unidirectional Data Flow*):
+Prototipe pertempuran Phase 3 berfokus pada pembuktian orkestrasi simulasi pertempuran interaktif tanpa aset visual final.
+
+### 8.1 12 Kriteria Verifikasi Battle Prototype:
+1. Pertempuran dapat dimulai dari state `WAVE_PREVIEW`.
+2. Simulasi pertempuran berjalan mengeksekusi `CombatEngine` Phase 2.
+3. Pertempuran dapat di-pause kapan saja.
+4. Pertempuran dapat dilanjutkan kembali (*resume*).
+5. Kecepatan simulasi pertempuran dapat diubah secara dinamis:
+   - Kecepatan 1x (normal, misal 1.0 detik/fase)
+   - Kecepatan 2x (cepat, misal 0.5 detik/fase)
+   - Kecepatan 4x (sangat cepat, misal 0.25 detik/fase)
+6. Player dapat mengirimkan abstraksi intent perintah komandan (HOLD, ADVANCE, RETREAT, PROTECT, FOCUS, FOLLOW).
+7. Hasil pertempuran (*Battle Result DTO*) dikembalikan secara utuh dan deterministik.
+8. Korban serdadu (*casualties*) diterapkan dan memotong populasi secara permanen.
+9. Kerusakan benteng (*fortress damage*) diterapkan pada HP benteng persisten.
+10. Hasil kelangsungan hidup/kematian hero (*hero survival/death*) diterapkan pada model hero.
+11. Pertempuran dapat berakhir secara bersih tanpa *infinite loop*.
+12. Sesi permainan berpindah secara sah ke state `RESULT`.
+
+### 8.2 Representasi Visual Prototipe:
+- Menggunakan visual teks telemetri sederhana (CanvasLayer dengan label log status per fase).
+- Dilarang membuat sprite animasi, battlefield grid, atau efek partikel tempur pada tahap ini.
+
+---
+
+## 9. Wave Preview
+
+Konsep "Scout / Scouting System" **DIHAPUS SEPENUHNYA** dari Phase 3. Player langsung menerima informasi pratinjau gelombang (**Wave Preview / Threat Preview**).
+
+### Informasi Minimal pada Wave Preview:
+1. **Wave Number**: Nomor gelombang yang akan dihadapi (misal: Wave 3 / 100).
+2. **Arrival Time / Interval**: Indikasi gelombang telah tiba di gerbang benteng.
+3. **Threat / Difficulty Budget**: Total poin ancaman gelombang (dihitung oleh `WaveGenerator.calculate_threat_budget`).
+4. **Enemy Types & Estimated Quantities**: Rincian komposisi musuh berdasarkan archetype Phase 2:
+   - `MINION`: Pasukan kecil pengganggu.
+   - `RAIDER`: Pasukan penyerang cepat.
+   - `BRUTE`: Pasukan berdaya tahan tinggi.
+   - `FLYER`: Pasukan udara yang memotong langsung ke benteng.
+   - `SIEGE`: Mesin pengepung tembok.
+   - `BOSS`: Pemimpin ancaman besar (hadir setiap kelipatan 10 wave).
+5. **Special Traits / Warnings**: Penanda gelombang khusus (misal: "Boss Wave Detected", "High Flyer Concentration").
+
+---
+
+## 10. Recovery Prototype
+
+Fase Recovery membuktikan penanganan pasca-pertempuran tanpa membuat model reparasi baru.
+
+### 10.1 Model Reparasi Phase 2 yang Wajib Digunakan:
+$$\text{Worker} + \text{Repair Job} + \text{Material/Budget} + \text{Duration} \rightarrow \text{Fortress HP Recovery}$$
+
+- Menggunakan method existing `EconomyManager.process_cycle(population, fortress)`.
+- Reparasi hanya terjadi jika ada warga sipil yang dialokasikan ke pekerjaan `REPAIR`.
+- Biaya reparasi dipotong dari kas bendahara ($0.15 \text{ gold per HP}$).
+- Jika kas bendahara tidak mencukupi, reparasi benteng dilakukan secara parsial sesuai batas dana yang tersedia.
+
+### 10.2 Batasan Scope Recovery:
+- Hanya membuktikan kelangsungan loop gameplay:
+  $$\text{Battle} \rightarrow \text{Result} \rightarrow \text{Recovery} \rightarrow \text{Preparation} \rightarrow \text{Next Wave}$$
+- Tidak mengimplementasikan sistem manajemen fasilitas benteng yang mendalam (ditunda ke Phase 5).
+
+---
+
+## 11. Debug Telemetry
+
+Phase 3 menyediakan modul telemetri debug teks yang ringan dan dapat dinyalakan/dimatikan (*toggable*).
+
+### Data Telemetri yang Ditampilkan:
+- **Current State**: Nama state aktif (BOOT, PREPARATION, WAVE_PREVIEW, BATTLE, RESULT, RECOVERY, GAME_OVER).
+- **Current Wave**: Nomor gelombang saat ini dan total gelombang target.
+- **Battle Status & Speed**: Status pertempuran (Idle / Running / Paused) dan kecepatan aktif (1x, 2x, 4x).
+- **Fortress Status**: HP saat ini / HP maksimum, nilai Armor, dan status integritas.
+- **Enemy Composition**: Sisa musuh aktif per archetype (Minion, Raider, Brute, Flyer, Siege, Boss).
+- **Soldier Casualties**: Jumlah korban prajurit gugur per peran pada gelombang terakhir.
+- **Hero Roster Status**: Level, EXP, Fatigue (0–100), Morale, dan status hidup/mati (*Alive/Dead*).
+- **Equipment & Warehouse**: Kuantitas perlengkapan gudang per peran dan rata-rata durabilitas.
+- **Economy Balance**: Kas bendahara saat ini, estimasi pengeluaran gaji/upkeep, dan biaya reparasi.
+- **Last Commander Command**: Perintah komandan terakhir yang dikirimkan player.
+
+> [!NOTE]
+> Telemetri ini adalah alat bantu pengujian bagi developer, bukan sistem analitik data atau backend telemetry server.
+
+---
+
+## 12. Save / Load Boundary
+
+Phase 3 **TIDAK MENGIMPLEMENTASIKAN SAVE/LOAD PENUH KE DISK**. Phase 3 hanya mendefinisikan batas arsitektur (*Persistence Boundary*).
 
 ```text
-      [User Action / Input Event]
-                   │
-                   ▼
-       [GameController (Node)]
-                   │ (calls coordinator command API)
-                   ▼
-     [GameCoordinator (RefCounted)]
-                   │
-                   ├──> [GameplayStateMachine] (validates transition legality)
-                   │
-                   ├──> [SimulationRunner] (executes deterministic step)
-                   │          │
-                   │          ├──> CombatEngine
-                   │          ├──> WaveGenerator
-                   │          └──> EconomyManager
-                   │
-                   ├──> [Domain Models Mutated] (Fortress, Population, Heroes, Equipment)
-                   │
-                   └──> [Generates GameStateSnapshot.clone()]
-                               │
-                               ▼ (emits state_changed signal)
-               [PrototypeDebugView (CanvasLayer)]
-                               │ (updates UI text labels)
-                               ▼
-                        [User Observes]
+Game State (Runtime) ──> GameStateSnapshot (Plain DTO) ──> SaveSnapshotDto (schema_version = 1)
 ```
+
+- `GameStateSnapshot` menyediakan fungsi `to_dictionary()` dan `from_dictionary()` yang serializable.
+- `SaveSnapshotDto` dari Phase 1 digunakan sebagai penjaga schema version.
+- Implementasi penyimpanan ke disk (file I/O, binary serialization, enkripsi) secara penuh **DITUNDA KE PHASE 10**.
 
 ---
 
-## 14. Testing Strategy
+## 13. Testing Plan
 
-Setiap komponen yang dibangun di Phase 3 wajib divalidasi dengan rangkaian pengujian headless otomatis:
+Rencana pengujian Phase 3 mencakup verifikasi headless otomatis menyeluruh:
 
-### 14.1 Unit Tests (`tests/test_gameplay_prototype.gd`)
-- `test_state_machine_valid_transitions`: Menguji seluruh rantai transisi sah.
-- `test_state_machine_invalid_transitions`: Memastikan transisi ilegal ditolak keras.
-- `test_preparation_worker_allocation`: Menguji alokasi pekerja dan validasi batas kapasitas warga sipil.
-- `test_soldier_recruitment_conservation`: Memastikan rekrutmen memotong sipil dan menambah prajurit dengan benar.
-- `test_battle_step_execution`: Menguji eksekusi simulasi pertempuran per langkah.
-- `test_recovery_cycle_application`: Menguji penambahan loot, pemotongan gaji, reparasi benteng, dan pertumbuhan warga.
-- `test_game_over_trigger`: Memastikan runtuhnya benteng ($HP = 0$) menghentikan game loop dan mengunci state ke `GAME_OVER`.
-- `test_commander_command_modifiers`: Menguji pengaruh perintah taktis komandan pada kalkulasi power/survival.
+### 13.1 State Transition Tests (`test_gameplay_prototype.gd`):
+- Menguji seluruh transisi sah:
+  - `BOOT` $\rightarrow$ `PREPARATION`
+  - `PREPARATION` $\rightarrow$ `WAVE_PREVIEW`
+  - `WAVE_PREVIEW` $\rightarrow$ `BATTLE`
+  - `BATTLE` $\rightarrow$ `RESULT`
+  - `RESULT` $\rightarrow$ `RECOVERY`
+  - `RECOVERY` $\rightarrow$ `PREPARATION` (wave bertambah $+1$)
+  - `RESULT` $\rightarrow$ `GAME_OVER` (saat Fortress $HP \le 0$)
+- Menguji penolakan keras terhadap transisi ilegal (misal: `PREPARATION` langsung lompat ke `BATTLE`, atau `GAME_OVER` lompat ke `PREPARATION`).
 
-### 14.2 Integration Tests
-- **Full Wave Cycle Test**: Menjalankan 5 gelombang penuh berturut-turut melalui `GameCoordinator` dari `BOOT -> PREP -> PREVIEW -> BATTLE -> RESULT -> RECOVERY -> PREP`.
-- **State Persistence Test**: Memverifikasi bahwa data antar-state tidak bocor atau reset di tengah gelombang.
+### 13.2 Command Abstraction Tests:
+- Memverifikasi bahwa seluruh 6 perintah komandan dapat direpresentasikan secara valid:
+  `HOLD`, `ADVANCE`, `RETREAT`, `PROTECT`, `FOCUS`, `FOLLOW`.
+- Memastikan pengiriman command tidak merusak state simulasi atau memicu crash runtime.
 
-### 14.3 Regression Tests (Zero Regression Guarantee)
+### 13.3 Integration Tests:
+- Memvalidasi loop utuh:
+  $$\text{Player Input} \rightarrow \text{Coordinator} \rightarrow \text{Phase 2 Simulation} \rightarrow \text{Result} \rightarrow \text{State Update}$$
+- Menjalankan 5 gelombang berturut-turut untuk memastikan kontinuitas state antar-gelombang tanpa kebocoran memori atau reset state mendadak.
+
+### 13.4 Regression Tests (Zero Regression Guarantee):
 - `tests/test_architecture_boundaries.gd` (Phase 1): Wajib **5 PASSED, 0 FAILED**.
 - `tests/test_mathematical_prototype.gd` (Phase 2): Wajib **21 PASSED, 0 FAILED**.
 
 ---
 
-## 15. Performance Constraints (Low-End Hardware)
+## 14. Performance Constraints (Low-End Hardware)
 
-Mengingat target hardware development dan mobile Android yang sangat terbatas:
-- **Zero Real-Time Unit Entities**: Tidak ada node sprite atau physics body individual per prajurit. Serdadu tetap disimulasikan secara agregat (*aggregate simulation*).
-- **Zero Per-Frame Polling**: Tidak ada node yang menjalankan kalkulasi logika pada `_process(delta)`. Seluruh pembaruan tampilan murni digerakkan oleh event/sinyal `state_changed`.
-- **Low Memory Footprint**: Seluruh domain model berbasis `RefCounted`. Alokasi memori dinamis dijaga minimal dan dibebaskan secara otomatis oleh engine.
-- **Lightweight Scene Tree**: Jumlah total node pada scene prototipe kurang dari 25 node UI standar.
+Target hardware pengembangan dan rilis adalah perangkat berspesifikasi rendah:
+- RAM: 4 GB
+- CPU: Intel Celeron / Pentium / Dual-Core Mobile
+- Target OS: Android & Windows Dev Environment
+
+### Batasan Arsitektur & Kinerja:
+- **Aggregate Simulation Only**: Pasukan serdadu disimulasikan sebagai kuantitas agregat di domain state. Dilarang menginstansiasi Node terpisah untuk setiap prajurit.
+- **Zero Real-Time Enemy Nodes**: Ratusan musuh disimulasikan sebagai counter ancaman numerik di `CombatEngine`, bukan Node karakter individual.
+- **Zero Per-Frame Logic Polling**: Dilarang meletakkan logika kalkulasi atau state check di dalam loop `_process(delta)`. Seluruh pembaruan UI murni digerakkan oleh event sinyal `state_changed`.
+- **Minimal Node Hierarchy**: Scene prototipe hanya terdiri dari node kontrol dasar tanpa hierarki bersarang yang berat.
+- **Deterministic Headless Ready**: Seluruh logika game dapat dijalankan tanpa window rendering.
 
 ---
 
-## 16. File Changes
+## 15. Scope Boundary
 
-### 16.1 Files Planned to Change (Extending Existing)
+| Fitur / Komponen | IN SCOPE (Phase 3) | OUT OF SCOPE (Fase Berikutnya) |
+| :--- | :---: | :---: |
+| **Gameplay State Machine** | Ya (Boot s/d Game Over) | - |
+| **GameCoordinator Orchestration** | Ya (Application layer) | - |
+| **Preparation & Worker Allocation** | Ya (Model Phase 2) | Sistem room/building mendalam (Phase 5) |
+| **Wave Preview & Threat Display** | Ya (Threat & enemy counts) | Sistem intelijen/scouting terpisah |
+| **Battle Simulation Execution** | Ya (CombatEngine Phase 2) | Formula battle power baru |
+| **Battle Speed & Pause Control** | Ya (Pause, 1x, 2x, 4x) | - |
+| **Commander Command Abstraction** | Ya (6 Intent DTOs) | Tactical AI & formasi mendalam (Phase 6) |
+| **Result & Recovery Loop** | Ya (Loot, gaji, repair) | Sistem ekonomi makro/perdagangan (Phase 7) |
+| **Debug Telemetry HUD** | Ya (Label teks murni) | UI/HUD artistik final (Phase 9) |
+| **Unit & Integration Tests** | Ya (Headless suite) | - |
+| **Visual Art, Sprite, & Animasi** | **TIDAK** | Pixel art, VFX, animasi (Phase 9) |
+| **Audio, SFX, & Musik** | **TIDAK** | Sound design & music (Phase 7–8) |
+| **Disk Save / Load Persistence** | **TIDAK** | File I/O & binary storage (Phase 10) |
+
+---
+
+## 16. Planned Files
+
+### 16.1 Files Planned to Change (Extending Existing):
 1. `scripts/domain/state/game_state_snapshot.gd`:
-   - Menambahkan field terstruktur untuk snapshot domain models (`fortress`, `population`, `heroes`, `warehouse`, `economy`, `wave`, `phase`).
-   - Menjaga backward compatibility method `clone()`, `to_dictionary()`, dan `from_dictionary()`.
+   - Memperluas penampung data domain (fortress, population, heroes, warehouse, economy, wave, phase).
+   - Menjaga backward compatibility penuh terhadap schema Phase 1.
 2. `scripts/application/coordinators/game_coordinator.gd`:
    - Mengintegrasikan `GameplayStateMachine` dan engine simulasi Phase 2.
-   - Menambahkan command API publik untuk interaksi gameplay.
+   - Menambahkan API penerima command dari presentation layer.
 3. `scripts/simulation/simulation_runner.gd`:
-   - Memperluas runner untuk mengorkestrasi eksekusi `WaveGenerator`, `CombatEngine`, dan `EconomyManager`.
+   - Mengorkestrasi pemanggilan `WaveGenerator`, `CombatEngine`, dan `EconomyManager`.
 
-### 16.2 Files Planned to Add (New Minimal Files)
-1. `scripts/application/state_machine/gameplay_state_machine.gd`: State machine transisi fase game.
-2. `scripts/domain/command/commander_command.gd`: Abstraksi intent perintah komandan.
-3. `scripts/presentation/controllers/game_controller.gd`: Controller penghubung input player ke coordinator.
-4. `scripts/presentation/views/prototype_debug_view.gd`: Script render dashboard telemetri teks.
-5. `scenes/prototype/main_prototype.tscn`: Scene prototipe minimal.
+### 16.2 Files Planned to Add (New Minimal Files):
+1. `scripts/application/state_machine/gameplay_state_machine.gd`: Modul pengatur transisi state game.
+2. `scripts/domain/command/commander_command.gd`: Kelas DTO intent perintah komandan (HOLD, ADVANCE, RETREAT, PROTECT, FOCUS, FOLLOW).
+3. `scripts/presentation/controllers/game_controller.gd`: Controller penerima input keyboard/tombol UI dan pengatur timer simulasi battle.
+4. `scripts/presentation/views/prototype_debug_view.gd`: Script render dashboard teks telemetri.
+5. `scenes/prototype/main_prototype.tscn`: Scene prototipe minimal di Godot.
 6. `tests/test_gameplay_prototype.gd`: Test suite otomatis untuk validasi Phase 3.
 
 ---
 
-## 17. Implementation Order
+## 17. Acceptance Criteria
 
-Urutan implementasi dirancang bertahap dan aman (*step-by-step*) agar setiap langkah dapat diverifikasi sebelum melanjutkan:
+Implementasi Phase 3 hanya dapat dinyatakan selesai jika seluruh checklist berikut terpenuhi:
 
-```text
-Step 1  — Ekstensi GameStateSnapshot (domain data models serialization support).
-Step 2  — Implementasi GameplayStateMachine (state transitions & authority validation).
-Step 3  — Implementasi CommanderCommand DTO (Hold, Advance, Retreat, Protect).
-Step 4  — Ekstensi SimulationRunner (integrasi orkestrasi engine Phase 2).
-Step 5  — Ekstensi GameCoordinator (integrasi state machine, runner, dan command handlers).
-Step 6  — Pembuatan Unit Test Suite test_gameplay_prototype.gd (verifikasi headless state & loop).
-Step 7  — Pembuatan script GameController & SimulationTimer (input & battle speed logic).
-Step 8  — Pembuatan script PrototypeDebugView (CanvasLayer & reactive labels).
-Step 9  — Perakitan scene main_prototype.tscn di Godot.
-Step 10 — Verifikasi integrasi end-to-end playable prototype di Godot editor & console headless.
-Step 11 — Verifikasi regresi arsitektur Phase 1 (5/5 PASS) dan matematika Phase 2 (21/21 PASS).
-Step 12 — Dokumentasi penutupan Phase 3 dan pelaporan ke developer.
-```
-
----
-
-## 18. Phase Boundary
-
-Untuk mencegah *scope creep*, batas tanggung jawab Phase 3 ditetapkan sebagai berikut:
-
-### Dalam Scope Phase 3:
-- Siklus gameplay loop inti (Boot, Prep, Preview, Battle, Result, Recovery, Game Over).
-- Game State Machine deterministik.
-- Integrasi GameCoordinator dengan engine simulasi Phase 2.
-- Kontrol player dasar: alokasi pekerja, rekrutmen prajurit, pause/resume, speed 1x/2x/4x.
-- Abstraksi dasar perintah komandan (Hold, Advance, Retreat, Protect).
-- Debug / Prototype Dashboard berbasis teks murni.
-- Pengujian unit dan integrasi headless otomatis.
-
-### Di Luar Scope Phase 3 (Ditunda ke Fase Berikutnya):
-- **Phase 4**: Sistem gacha/rekrutmen hero kompleks, skill tree hero, equipment khusus hero, UI detail hero.
-- **Phase 5**: Sistem manajemen benteng mendalam, konstruksi ruangan benteng, sistem cuaca.
-- **Phase 6**: Sistem pertarungan taktis mendalam, pergerakan unit medan perang real-time, zona pertempuran, AI musuh kompleks.
-- **Phase 7–8**: Audio, SFX, musik latar, efek suara pertempuran.
-- **Phase 9**: Pixel art final, animasi sprite, efek partikel, shader visual, UI polish final.
-- **Phase 10**: Sistem penyimpanan file Save/Load disk penuh ke format biner/enkripsi.
-
----
-
-## 19. Acceptance Criteria
-
-Implementasi Phase 3 hanya akan dinyatakan selesai jika seluruh kriteria berikut terpenuhi:
-
-- [ ] Project Godot dapat memuat dan menjalankan `main_prototype.tscn` tanpa error.
-- [ ] Fase `PREPARATION` berfungsi: player dapat mengalokasikan pekerja dan merekrut serdadu dari warga sipil.
-- [ ] Fase `WAVE_PREVIEW` berfungsi: menampilkan perkiraan ancaman gelombang musuh berikutnya.
-- [ ] Fase `BATTLE` dapat dimulai dan menggunakan logika `CombatEngine` Phase 2 yang sudah ada (tanpa duplikasi logika).
-- [ ] Hasil pertempuran (`RESULT`) dilaporkan secara akurat dan memutasi state benteng, populasi, dan hero.
-- [ ] Fase `RECOVERY` memproses loot emas, biaya gaji rutin, dan reparasi benteng secara otomatis.
+- [ ] Project Godot dapat memuat dan menjalankan `main_prototype.tscn` tanpa error atau peringatan kebocoran memori.
+- [ ] Fase `PREPARATION` berfungsi: alokasi pekerja dan rekrutmen serdadu mematuhi batas populasi sipil secara zero-sum.
+- [ ] Fase `WAVE_PREVIEW` berfungsi: menyajikan pratinjau ancaman musuh berikutnya secara akurat tanpa konsep scout.
+- [ ] Fase `BATTLE` mengeksekusi simulasi pertempuran menggunakan `CombatEngine` Phase 2 tanpa duplikasi logika.
+- [ ] Kontrol pertempuran berfungsi lancar: Pause, Resume, Kecepatan 1x, Kecepatan 2x, dan Kecepatan 4x.
+- [ ] Keenam perintah komandan (`HOLD`, `ADVANCE`, `RETREAT`, `PROTECT`, `FOCUS`, `FOLLOW`) dapat dikirimkan ke coordinator dan dicatat pada telemetri.
+- [ ] Hasil pertempuran (`RESULT`) dilaporkan dan memutasi state benteng, populasi, dan hero secara tepat.
+- [ ] Fase `RECOVERY` memproses loot emas, pemotongan gaji rutin, dan reparasi benteng berbasis Repair Worker Phase 2.
 - [ ] Gelombang berikutnya dapat dimulai dan state bertahan secara konsisten (*state persistence across waves*).
-- [ ] Keruntuhan benteng ($HP \le 0$) memicu kondisi `GAME_OVER` secara tepat.
-- [ ] Fitur Pause / Resume dan pengatur kecepatan (1x, 2x, 4x) berfungsi saat pertempuran berlangsung.
-- [ ] Tidak ada duplikasi logika simulasi antara Phase 2 dan Phase 3.
+- [ ] Keruntuhan benteng ($HP \le 0$) memicu kondisi terminal `GAME_OVER`.
+- [ ] Tidak ada pembuatan `CombatEngine` baru, duplikasi formula, atau refactor terhadap archetype musuh Phase 2.
 - [ ] Seluruh test Phase 1 tetap lulus (**5/5 PASSED, 0 FAILED**).
 - [ ] Seluruh test Phase 2 tetap lulus (**21/21 PASSED, 0 FAILED**).
 - [ ] Seluruh test Phase 3 yang baru dibuat lulus (**100% PASSED**).
@@ -498,24 +473,31 @@ Implementasi Phase 3 hanya akan dinyatakan selesai jika seluruh kriteria berikut
 
 ---
 
-## 20. Risks & Mitigation
+## 18. Risks & Mitigation
 
 | Potensi Risiko | Dampak | Strategi Mitigasi |
 | :--- | :--- | :--- |
-| **State Desynchronization** | Data di UI tidak mencerminkan data aktual di domain state. | Terapkan isolasi ketat: UI tidak boleh menyimpan state lokal, melainkan murni me-render salinan `GameStateSnapshot` yang dipancarkan via sinyal `state_changed`. |
-| **Scope Creep ke Fitur Visual** | Waktu habis untuk membuat art/animasi alih-alih memvalidasi loop gameplay. | Dilarang keras membuat sprite, tekstur, atau animasi di Phase 3. Tampilan murni menggunakan node `Label` dan `Button` default Godot. |
-| **Duplikasi Logika Simulasi** | Terjadi inkonsistensi formula pertempuran antara Phase 2 dan Phase 3. | `GameCoordinator` dan `SimulationRunner` diwajibkan memanggil class Phase 2 (`CombatEngine`, `EconomyManager`, `WaveGenerator`) secara langsung. Dilarang menulis kalkulasi combat baru. |
-| **Beban Performa pada CPU Lemah** | Frame drop atau stutter pada hardware development Intel Celeron. | Gunakan simulasi agregat serdadu (tanpa instansiasi node unit individual), dan hilangkan loop `_process` polling. |
+| **State Desynchronization** | Data di UI tidak mencerminkan data aktual di domain state. | UI dilarang keras menyimpan state lokal. UI murni me-render salinan `GameStateSnapshot` yang dipancarkan via sinyal `state_changed`. |
+| **Scope Creep ke Fitur Visual** | Waktu terbuang untuk grafis alih-alih memvalidasi loop gameplay. | Dilarang keras membuat sprite, tekstur, atau animasi di Phase 3. Tampilan murni menggunakan node `Label` dan `Button` bawaan Godot. |
+| **Duplikasi Logika Simulasi** | Terjadi inkonsistensi formula pertempuran antara Phase 2 dan Phase 3. | `GameCoordinator` dan `SimulationRunner` diwajibkan memanggil class Phase 2 (`CombatEngine`, `EconomyManager`, `WaveGenerator`) secara langsung. |
+| **Beban Kinerja pada CPU Lemah** | Frame drop atau stutter pada hardware development Intel Celeron. | Gunakan simulasi agregat serdadu (tanpa instansiasi node unit individual), dan hilangkan loop polling pada `_process`. |
+| **Kerusakan Backward Compatibility** | Test arsitektur Phase 1 gagal karena perubahan snapshot. | Semua field Phase 1 pada `GameStateSnapshot` tetap dipertahankan dan diuji dengan test regresi. |
 
 ---
 
-## 21. Out of Scope
+## 19. Explicit Phase 4 & Phase 6 Deferrals
 
-Secara tegas ditegaskan bahwa hal-hal berikut **DILARANG DIKERJAKAN** pada Phase 3:
-- Pembuatan pixel art karakter, monster, serdadu, atau benteng.
-- Pembuatan animasi sprite sheet atau particle effect visual.
-- Penulisan naskah cerita, dialog, atau quest lore.
-- Pembuatan sistem inventory visual drag-and-drop.
-- Penambahan sound effect (SFX) atau background music (BGM).
-- Implementasi save/load file system ke disk (Save/Load tetap ditunda ke Phase 10).
-- Penambahan plugin eksternal pihak ketiga ke dalam project Godot.
+Untuk menjaga batasan pengembangan tetap ramping dan terarah, fitur-fitur berikut secara eksplisit ditunda:
+
+### Ditunda ke Phase 4 (Hero System):
+- Sistem rekrutmen hero kompleks (Tavern / Gacha / Hero Market).
+- Pohon bakat hero (*Hero Talent Trees*), equipment khusus hero, dan sistem skill aktif/pasif hero.
+- Hubungan chemistry lanjutan dan dialog antar-hero.
+- UI manajemen hero mendalam.
+
+### Ditunda ke Phase 6 (Tactical Battle & Battlefield Systems):
+- Formula combat lanjutan untuk keenam perintah komandan (efek taktis detail HOLD, ADVANCE, RETREAT, PROTECT, FOCUS, FOLLOW).
+- Pembagian zona medan tempur (Frontline, Midfield, Walls, Backline).
+- AI musuh taktis, formasi tempur serdadu, dan penargetan dinamis.
+- Pergerakan unit real-time dan pathfinding di medan laga.
+- Battle visual scene dan combat HUD interaktif.
