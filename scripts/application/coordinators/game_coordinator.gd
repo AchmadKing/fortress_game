@@ -17,6 +17,8 @@ const CommanderCommand = preload("res://scripts/domain/command/commander_command
 const PopulationModel = preload("res://scripts/domain/model/population_model.gd")
 const FortressModel = preload("res://scripts/domain/model/fortress_model.gd")
 const HeroModel = preload("res://scripts/domain/model/hero_model.gd")
+const HeroRole = preload("res://scripts/domain/model/hero_role.gd")
+const HeroLifecycleState = preload("res://scripts/domain/model/hero_lifecycle_state.gd")
 const EquipmentModel = preload("res://scripts/domain/model/equipment_model.gd")
 const DeploymentComposition = preload("res://scripts/domain/model/deployment_composition.gd")
 const EconomyManager = preload("res://scripts/simulation/economy_manager.gd")
@@ -818,8 +820,8 @@ func _init_default_domain_models() -> void:
 	_combat_engine = CombatEngine.new()
 
 	_heroes = []
-	var h1 := HeroModel.new("hero_alder", "Alder Ironclad", 1, 4)
-	var h2 := HeroModel.new("hero_lyra", "Lyra Windwalker", 2, 4)
+	var h1 := HeroModel.new("hero_alder", "Alder Ironclad", 1, 4, HeroRole.KNIGHT, HeroLifecycleState.ROSTER_ACTIVE)
+	var h2 := HeroModel.new("hero_lyra", "Lyra Windwalker", 2, 4, HeroRole.ARCHER, HeroLifecycleState.ROSTER_ACTIVE)
 	_heroes.append(h1)
 	_heroes.append(h2)
 
@@ -887,6 +889,8 @@ func _update_snapshot() -> void:
 			_current_state.heroes_data.append({
 				"hero_id": hero.hero_id,
 				"hero_name": hero.hero_name,
+				"role": hero.role,
+				"lifecycle_state": hero.lifecycle_state,
 				"level": hero.level,
 				"current_exp": hero.current_exp,
 				"current_star": hero.current_star,

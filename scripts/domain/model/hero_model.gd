@@ -3,10 +3,30 @@ extends RefCounted
 
 ## HeroModel
 ## Entitas pahlawan/komandan individual (domain layer).
-## Mendukung stat scaling, EXP curve, bintang, fatigue, morale, chemistry, dan permadeath.
+## Mendukung stat scaling, EXP curve, bintang, fatigue, morale, chemistry, permadeath,
+## peran kanonikal (HeroRole), dan status siklus hidup (HeroLifecycleState).
+
+const HeroRoleScript = preload("res://scripts/domain/model/hero_role.gd")
+const HeroLifecycleStateScript = preload("res://scripts/domain/model/hero_lifecycle_state.gd")
+
+# Canonical Role Constants (Delegated to HeroRole)
+const ROLE_KNIGHT: String = "KNIGHT"
+const ROLE_MAGE: String = "MAGE"
+const ROLE_ARCHER: String = "ARCHER"
+const ROLE_PRIEST: String = "PRIEST"
+
+# Canonical Lifecycle State Constants (Delegated to HeroLifecycleState)
+const STATE_RECRUITABLE: String = "RECRUITABLE"
+const STATE_ROSTER_ACTIVE: String = "ROSTER_ACTIVE"
+const STATE_IN_PARTY: String = "IN_PARTY"
+const STATE_IN_TRAINING: String = "IN_TRAINING"
+const STATE_BATTLE_ACTIVE: String = "BATTLE_ACTIVE"
+const STATE_PERMADEATH: String = "PERMADEATH"
 
 var hero_id: String = ""
 var hero_name: String = ""
+var role: String = "KNIGHT"
+var lifecycle_state: String = "ROSTER_ACTIVE"
 var level: int = 1
 var current_exp: int = 0
 var current_star: int = 1
@@ -25,21 +45,109 @@ var secondary_equipment: RefCounted = null  # EquipmentModel (SHIELD, etc.)
 var armor_equipment: RefCounted = null      # EquipmentModel (HEAVY_ARMOR)
 
 
-func _init(p_id: String = "hero_1", p_name: String = "Hero", p_cur_star: int = 1, p_pot_star: int = 3) -> void:
+func _init(
+	p_id: String = "hero_1",
+	p_name: String = "Hero",
+	p_cur_star: int = 1,
+	p_pot_star: int = 3,
+	p_role: String = "KNIGHT",
+	p_state: String = "ROSTER_ACTIVE"
+) -> void:
 	hero_id = p_id
 	hero_name = p_name
 	current_star = clampi(p_cur_star, 1, 5)
 	potential_star = clampi(maxi(current_star, p_pot_star), 1, 5)
+	role = p_role.to_upper().strip_edges() if HeroRoleScript.is_valid_role(p_role) else ROLE_KNIGHT
+	lifecycle_state = p_state.to_upper().strip_edges() if HeroLifecycleStateScript.is_valid_state(p_state) else STATE_ROSTER_ACTIVE
 	level = 1
 	current_exp = 0
 	fatigue = 0
 	morale = 100
-	is_alive = true
+	is_alive = (lifecycle_state != STATE_PERMADEATH)
 	chemistry_map = {}
 	primary_equipment = null
 	secondary_equipment = null
 	armor_equipment = null
 
+
+# ==============================================================================
+# PHASE 4A ROLE & LIFECYCLE DOMAIN METHODS
+# ==============================================================================
+
+static func is_valid_role(p_role: String) -> bool:
+	return HeroRoleScript.is_valid_role(p_role)
+
+
+static func is_valid_lifecycle_state(p_state: String) -> bool:
+	return HeroLifecycleStateScript.is_valid_state(p_state)
+
+
+static func can_transition_lifecycle(from_state: String, to_state: String) -> bool:
+	return HeroLifecycleStateScript.can_transition(from_state, to_state)
+
+
+static func validate_identity(p_id: String, p_name: String) -> bool:
+	return not p_id.strip_edges().is_empty() and not p_name.strip_edges().is_empty()
+
+
+static func validate_stars(cur: int, pot: int) -> bool:
+	if cur < 1 or cur > 5:
+		return false
+	if pot < 1 or pot > 5:
+		return false
+	if cur > pot:
+		return false
+	return true
+
+
+func set_role(new_role: String) -> bool:
+	if not HeroRoleScript.is_valid_role(new_role):
+		return false
+	role = new_role.to_upper().strip_edges()
+	return true
+
+
+func is_role_valid() -> bool:
+	return HeroRoleScript.is_valid_role(role)
+
+
+func is_lifecycle_state_valid() -> bool:
+	return HeroLifecycleStateScript.is_valid_state(lifecycle_state)
+
+
+func transition_lifecycle_state(new_state: String) -> bool:
+	var target: String = new_state.to_upper().strip_edges()
+	if not HeroLifecycleStateScript.can_transition(lifecycle_state, target):
+		return false
+	lifecycle_state = target
+	if lifecycle_state == STATE_PERMADEATH:
+		is_alive = false
+	return true
+
+
+func is_equipment_compatible(slot: String, eq_type: String) -> bool:
+	return HeroRoleScript.is_equipment_compatible(role, slot, eq_type)
+
+
+func validate_invariants() -> bool:
+	if not validate_identity(hero_id, hero_name):
+		return false
+	if not is_role_valid():
+		return false
+	if not is_lifecycle_state_valid():
+		return false
+	if not validate_stars(current_star, potential_star):
+		return false
+	if lifecycle_state == STATE_PERMADEATH and is_alive:
+		return false
+	if not is_alive and lifecycle_state != STATE_PERMADEATH:
+		return false
+	return true
+
+
+# ==============================================================================
+# PHASE 3C HERO EQUIPMENT METHODS
+# ==============================================================================
 
 func equip(slot: String, eq: RefCounted) -> RefCounted:
 	var s: String = slot.to_upper().strip_edges()
@@ -109,6 +217,10 @@ func clear_equipment() -> Array:
 	armor_equipment = null
 	return items
 
+
+# ==============================================================================
+# PROGRESSION, FATIGUE, MORALE, & CHEMISTRY (PHASE 2 & 3 CONTRACTS)
+# ==============================================================================
 
 func get_required_exp(target_level: int) -> int:
 	assert(target_level >= 1, "target_level harus >= 1")
@@ -197,10 +309,11 @@ func get_effective_def() -> int:
 
 func mark_dead() -> void:
 	is_alive = false
+	lifecycle_state = STATE_PERMADEATH
 
 
 func clone() -> HeroModel:
-	var h := HeroModel.new(hero_id, hero_name, current_star, potential_star)
+	var h := HeroModel.new(hero_id, hero_name, current_star, potential_star, role, lifecycle_state)
 	h.level = level
 	h.current_exp = current_exp
 	h.base_hp = base_hp

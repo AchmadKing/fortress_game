@@ -462,14 +462,16 @@ Setiap sub-fase Phase 4 wajib menyertakan automated headless test suite:
 7. **Commit:** Buat git commit dengan pesan yang jelas dan terstandarisasi.
 8. **Stop & Report:** Berhenti dan tunggu tinjauan/persetujuan developer sebelum membuka sub-fase berikutnya.
 
-### 3. Batas Eksplisit Sub-Phase 4A (Hero Domain & Lifecycle Foundation)
-- **IN SCOPE FOR 4A:**
+### 3. Batas Eksplisit Sub-Phase 4A (Hero Domain & Lifecycle Foundation) — IMPLEMENTED
+- **STATUS: COMPLETED / VERIFIED (Commit pending, 33/33 Tests PASS, Full Regression 167/167 Tests PASS)**
+- **IN SCOPE FOR 4A (IMPLEMENTED):**
   - Definisi peran kanonikal (`HeroRole`: `KNIGHT`, `MAGE`, `ARCHER`, `PRIEST`).
-  - Representasi state siklus hidup pahlawan (`HeroLifecycleState`).
+  - Representasi state siklus hidup pahlawan (`HeroLifecycleState`: `RECRUITABLE`, `ROSTER_ACTIVE`, `IN_PARTY`, `IN_TRAINING`, `BATTLE_ACTIVE`, `PERMADEATH`).
+  - Validasi transisi legal dan penegakan `PERMADEATH` sebagai state terminal mutlak.
   - Validasi domain hero (memastikan ID sah, nama tidak kosong, peran valid, bintang $\le$ potensi).
-  - Validasi kompatibilitas peran terhadap perlengkapan Phase 3 existing.
+  - Validasi kompatibilitas peran terhadap perlengkapan Phase 3 existing (`is_equipment_compatible`).
   - Ekstensi aman pada `HeroModel` tanpa mematahkan API atau field existing.
-  - Test suite mandiri untuk validasi di atas.
+  - Test suite mandiri `tests/test_phase4a_hero_domain_lifecycle.gd` (33/33 PASS).
   - Sinkronisasi dokumentasi teknis.
 - **OUT OF SCOPE FOR 4A (DILARANG PADA 4A):**
   - Rekrutmen dan bursa Mercenary Guild (Milik 4C).
