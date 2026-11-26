@@ -248,11 +248,8 @@ func _resolve_equipment_wear_and_loss(warehouse: Array, casualties: Dictionary, 
 		"HEAVY_INFANTRY": "HEAVY_ARMOR"
 	}
 	
-	# 1. Aus standar pertempuran untuk semua equipment di warehouse
-	var base_wear: int = 8 + int(severity * 10.0)
-	for item in warehouse:
-		if item is EquipmentModel:
-			(item as EquipmentModel).apply_wear(base_wear)
+	# 1. Sesuai rule baru Phase 3D: Prajurit yang selamat perlengkapannya tetap 100% durability (tidak ada aus normal).
+	# Hanya prajurit yang gugur (casualties) yang memicu casualty-equipment resolution (35% destroyed, 65% damaged).
 			
 	# 2. Kehilangan perlengkapan akibat prajurit yang gugur (Casualty-Equipment Loss)
 	for role in casualties:

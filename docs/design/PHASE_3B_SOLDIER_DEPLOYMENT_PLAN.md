@@ -255,11 +255,23 @@ Kembalikan Seluruh Gear yang Selamat (Damaged + Intact) ke Warehouse
 Reset Active Reserved Equipment = 0
 ```
 
-### 11.1 Aturan Pengembalian:
-1. **Gear Selamat**: Seluruh perlengkapan dari serdadu yang bertahan hidup mengalami aus normal dan dikembalikan ke stok gudang.
-2. **Gear Korban Rusak (65%)**: Mengalami pengurangan durabilitas berat (-40 durabilitas per Phase 2) dan kembali ke gudang sebagai perlengkapan rusak yang siap diperbaiki oleh pekerja Blacksmith.
-3. **Gear Korban Musnah (35%)**: Dihapus permanen dari sistem kepemilikan benteng.
-4. **Reservasi Bersih**: Koleksi deployment aktif dikosongkan.
+### 11.1 Aturan Pengembalian & Durabilitas (Updated Phase 3D Correction):
+1. **Gear Prajurit Selamat (Surviving Soldier Equipment)**:
+   - Seluruh perlengkapan dari serdadu yang bertahan hidup kembali ke gudang senjata dengan **durabilitas 100% (`durability = 100.0`, `is_usable() == true`)**.
+   - Tidak ada keausan tempur (*zero combat wear*) yang diterapkan pada perlengkapan prajurit yang selamat. Perlengkapan langsung siap digunakan kembali untuk penempatan gelombang berikutnya.
+2. **Gear Korban Gugur (Casualty Equipment Resolution)**:
+   - Evaluasi korban jiwa deterministik:
+     - **35% Gear Korban: Musnah Permanen (Destroyed / Lost)** — dihapus permanen dari sistem kepemilikan benteng.
+     - **65% Gear Korban: Rusak Berat Diselamatkan (Damaged Gear)** — kembali ke gudang dengan durabilitas 60 (`durability = 60.0`, keausan 40).
+3. **Pemisahan Stok Rusak & Usable**:
+   - Item dengan durabilitas < 100% dinyatakan non-usable (`is_usable() == false`, `is_damaged() == true`).
+   - Seluruh validasi pembentukan regu, edit regu, dan rekonfigurasi hanya dapat mengambil item dengan durabilitas 100%. Item rusak tidak dapat dibawa ke medan laga sebelum diperbaiki.
+4. **Reparasi Pandai Besi (Blacksmith Gold Repair)**:
+   - Perlengkapan rusak di gudang dapat diperbaiki di Pandai Besi menggunakan kas emas (Gold).
+   - Biaya perbaikan dihitung berdasarkan formula Phase 2: $\text{Cost} = \text{Missing Durability} \times \text{Rate} \times (1 - \text{Discount})$, di mana diskon diberikan berdasarkan alokasi pekerja Pandai Besi (12% per pekerja, maks 60%).
+   - Pasca reparasi, durabilitas kembali ke 100% dan item kembali menjadi usable.
+5. **Penegakan Invariant Konservasi Global**:
+   $$\text{Total Owned} = \text{Warehouse Usable} + \text{Warehouse Damaged} + \text{Hero-held} + \text{Soldier-reserved}$$
 
 ---
 

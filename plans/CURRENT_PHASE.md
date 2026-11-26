@@ -44,7 +44,7 @@ Spesifikasi teknis implementasi Phase 3C tersedia di [docs/design/PHASE_3C_HERO_
     - Invariant konservasi global: $\text{Warehouse} + \text{Hero-held} + \text{Soldier-reserved} == \text{Total Owned}$.
     - Test Suite Phase 3C: **22/22 PASSED, 0 FAILED** ([tests/test_hero_equipment_foundation.gd](tests/test_hero_equipment_foundation.gd)).
     - Regression Suites: Phase 1 (5/5), Phase 2 (21/21), Phase 3A (11/11), Phase 3B (27/27), Scene Smoke (ALL PASS).
-  - **Phase 3D — Prototype UX & Interaction Polish**: **COMPLETED**
+  - **Phase 3D — Prototype UX & Interaction Polish**: **COMPLETED (INCL. FOLLOW-UP CORRECTIONS)**
     - State & Phase guidance banner kontekstual pada header (`BOOT`, `PREPARATION`, `WAVE_PREVIEW`, `BATTLE`, `RESULT`, `RECOVERY`, `GAME_OVER`).
     - Soldier Deployment Builder: custom count, primary weapon, secondary weapon, armor, preview derivasi peran dinamis, dan verifikasi ketersediaan stok & prajurit seketika.
     - Active Deployment Groups List: tampilan transparan rincian regu, tombol Edit/Reconfigure atomik dengan rollback otomatis jika gagal, dan tombol Cancel/Remove untuk pengembalian instan.
@@ -52,8 +52,18 @@ Spesifikasi teknis implementasi Phase 3C tersedia di [docs/design/PHASE_3C_HERO_
     - Shared Warehouse Transparency: tabel telemetri konservasi gudang bersama membuktikan $\text{Warehouse} + \text{Hero-held} + \text{Soldier-reserved} == \text{Total Owned}$.
     - Eliminasi dead-end interaction & feedback banner aksi sukses/gagal yang informatif.
     - Hasil dan pemulihan (Result & Recovery) komprehensif: evaluasi kerusakan benteng, korban serdadu, status pahlawan, return gear hero permadeath, dan kepastian gear serdadu bersifat sementara.
-    - Test Suite Phase 3D: **10/10 PASSED, 0 FAILED** ([tests/test_prototype_ux_interaction.gd](tests/test_prototype_ux_interaction.gd)).
-    - Full Regression: 96 unit/integration tests PASS (Phase 1 5/5, Phase 2 21/21, Phase 3A 11/11, Phase 3B 27/27, Phase 3C 22/22, Phase 3D 10/10) + Scene Smoke Playtest ALL PASS.
+    - **Follow-up Correction A (Deployed Soldiers Status UI)**:
+      - Memperbaiki area status prajurit di panel kiri menjadi `Deployed Soldiers: <sum>` (atau `-` saat tidak ada penempatan aktif), murni dijumlahkan dari `SUM(all active deployment soldier_count)`.
+      - Menghilangkan kebingungan antara kolam prajurit benteng (*available soldier pool*) dan prajurit yang dikerahkan ke medan laga.
+    - **Follow-up Correction B (Soldier Equipment Durability & Blacksmith Gold Repair)**:
+      - Perlengkapan prajurit yang selamat kembali ke gudang dengan durabilitas 100% (`is_usable() == true`), tanpa aus tempur.
+      - Perlengkapan prajurit gugur: 35% musnah permanen (*destroyed*), 65% rusak berat diselamatkan (*damaged*, durabilitas 60, non-usable).
+      - Isolasi stok rusak: seluruh validasi deployment hanya dapat menggunakan item dengan durabilitas 100%.
+      - Blacksmith Repair: perlengkapan rusak dapat diperbaiki di Pandai Besi menggunakan kas emas (Gold), memulihkan durabilitas ke 100% dengan diskon alokasi pekerja Blacksmith.
+      - Invariant konservasi global: $\text{Total Owned} = \text{Warehouse Usable} + \text{Warehouse Damaged} + \text{Hero-held} + \text{Soldier-reserved}$.
+    - Test Suite Phase 3D Interaction: **10/10 PASSED, 0 FAILED** ([tests/test_prototype_ux_interaction.gd](file:///d:/fortress_game/tests/test_prototype_ux_interaction.gd)).
+    - Test Suite Phase 3D Follow-up Corrections: **23/23 PASSED, 0 FAILED** ([tests/test_phase3d_followup_corrections.gd](file:///d:/fortress_game/tests/test_phase3d_followup_corrections.gd)).
+    - Full Regression: 119 unit/integration tests PASS (Phase 1 5/5, Phase 2 21/21, Phase 3A 11/11, Phase 3B 27/27, Phase 3C 22/22, Phase 3D 10/10, Follow-up 23/23) + Scene Smoke Playtest ALL PASS.
   - **Phase 3E — Final Prototype Verification & Phase 3 Exit Gate**: **PLANNED**
 - **Phase 4 — Hero System**: **LOCKED**
 - **Phase 5 — Fortress & Management Systems**: **LOCKED**

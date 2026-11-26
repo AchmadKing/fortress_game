@@ -32,6 +32,7 @@ var battle_phase_name: String = ""
 var active_deployments_data: Array = []
 var available_soldiers_count: int = 0
 var total_living_soldiers_count: int = 0
+var deployed_soldiers_count: int = 0
 
 
 func _init(p_tick: int = 0, p_session_id: String = "", p_state_name: String = "INITIAL", p_metadata: Dictionary = {}) -> void:
@@ -55,6 +56,7 @@ func _init(p_tick: int = 0, p_session_id: String = "", p_state_name: String = "I
 	active_deployments_data = []
 	available_soldiers_count = 0
 	total_living_soldiers_count = 0
+	deployed_soldiers_count = 0
 
 
 func clone() -> GameStateSnapshot:
@@ -75,6 +77,7 @@ func clone() -> GameStateSnapshot:
 	copy.active_deployments_data = active_deployments_data.duplicate(true)
 	copy.available_soldiers_count = available_soldiers_count
 	copy.total_living_soldiers_count = total_living_soldiers_count
+	copy.deployed_soldiers_count = deployed_soldiers_count
 	return copy
 
 
@@ -99,7 +102,8 @@ func to_dictionary() -> Dictionary:
 		"battle_phase_name": battle_phase_name,
 		"active_deployments_data": active_deployments_data.duplicate(true),
 		"available_soldiers_count": available_soldiers_count,
-		"total_living_soldiers_count": total_living_soldiers_count
+		"total_living_soldiers_count": total_living_soldiers_count,
+		"deployed_soldiers_count": deployed_soldiers_count
 	}
 
 

@@ -75,6 +75,10 @@ func get_current_state() -> GameStateSnapshot:
 	return _current_state.clone()
 
 
+func get_current_snapshot() -> GameStateSnapshot:
+	return get_current_state()
+
+
 func get_state_machine() -> GameplayStateMachine:
 	return _state_machine
 
@@ -147,12 +151,29 @@ func recruit_soldier(role: String, count: int = 1) -> bool:
 # PHASE 3B TEMPORARY SOLDIER DEPLOYMENT & STOCK MANAGEMENT
 # ==============================================================================
 
-func get_warehouse_stock(eq_type: String) -> int:
+func get_warehouse_usable_stock(eq_type: String) -> int:
 	var total: int = 0
 	for item in _warehouse:
-		if item is EquipmentModel and (item as EquipmentModel).role_type == eq_type:
+		if item is EquipmentModel and (item as EquipmentModel).role_type == eq_type and (item as EquipmentModel).is_usable():
 			total += (item as EquipmentModel).quantity
 	return total
+
+
+func get_warehouse_damaged_stock(eq_type: String) -> int:
+	var total: int = 0
+	for item in _warehouse:
+		if item is EquipmentModel and (item as EquipmentModel).role_type == eq_type and (item as EquipmentModel).is_damaged():
+			total += (item as EquipmentModel).quantity
+	return total
+
+
+func get_warehouse_total_stock(eq_type: String) -> int:
+	return get_warehouse_usable_stock(eq_type) + get_warehouse_damaged_stock(eq_type)
+
+
+func get_warehouse_stock(eq_type: String) -> int:
+	# Single source of truth untuk ketersediaan deploy: hanya item usable (durability == 100%)
+	return get_warehouse_usable_stock(eq_type)
 
 
 func get_reserved_equipment_stock(eq_type: String) -> int:
@@ -166,7 +187,7 @@ func get_reserved_equipment_stock(eq_type: String) -> int:
 
 
 func get_total_owned_stock(eq_type: String) -> int:
-	var total: int = get_warehouse_stock(eq_type) + get_reserved_equipment_stock(eq_type)
+	var total: int = get_warehouse_total_stock(eq_type) + get_reserved_equipment_stock(eq_type)
 	for h in _heroes:
 		if h is HeroModel:
 			var hero: HeroModel = h as HeroModel
@@ -181,12 +202,20 @@ func get_available_soldiers() -> int:
 	return _available_soldiers
 
 
+func get_total_deployed_soldiers() -> int:
+	var total: int = 0
+	for comp in _active_deployments:
+		if comp is DeploymentComposition:
+			total += (comp as DeploymentComposition).count
+	return total
+
+
 func get_active_deployments() -> Array:
 	return _active_deployments.duplicate(true)
 
 
 func is_equipment_option_available(eq_type: String, count: int) -> bool:
-	return get_warehouse_stock(eq_type) >= count
+	return get_warehouse_usable_stock(eq_type) >= count
 
 
 func create_deployment(count: int, primary: String, secondary: String = "NONE", armor: String = "NONE") -> bool:
@@ -257,6 +286,10 @@ func create_deployment(count: int, primary: String, secondary: String = "NONE", 
 	_update_snapshot()
 	state_changed.emit(_current_state.clone())
 	return true
+
+
+func create_soldier_deployment(count: int, primary: String, secondary: String = "NONE", armor: String = "NONE") -> bool:
+	return create_deployment(count, primary, secondary, armor)
 
 
 func remove_deployment(composition_id: String) -> bool:
@@ -344,7 +377,7 @@ func _deduct_warehouse_stock(eq_type: String, count: int) -> Array:
 	for item in _warehouse:
 		if remaining <= 0:
 			break
-		if item is EquipmentModel and (item as EquipmentModel).role_type == eq_type and (item as EquipmentModel).quantity > 0:
+		if item is EquipmentModel and (item as EquipmentModel).role_type == eq_type and (item as EquipmentModel).is_usable() and (item as EquipmentModel).quantity > 0:
 			var eq: EquipmentModel = item as EquipmentModel
 			var take: int = mini(remaining, eq.quantity)
 			eq.quantity -= take
@@ -367,6 +400,90 @@ func _return_equipment_to_warehouse(item: EquipmentModel) -> void:
 				break
 	if not merged:
 		_warehouse.append(item.clone())
+
+
+# ==============================================================================
+# BLACKSMITH REPAIR (PHASE 3D CORRECTION)
+# ==============================================================================
+
+func get_treasury_gold() -> int:
+	return _economy.treasury_gold if _economy != null else 0
+
+
+func set_treasury_gold(amount: int) -> void:
+	if _economy != null:
+		_economy.treasury_gold = maxi(0, amount)
+		_update_snapshot()
+		state_changed.emit(_current_state.clone())
+
+
+func get_blacksmith_workers() -> int:
+	return _economy.blacksmith_workers if _economy != null else 0
+
+
+func get_blacksmith_discount() -> float:
+	return _economy.get_blacksmith_discount() if _economy != null else 0.0
+
+
+func get_equipment_repair_cost(eq_type: String, count: int = 1) -> int:
+	if count <= 0:
+		return 0
+	var type_upper: String = eq_type.to_upper().strip_edges()
+	for item in _warehouse:
+		if item is EquipmentModel:
+			var eq: EquipmentModel = item as EquipmentModel
+			if eq.role_type == type_upper and eq.is_damaged() and eq.quantity > 0:
+				var actual_count: int = mini(count, eq.quantity)
+				var smith_discount: float = get_blacksmith_discount()
+				var missing: int = eq.max_durability - eq.durability
+				var unit_cost: float = float(missing) * eq.get_repair_cost_per_point() * (1.0 - smith_discount)
+				return maxi(1, int(ceil(unit_cost * float(actual_count))))
+	return 0
+
+
+func repair_equipment(eq_type: String, count: int = 1) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		push_warning("repair_equipment dilarang pada fase BATTLE (Battle Lock)")
+		return false
+	if count <= 0:
+		return false
+
+	var type_upper: String = eq_type.to_upper().strip_edges()
+	var damaged_item: EquipmentModel = null
+	for item in _warehouse:
+		if item is EquipmentModel:
+			var eq: EquipmentModel = item as EquipmentModel
+			if eq.role_type == type_upper and eq.is_damaged() and eq.quantity > 0:
+				damaged_item = eq
+				break
+
+	if damaged_item == null:
+		return false # Tidak ada perlengkapan rusak dari tipe ini
+
+	var actual_count: int = mini(count, damaged_item.quantity)
+	var smith_discount: float = get_blacksmith_discount()
+	var missing: int = damaged_item.max_durability - damaged_item.durability
+	var unit_cost: float = float(missing) * damaged_item.get_repair_cost_per_point() * (1.0 - smith_discount)
+	var total_cost: int = maxi(1, int(ceil(unit_cost * float(actual_count))))
+
+	if _economy.treasury_gold < total_cost:
+		return false # Emas tidak mencukupi
+
+	# Transaksi reparasi atomik:
+	# 1. Konsumsi emas kas
+	_economy.treasury_gold -= total_cost
+
+	# 2. Kurangi kuantitas dari bucket rusak
+	damaged_item.quantity -= actual_count
+	if damaged_item.quantity <= 0:
+		_warehouse.erase(damaged_item)
+
+	# 3. Kembalikan ke gudang sebagai perlengkapan 100% durability (usable)
+	_return_equipment_to_warehouse(EquipmentModel.new(damaged_item.role_type, damaged_item.tier, 100, actual_count))
+
+	_update_snapshot()
+	state_changed.emit(_current_state.clone())
+	return true
 
 
 # ==============================================================================
@@ -633,40 +750,40 @@ func proceed_from_result() -> bool:
 			_population.apply_casualties(casualties)
 
 		if not _active_deployments.is_empty():
-			# Multi-slot equipment casualty processing (A11)
-			# CombatEngine already processed primary role equipment in _last_processed_equipment.
-			# Now process secondary weapon and armor casualty loss/wear if any:
+			var remaining_deaths: Dictionary = casualties.duplicate(true)
 			var battle_seed: int = _session_seed + _current_wave_num
+			
 			for comp in _active_deployments:
 				if comp is DeploymentComposition:
 					var c: DeploymentComposition = comp as DeploymentComposition
-					var deaths: int = int(casualties.get(c.resolved_role, 0))
-					if deaths > 0:
-						var extra_slots: Array = []
-						if c.secondary_weapon != "NONE" and c.resolved_role != "SHIELD_INFANTRY":
-							extra_slots.append(c.secondary_weapon)
-						elif c.resolved_role == "SHIELD_INFANTRY":
-							extra_slots.append(c.primary_weapon)
-						if c.armor != "NONE" and c.resolved_role != "HEAVY_INFANTRY":
-							extra_slots.append(c.armor)
+					var role_deaths: int = int(remaining_deaths.get(c.resolved_role, 0))
+					var group_deaths: int = mini(c.count, role_deaths)
+					var group_survivors: int = c.count - group_deaths
+					remaining_deaths[c.resolved_role] = role_deaths - group_deaths
+					
+					var carried_slots: Array[String] = [c.primary_weapon]
+					if c.secondary_weapon != "NONE":
+						carried_slots.append(c.secondary_weapon)
+					if c.armor != "NONE":
+						carried_slots.append(c.armor)
+						
+					# 1. Prajurit Selamat: Durability = 100% (usable), kembali ke gudang tanpa aus
+					if group_survivors > 0:
+						for slot_type in carried_slots:
+							_return_equipment_to_warehouse(EquipmentModel.new(slot_type, 1, 100, group_survivors))
 							
-						for slot_type in extra_slots:
-							for i in range(deaths):
-								for item in _last_processed_equipment:
-									if item is EquipmentModel:
-										var eq: EquipmentModel = item as EquipmentModel
-										if eq.role_type == slot_type and eq.quantity > 0:
-											var roll: float = _combat_engine._seeded_float(battle_seed, slot_type, i * 17)
-											if roll < 0.35:
-												eq.quantity -= 1
-											else:
-												eq.apply_wear(40)
-											break
-			
-			# Kembalikan seluruh gear yang selamat ke gudang benteng
-			for item in _last_processed_equipment:
-				if item is EquipmentModel and (item as EquipmentModel).quantity > 0:
-					_return_equipment_to_warehouse(item as EquipmentModel)
+					# 2. Prajurit Gugur (Casualty Equipment Resolution):
+					# 35% DESTROYED (hilang permanen) | 65% DAMAGED (kembali ke gudang dengan durabilitas 60, non-usable)
+					if group_deaths > 0:
+						for i in range(group_deaths):
+							for slot_type in carried_slots:
+								var roll: float = _combat_engine._seeded_float(battle_seed, slot_type, i * 17)
+								if roll < 0.35:
+									# Destroyed permanen (tidak dikembalikan ke gudang)
+									pass
+								else:
+									# Damaged: durabilitas 60 (aus 40), non-usable sampai diperbaiki di Pandai Besi
+									_return_equipment_to_warehouse(EquipmentModel.new(slot_type, 1, 60, 1))
 
 			_active_deployments.clear()
 			_last_processed_equipment.clear()
@@ -793,7 +910,9 @@ func _update_snapshot() -> void:
 				"durability": eq.durability,
 				"max_durability": eq.max_durability,
 				"quantity": eq.quantity,
-				"is_broken": eq.is_broken()
+				"is_broken": eq.is_broken(),
+				"is_usable": eq.is_usable(),
+				"is_damaged": eq.is_damaged()
 			})
 
 	_current_state.active_deployments_data = []
@@ -802,6 +921,7 @@ func _update_snapshot() -> void:
 			_current_state.active_deployments_data.append((comp as DeploymentComposition).to_dictionary())
 	_current_state.available_soldiers_count = _available_soldiers
 	_current_state.total_living_soldiers_count = _population.get_total_soldiers() if _population != null else 0
+	_current_state.deployed_soldiers_count = get_total_deployed_soldiers()
 
 	_current_state.current_wave_data = _current_wave_data.duplicate(true)
 	_current_state.last_battle_result = _last_battle_result.duplicate(true)

@@ -42,6 +42,7 @@ var _txt_telemetry_log: RichTextLabel
 var _lbl_heroes: Label
 var _hero_container: VBoxContainer
 var _lbl_warehouse: Label
+var _blacksmith_container: VBoxContainer
 
 var _last_snapshot: GameStateSnapshot
 
@@ -234,11 +235,11 @@ func _build_ui() -> void:
 	left_vbox.add_child(HSeparator.new())
 
 	var lbl_sec_s := Label.new()
-	lbl_sec_s.text = "=== SOLDIER POOL STATUS ==="
+	lbl_sec_s.text = "=== DEPLOYED SOLDIERS ==="
 	left_vbox.add_child(lbl_sec_s)
 
 	_lbl_soldiers = Label.new()
-	_lbl_soldiers.text = "Soldiers:\n- Swordsman: 2\n- Shield: 2\n- Archer: 2\n- Spear: 0\n- Heavy: 0"
+	_lbl_soldiers.text = "Deployed Soldiers: -"
 	left_vbox.add_child(_lbl_soldiers)
 
 	content_hbox.add_child(VSeparator.new())
@@ -302,6 +303,15 @@ func _build_ui() -> void:
 	_lbl_warehouse.text = "Loading Equipment..."
 	right_vbox.add_child(_lbl_warehouse)
 
+	right_vbox.add_child(HSeparator.new())
+
+	var lbl_sec5 := Label.new()
+	lbl_sec5.text = "=== BLACKSMITH WORKSHOP (REPAIR) ==="
+	right_vbox.add_child(lbl_sec5)
+
+	_blacksmith_container = VBoxContainer.new()
+	right_vbox.add_child(_blacksmith_container)
+
 	_log("Prototype initialized. Ready.")
 
 
@@ -347,24 +357,24 @@ func _on_state_changed(snapshot: GameStateSnapshot) -> void:
 		int(e_data.get("idle_workers", 0))
 	]
 
-	var s_dict: Dictionary = p_data.get("soldiers", {})
-	var avail_s: int = int(snapshot.available_soldiers_count)
-	var total_s: int = int(snapshot.total_living_soldiers_count)
-	var deployed_s: int = total_s - avail_s
-	_lbl_soldiers.text = "Soldiers (Total: %d | Avail: %d | Deployed: %d):\n- Swordsman: %d\n- Shield: %d\n- Archer: %d\n- Spearman: %d\n- Heavy: %d" % [
-		total_s,
-		avail_s,
-		deployed_s,
-		int(s_dict.get("SWORDSMAN", 0)),
-		int(s_dict.get("SHIELD_INFANTRY", 0)),
-		int(s_dict.get("ARCHER", 0)),
-		int(s_dict.get("SPEARMAN", 0)),
-		int(s_dict.get("HEAVY_INFANTRY", 0))
-	]
+	var total_deployed: int = 0
+	if controller != null:
+		total_deployed = controller.get_total_deployed_soldiers()
+	elif coordinator != null:
+		total_deployed = coordinator.get_total_deployed_soldiers()
+	else:
+		for dep in snapshot.active_deployments_data:
+			total_deployed += int(dep.get("count", 0))
+
+	if total_deployed <= 0:
+		_lbl_soldiers.text = "Deployed Soldiers: -"
+	else:
+		_lbl_soldiers.text = "Deployed Soldiers: %d" % total_deployed
 
 	# Right Column updates
 	_render_hero_roster(snapshot)
 	_render_warehouse_conservation(snapshot)
+	_render_blacksmith_workshop(snapshot)
 
 	# Center Action Panel rendering
 	_render_stage_actions(snapshot)
@@ -515,21 +525,22 @@ func _render_hero_roster(snapshot: GameStateSnapshot) -> void:
 
 func _render_warehouse_conservation(snapshot: GameStateSnapshot) -> void:
 	var lines: Array[String] = []
-	lines.append("[Invariant: Total Owned = Warehouse + Hero + Soldier]")
-	lines.append("ITEM         | WH | HERO | REGD | TOTAL")
-	lines.append("---------------------------------------")
+	lines.append("[Invariant: Total Owned = Usable + Damaged + Hero + Soldier]")
+	lines.append("ITEM         | USBL | DMGD | HERO | REGD | TOTAL")
+	lines.append("-------------------------------------------------")
 
 	var item_types := ["SWORD", "SHIELD", "SPEAR", "BOW", "HEAVY_ARMOR"]
 	for t in item_types:
-		var wh_stock: int = _get_warehouse_stock(t)
+		var usable_stock: int = _get_warehouse_usable_stock(t)
+		var damaged_stock: int = _get_warehouse_damaged_stock(t)
 		var res_stock: int = _get_reserved_equipment_stock(t)
 		var tot_stock: int = _get_total_owned_stock(t)
-		var hero_stock: int = maxi(0, tot_stock - wh_stock - res_stock)
-		lines.append("%-12s | %2d |  %2d  |  %2d  |  %2d" % [
-			t, wh_stock, hero_stock, res_stock, tot_stock
+		var hero_stock: int = maxi(0, tot_stock - (usable_stock + damaged_stock) - res_stock)
+		lines.append("%-12s |  %2d  |  %2d  |  %2d  |  %2d  |  %2d" % [
+			t, usable_stock, damaged_stock, hero_stock, res_stock, tot_stock
 		])
 
-	lines.append("---------------------------------------")
+	lines.append("-------------------------------------------------")
 	lines.append("Kondisi Fisik di Gudang:")
 	var wh_list: Array = snapshot.warehouse_data
 	if wh_list.is_empty():
@@ -540,11 +551,74 @@ func _render_warehouse_conservation(snapshot: GameStateSnapshot) -> void:
 			var dur: int = int(eq.get("durability", 100))
 			var qty: int = int(eq.get("quantity", 0))
 			var broken: bool = bool(eq.get("is_broken", false))
+			var status_tag: String = ""
+			if broken:
+				status_tag = " [BROKEN]"
+			elif dur < 100:
+				status_tag = " [DAMAGED]"
 			lines.append("  - %s: %d unit (Dur: %d%%%s)" % [
-				r, qty, dur, " [BROKEN]" if broken else ""
+				r, qty, dur, status_tag
 			])
 
 	_lbl_warehouse.text = "\n".join(lines)
+
+
+func _render_blacksmith_workshop(snapshot: GameStateSnapshot) -> void:
+	if _blacksmith_container == null:
+		return
+	for child in _blacksmith_container.get_children():
+		child.queue_free()
+
+	var smith_workers: int = 0
+	var smith_discount: float = 0.0
+	if controller != null:
+		smith_workers = controller.get_blacksmith_workers()
+		smith_discount = controller.get_blacksmith_discount()
+	elif coordinator != null:
+		smith_workers = coordinator.get_blacksmith_workers()
+		smith_discount = coordinator.get_blacksmith_discount()
+
+	var info_lbl := Label.new()
+	info_lbl.text = "Blacksmith Workers: %d (Discount: %.0f%%)" % [smith_workers, smith_discount * 100.0]
+	_blacksmith_container.add_child(info_lbl)
+
+	var has_damaged: bool = false
+	var is_battle: bool = (snapshot.game_phase == "BATTLE")
+	var treasury: int = int(snapshot.economy_data.get("treasury_gold", 0))
+
+	var item_types := ["SWORD", "SHIELD", "SPEAR", "BOW", "HEAVY_ARMOR"]
+	for t in item_types:
+		var dmg_qty: int = _get_warehouse_damaged_stock(t)
+		if dmg_qty > 0:
+			has_damaged = true
+			var cost: int = 0
+			if controller != null:
+				cost = controller.get_equipment_repair_cost(t, 1)
+			elif coordinator != null:
+				cost = coordinator.get_equipment_repair_cost(t, 1)
+
+			var row := HBoxContainer.new()
+			_blacksmith_container.add_child(row)
+
+			var row_lbl := Label.new()
+			row_lbl.text = "• %s: %d rusak | Biaya: %d Gold/unit" % [t, dmg_qty, cost]
+			row.add_child(row_lbl)
+
+			var btn_rep := Button.new()
+			btn_rep.text = "Repair 1x (%d Gold)" % cost
+			var can_afford: bool = (treasury >= cost)
+			btn_rep.disabled = (not can_afford) or is_battle or (controller == null)
+			if not can_afford:
+				btn_rep.text += " [Not enough Gold]"
+			elif is_battle:
+				btn_rep.text += " [BATTLE LOCK]"
+			btn_rep.pressed.connect(func(eq_t=t): _action_repair_equipment(eq_t, 1))
+			row.add_child(btn_rep)
+
+	if not has_damaged:
+		var empty_lbl := Label.new()
+		empty_lbl.text = "(Tidak ada perlengkapan rusak di gudang. Semua perlengkapan 100% usable.)"
+		_blacksmith_container.add_child(empty_lbl)
 
 
 # ==============================================================================
@@ -791,7 +865,7 @@ func _render_deployment_controls(snapshot: GameStateSnapshot) -> void:
 		var stock: int = _get_warehouse_stock(w)
 		var btn_p := Button.new()
 		var is_sel: bool = (_selected_primary == w)
-		btn_p.text = "[*%s* (%d)]" % [w, stock] if is_sel else "%s (%d)" % [w, stock]
+		btn_p.text = "[*%s* (%d usable)]" % [w, stock] if is_sel else "%s (%d usable)" % [w, stock]
 		btn_p.pressed.connect(func(sel=w):
 			_selected_primary = sel
 			_render_stage_actions(snapshot)
@@ -816,7 +890,7 @@ func _render_deployment_controls(snapshot: GameStateSnapshot) -> void:
 	var shield_stock: int = _get_warehouse_stock("SHIELD")
 	var btn_s_shield := Button.new()
 	var shield_sel: bool = (_selected_secondary == "SHIELD")
-	btn_s_shield.text = "[*SHIELD* (%d)]" % shield_stock if shield_sel else "SHIELD (%d)" % shield_stock
+	btn_s_shield.text = "[*SHIELD* (%d usable)]" % shield_stock if shield_sel else "SHIELD (%d usable)" % shield_stock
 	btn_s_shield.pressed.connect(func():
 		_selected_secondary = "SHIELD"
 		_render_stage_actions(snapshot)
@@ -841,7 +915,7 @@ func _render_deployment_controls(snapshot: GameStateSnapshot) -> void:
 	var armor_stock: int = _get_warehouse_stock("HEAVY_ARMOR")
 	var btn_a_armor := Button.new()
 	var armor_sel: bool = (_selected_armor == "HEAVY_ARMOR")
-	btn_a_armor.text = "[*HEAVY_ARMOR* (%d)]" % armor_stock if armor_sel else "HEAVY_ARMOR (%d)" % armor_stock
+	btn_a_armor.text = "[*HEAVY_ARMOR* (%d usable)]" % armor_stock if armor_sel else "HEAVY_ARMOR (%d usable)" % armor_stock
 	btn_a_armor.pressed.connect(func():
 		_selected_armor = "HEAVY_ARMOR"
 		_render_stage_actions(snapshot)
@@ -865,13 +939,13 @@ func _render_deployment_controls(snapshot: GameStateSnapshot) -> void:
 		error_msg = "Serdadu tersedia kurang (%d dibutuhkan, %d ada)" % [_selected_deploy_count, avail_cnt]
 	elif p_stock < _selected_deploy_count:
 		is_valid = false
-		error_msg = "Stok gudang %s tidak cukup (%d dibutuhkan, %d ada)" % [_selected_primary, _selected_deploy_count, p_stock]
+		error_msg = "Stok gudang %s yang usable tidak cukup (%d dibutuhkan, %d ada)" % [_selected_primary, _selected_deploy_count, p_stock]
 	elif _selected_secondary != "NONE" and s_stock < _selected_deploy_count:
 		is_valid = false
-		error_msg = "Stok gudang %s tidak cukup (%d dibutuhkan, %d ada)" % [_selected_secondary, _selected_deploy_count, s_stock]
+		error_msg = "Stok gudang %s yang usable tidak cukup (%d dibutuhkan, %d ada)" % [_selected_secondary, _selected_deploy_count, s_stock]
 	elif _selected_armor != "NONE" and a_stock < _selected_deploy_count:
 		is_valid = false
-		error_msg = "Stok gudang %s tidak cukup (%d dibutuhkan, %d ada)" % [_selected_armor, _selected_deploy_count, a_stock]
+		error_msg = "Stok gudang %s yang usable tidak cukup (%d dibutuhkan, %d ada)" % [_selected_armor, _selected_deploy_count, a_stock]
 
 	var lbl_prev := Label.new()
 	if is_valid:
@@ -1209,6 +1283,33 @@ func _set_feedback(msg: String) -> void:
 func _log(message: String) -> void:
 	if _txt_telemetry_log != null:
 		_txt_telemetry_log.append_text(message + "\n")
+
+
+func _action_repair_equipment(eq_type: String, count: int = 1) -> void:
+	if controller == null:
+		return
+	var cost: int = controller.get_equipment_repair_cost(eq_type, count)
+	var ok: bool = controller.repair_equipment(eq_type, count)
+	if ok:
+		_set_feedback("[BLACKSMITH] Berhasil memperbaiki %dx %s (%d Gold). Durabilitas pulih 100%% (usable)." % [count, eq_type, cost])
+	else:
+		_set_feedback("[DITOLAK] Gagal memperbaiki %s. Pastikan emas kas mencukupi dan tidak sedang dalam pertempuran." % eq_type)
+
+
+func _get_warehouse_usable_stock(eq_type: String) -> int:
+	if controller != null:
+		return controller.get_warehouse_usable_stock(eq_type)
+	if coordinator != null:
+		return coordinator.get_warehouse_usable_stock(eq_type)
+	return 0
+
+
+func _get_warehouse_damaged_stock(eq_type: String) -> int:
+	if controller != null:
+		return controller.get_warehouse_damaged_stock(eq_type)
+	if coordinator != null:
+		return coordinator.get_warehouse_damaged_stock(eq_type)
+	return 0
 
 
 func _get_warehouse_stock(eq_type: String) -> int:

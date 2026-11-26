@@ -61,7 +61,7 @@ High-level roadmap pengembangan proyek `fortress_game`.
     - Pengembalian perlengkapan hero ke gudang benteng secara otomatis saat permadeath (tepat 1 kali).
     - Proteksi Battle Lock selama simulasi pertempuran aktif.
     - Test Suite Phase 3C: 22/22 PASSED, 0 FAILED. Zero regression pada seluruh fase sebelumnya.
-  - **Phase 3D — Prototype UX & Interaction Polish**: **COMPLETED**
+  - **Phase 3D — Prototype UX & Interaction Polish**: **COMPLETED (INCL. FOLLOW-UP CORRECTIONS)**
     - State & Phase guidance banner kontekstual pada header (`BOOT`, `PREPARATION`, `WAVE_PREVIEW`, `BATTLE`, `RESULT`, `RECOVERY`, `GAME_OVER`).
     - Soldier Deployment Builder: custom count, primary weapon, secondary weapon, armor, preview derivasi peran dinamis, dan verifikasi ketersediaan stok & prajurit seketika.
     - Active Deployment Groups List: tampilan transparan rincian regu, tombol Edit/Reconfigure atomik dengan rollback otomatis jika gagal, dan tombol Cancel/Remove untuk pengembalian instan.
@@ -69,7 +69,8 @@ High-level roadmap pengembangan proyek `fortress_game`.
     - Shared Warehouse Transparency: tabel telemetri konservasi gudang bersama membuktikan $\text{Warehouse} + \text{Hero-held} + \text{Soldier-reserved} == \text{Total Owned}$.
     - Eliminasi dead-end interaction & feedback banner aksi sukses/gagal yang informatif.
     - Hasil dan pemulihan (Result & Recovery) komprehensif: evaluasi kerusakan benteng, korban serdadu, status pahlawan, return gear hero permadeath, dan kepastian gear serdadu bersifat sementara.
-    - Test Suite Phase 3D: 10/10 PASSED, 0 FAILED ([tests/test_prototype_ux_interaction.gd](tests/test_prototype_ux_interaction.gd)).
+    - Follow-up corrections: tampilan `Deployed Soldiers: <sum>` terpisah dari kolam cadangan prajurit; aturan durabilitas serdadu selamat (kembali 100% usable); resolusi korban (35% musnah, 65% rusak berat); reparasi Pandai Besi berbasis Gold dengan diskon alokasi pekerja; penegakan invariant konservasi stok usable vs damaged.
+    - Test Suites: Phase 3D interaction (10/10 PASS) + Follow-up corrections (23/23 PASS). Full regression 119 unit/integration tests PASS + Scene Smoke Playtest ALL PASS.
   - **Phase 3E — Final Prototype Verification & Phase 3 Exit Gate**: **PLANNED**
     - Automated tests untuk konservasi gear dan derivasi peran.
     - Stres playtest 20 wave berturut-turut pada hardware berspesifikasi rendah.

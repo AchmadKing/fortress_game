@@ -24,6 +24,14 @@ func is_broken() -> bool:
 	return durability <= 0
 
 
+func is_usable() -> bool:
+	return durability >= max_durability
+
+
+func is_damaged() -> bool:
+	return durability < max_durability
+
+
 func get_power_multiplier() -> float:
 	if is_broken():
 		return 1.0 # Equipment rusak tidak memberikan tier bonus (sama dengan unequipped 1.0)

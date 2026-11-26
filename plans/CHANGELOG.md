@@ -4,6 +4,41 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.4.6] - Phase 3D: Follow-up Corrections (Deployed Soldier Status & Durability/Repair)
+
+### Added
+- **Dedicated Blacksmith Repair Panel & Controller Dispatcher** (`scripts/presentation/views/prototype_debug_view.gd`, `scripts/presentation/controllers/game_controller.gd`):
+  - Area reparasi Pandai Besi minimal pada kolom kanan prototipe: menampilkan jumlah pekerja Pandai Besi aktif, persentase diskon reparasi (`worker * 12%`, maks 60%), dan daftar item rusak yang tersedia di gudang bersama.
+  - Tombol reparasi dinamis (*Repair 1x*) dengan perhitungan biaya Gold transparan (`missing_durability * rate * (1 - discount)`).
+  - Validasi kecukupan Gold seketika dengan feedback banner jika kas benteng tidak mencukupi, mencegah mutasi parsial atau *silent fail*.
+- **Equipment Usability & Damage Predicates** (`scripts/domain/model/equipment_model.gd`):
+  - Menambahkan method pembantu kanonikal: `is_usable() -> bool` (`durability >= max_durability`) dan `is_damaged() -> bool` (`durability < max_durability`).
+- **Phase 3D Follow-up Automated Test Suite** (`tests/test_phase3d_followup_corrections.gd`):
+  - 23 pengujian otomatis baru mencakup 4 domain utama:
+    1. UI Prajurit Ditempatkan (4 test): status `-` saat kosong, kesesuaian total regu aktif, dukungan multi-regu, pemisahan dari kolam prajurit benteng.
+    2. Durabilitas & Korban (8 test): serdadu selamat kembali 100% durabilitas, status usable serdadu selamat, gear korban rusak 65%, gear korban hancur 35%, item rusak non-usable, pengecualian item rusak dari builder penempatan, item hancur terhapus dari kepemilikan, item rusak tetap tercatat dalam total kepemilikan.
+    3. Reparasi Pandai Besi (6 test): pemulihan durabilitas 100%, konsumsi Gold sesuai formula Phase 2, konservasi kepemilikan total saat reparasi, penolakan saat Gold kurang, item hasil reparasi siap ditempatkan, tidak ada duplikasi item.
+    4. Konservasi Gudang Bersama (5 test): invariant berlaku pasca-kembalinya serdadu selamat, pasca-kembalinya gear rusak, pasca-kehancuran gear, pasca-reparasi, dan persistensi perlengkapan Hero.
+
+### Changed
+- **Soldier Status Area Display** (`scripts/presentation/views/prototype_debug_view.gd`):
+  - Mengubah tampilan status prajurit di kolom kiri menjadi `=== DEPLOYED SOLDIERS ===`.
+  - Menampilkan `Deployed Soldiers: -` saat tidak ada penempatan aktif pada fase PREPARATION / WAVE_PREVIEW / RECOVERY.
+  - Menampilkan `Deployed Soldiers: <sum>` saat penempatan aktif dibuat, dihitung murni dari `SUM(all active deployment soldier_count)`.
+  - Kolam prajurit benteng (`_available_soldiers`) tetap berjalan normal di domain dan tidak lagi ditampilkan sebagai status prajurit penempatan.
+- **Soldier Equipment Durability Rule & Casualty Resolution** (`scripts/simulation/combat_engine.gd`, `scripts/application/coordinators/game_coordinator.gd`):
+  - Perlengkapan prajurit yang selamat dari pertempuran kembali ke gudang bersama pada durabilitas utuh 100% (`durability = 100.0`, `is_usable() == true`) tanpa dikenakan penalti keausan tempur rutin.
+  - Resolusi korban pertempuran: perlengkapan yang dibawa prajurit gugur menjalani roll acak deterministik (35% hancur permanen / dihapus dari kepemilikan, 65% rusak berat diselamatkan dengan durabilitas 60).
+  - Seluruh alur pembuatan penempatan, editing, rekonfigurasi, dan validasi stok kini hanya mengambil item usable (`durability == 100%`).
+  - Single-pass resolution pada `proceed_from_result()` mencegah bug perhitungan ganda pada item multi-slot.
+- **Shared Warehouse Conservation Invariant Formulation**:
+  - Invariant konservasi diperluas secara eksplisit: $\text{Total Owned} = \text{Warehouse Usable} + \text{Warehouse Damaged} + \text{Hero Equipped} + \text{Soldier Reserved}$.
+  - Tabel visual telemetri gudang di prototipe kini menampilkan kolom: `USBL` (Usable), `DMGD` (Damaged), `HERO` (Hero Equipped), `REGD` (Soldier Reserved), dan `TOTAL` (Total Kepemilikan).
+- **Regression Verification**:
+  - Full regression 100% PASS: 119 pengujian unit/sistem (Phase 1 5/5, Phase 2 21/21, Phase 3A 11/11, Phase 3B 27/27, Phase 3C 22/22, Phase 3D 10/10, Follow-up Corrections 23/23) + Scene Smoke Playtest ALL PASS.
+
+---
+
 ## [0.4.5] - Phase 3D: Prototype UX & Interaction Polish (Completed)
 
 ### Added

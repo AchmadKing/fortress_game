@@ -90,6 +90,24 @@ func get_warehouse_stock(eq_type: String) -> int:
 	return coordinator.get_warehouse_stock(eq_type)
 
 
+func get_warehouse_usable_stock(eq_type: String) -> int:
+	if coordinator == null:
+		return 0
+	return coordinator.get_warehouse_usable_stock(eq_type)
+
+
+func get_warehouse_damaged_stock(eq_type: String) -> int:
+	if coordinator == null:
+		return 0
+	return coordinator.get_warehouse_damaged_stock(eq_type)
+
+
+func get_warehouse_total_stock(eq_type: String) -> int:
+	if coordinator == null:
+		return 0
+	return coordinator.get_warehouse_total_stock(eq_type)
+
+
 func get_reserved_equipment_stock(eq_type: String) -> int:
 	if coordinator == null:
 		return 0
@@ -105,7 +123,7 @@ func get_total_owned_stock(eq_type: String) -> int:
 func get_hero_held_equipment_stock(eq_type: String) -> int:
 	if coordinator == null:
 		return 0
-	return get_total_owned_stock(eq_type) - get_warehouse_stock(eq_type) - get_reserved_equipment_stock(eq_type)
+	return get_total_owned_stock(eq_type) - get_warehouse_total_stock(eq_type) - get_reserved_equipment_stock(eq_type)
 
 
 func get_available_soldiers() -> int:
@@ -114,10 +132,40 @@ func get_available_soldiers() -> int:
 	return coordinator.get_available_soldiers()
 
 
+func get_total_deployed_soldiers() -> int:
+	if coordinator == null:
+		return 0
+	return coordinator.get_total_deployed_soldiers()
+
+
 func get_active_deployments() -> Array:
 	if coordinator == null:
 		return []
 	return coordinator.get_active_deployments()
+
+
+func get_blacksmith_workers() -> int:
+	if coordinator == null:
+		return 0
+	return coordinator.get_blacksmith_workers()
+
+
+func get_blacksmith_discount() -> float:
+	if coordinator == null:
+		return 0.0
+	return coordinator.get_blacksmith_discount()
+
+
+func get_equipment_repair_cost(eq_type: String, count: int = 1) -> int:
+	if coordinator == null:
+		return 0
+	return coordinator.get_equipment_repair_cost(eq_type, count)
+
+
+func repair_equipment(eq_type: String, count: int = 1) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.repair_equipment(eq_type, count)
 
 
 func get_hero(hero_id: String) -> RefCounted:
