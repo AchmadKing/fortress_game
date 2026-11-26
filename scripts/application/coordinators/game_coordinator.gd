@@ -369,6 +369,110 @@ func _return_equipment_to_warehouse(item: EquipmentModel) -> void:
 		_warehouse.append(item.clone())
 
 
+# ==============================================================================
+# PHASE 3C HERO EQUIPMENT FOUNDATION
+# ==============================================================================
+
+func get_hero(hero_id: String) -> HeroModel:
+	for h in _heroes:
+		if h is HeroModel and (h as HeroModel).hero_id == hero_id:
+			return h as HeroModel
+	return null
+
+
+func equip_hero(hero_id: String, slot: String, eq_type: String) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		push_warning("equip_hero dilarang pada fase BATTLE (Battle Lock)")
+		return false
+
+	var hero := get_hero(hero_id)
+	if hero == null or not hero.is_alive:
+		return false
+
+	var s := slot.to_upper().strip_edges()
+	var eq := eq_type.to_upper().strip_edges()
+
+	# Validasi slot dan tipe perlengkapan
+	match s:
+		"PRIMARY":
+			if not (eq in ["SWORD", "SPEAR", "BOW"]):
+				return false
+			if hero.has_equipment("SECONDARY") and hero.get_equipment("SECONDARY").role_type == eq:
+				return false
+		"SECONDARY":
+			if not (eq in ["SHIELD", "SWORD", "SPEAR", "BOW"]):
+				return false
+			if hero.has_equipment("PRIMARY") and hero.get_equipment("PRIMARY").role_type == eq:
+				return false
+		"ARMOR":
+			if eq != "HEAVY_ARMOR":
+				return false
+		_:
+			return false
+
+	# Validasi ketersediaan di gudang bersama
+	if get_warehouse_stock(eq) < 1:
+		return false
+
+	# Atomic transaction:
+	# 1. Lepas perlengkapan lama di slot tersebut jika ada
+	var old_eq: EquipmentModel = hero.unequip(s) as EquipmentModel
+	if old_eq != null:
+		_return_equipment_to_warehouse(old_eq)
+
+	# 2. Ambil 1 unit dari gudang bersama
+	var deducted: Array = _deduct_warehouse_stock(eq, 1)
+	if deducted.is_empty():
+		# Rollback jika gagal ambil
+		if old_eq != null:
+			_deduct_warehouse_stock(old_eq.role_type, 1)
+			hero.equip(s, old_eq)
+		return false
+
+	hero.equip(s, deducted[0])
+	_update_snapshot()
+	state_changed.emit(_current_state.clone())
+	return true
+
+
+func unequip_hero(hero_id: String, slot: String) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		push_warning("unequip_hero dilarang pada fase BATTLE (Battle Lock)")
+		return false
+
+	var hero := get_hero(hero_id)
+	if hero == null:
+		return false
+
+	var s := slot.to_upper().strip_edges()
+	if not hero.has_equipment(s):
+		return false
+
+	var old_eq: EquipmentModel = hero.unequip(s) as EquipmentModel
+	if old_eq != null:
+		_return_equipment_to_warehouse(old_eq)
+
+	_update_snapshot()
+	state_changed.emit(_current_state.clone())
+	return true
+
+
+func swap_hero_equipment(hero_id: String, slot: String, new_eq_type: String) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		push_warning("swap_hero_equipment dilarang pada fase BATTLE (Battle Lock)")
+		return false
+
+	var hero := get_hero(hero_id)
+	if hero == null or not hero.is_alive:
+		return false
+
+	var eq := new_eq_type.to_upper().strip_edges()
+	if get_warehouse_stock(eq) < 1:
+		return false
+
+	return equip_hero(hero_id, slot, eq)
+
+
 ## Inspeksi gelombang ancaman berikutnya (transisi PREPARATION -> WAVE_PREVIEW)
 func inspect_wave() -> bool:
 	if _state_machine.current_state != GameplayStateMachine.STATE_PREPARATION:
@@ -511,6 +615,14 @@ func proceed_from_result() -> bool:
 				var hero_obj: HeroModel = h as HeroModel
 				if hero_obj.fatigue >= 30:
 					hero_obj.rest(20)
+
+		# 3b. Hero permadeath equipment return to shared warehouse (Phase 3C)
+		for h in _heroes:
+			if h is HeroModel and not (h as HeroModel).is_alive:
+				var dead_hero_items: Array = (h as HeroModel).clear_equipment()
+				for item in dead_hero_items:
+					if item is EquipmentModel:
+						_return_equipment_to_warehouse(item as EquipmentModel)
 					
 		# 4. Pertumbuhan alami populasi via existing PopulationModel.grow_population()
 		_population.grow_population(0.08)
@@ -665,7 +777,10 @@ func _update_snapshot() -> void:
 				"morale": hero.morale,
 				"is_alive": hero.is_alive,
 				"effective_atk": hero.get_effective_atk(),
-				"effective_def": hero.get_effective_def()
+				"effective_def": hero.get_effective_def(),
+				"primary_equipment": hero.primary_equipment.role_type if hero.primary_equipment != null else "NONE",
+				"secondary_equipment": hero.secondary_equipment.role_type if hero.secondary_equipment != null else "NONE",
+				"armor_equipment": hero.armor_equipment.role_type if hero.armor_equipment != null else "NONE"
 			})
 
 	_current_state.warehouse_data = []

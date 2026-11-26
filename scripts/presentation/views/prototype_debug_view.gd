@@ -319,7 +319,14 @@ func _on_state_changed(snapshot: GameStateSnapshot) -> void:
 		var fat: int = int(h.get("fatigue", 0))
 		var alive: bool = bool(h.get("is_alive", true))
 		var status_str: String = "ALIVE" if alive else "DEAD (Permadeath)"
-		heroes_text += "- %s (Lv %d)\n  Fatigue: %d/100 | %s\n" % [name_str, lvl, fat, status_str]
+		var prim: String = str(h.get("primary_equipment", "NONE"))
+		var sec: String = str(h.get("secondary_equipment", "NONE"))
+		var arm: String = str(h.get("armor_equipment", "NONE"))
+		var atk: int = int(h.get("effective_atk", 0))
+		var def_val: int = int(h.get("effective_def", 0))
+		heroes_text += "- %s (Lv %d) [%s]\n  ATK: %d | DEF: %d | Fatigue: %d/100\n  Gear: [P: %s, S: %s, A: %s]\n" % [
+			name_str, lvl, status_str, atk, def_val, fat, prim, sec, arm
+		]
 	_lbl_heroes.text = heroes_text if not heroes_text.is_empty() else "No heroes"
 
 	var eq_text: String = "--- WAREHOUSE STOCK ---\n"

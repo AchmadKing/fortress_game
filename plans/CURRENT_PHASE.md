@@ -2,8 +2,9 @@
 
 ## Phase 3 — Gameplay Prototype
 
-Project saat ini berada pada tahap **Phase 3: Gameplay Prototype — Sub-Phase 3B: COMPLETED / Sub-Phase 3C: PLANNED**.
+Project saat ini berada pada tahap **Phase 3: Gameplay Prototype — Sub-Phase 3B: COMPLETED / Sub-Phase 3C: COMPLETED / Sub-Phase 3D: PLANNED**.
 Spesifikasi teknis implementasi Phase 3B tersedia di [docs/design/PHASE_3B_SOLDIER_DEPLOYMENT_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_3B_SOLDIER_DEPLOYMENT_PLAN.md).
+Spesifikasi teknis implementasi Phase 3C tersedia di [docs/design/PHASE_3C_HERO_EQUIPMENT_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_3C_HERO_EQUIPMENT_PLAN.md).
 
 ---
 
@@ -24,7 +25,7 @@ Spesifikasi teknis implementasi Phase 3B tersedia di [docs/design/PHASE_3B_SOLDI
     - Phase 2 Mathematical Regression: **21/21 PASSED, 0 FAILED** ([tests/test_mathematical_prototype.gd](tests/test_mathematical_prototype.gd))
     - Phase 3 Gameplay Unit & Integration Test Suite: **11/11 PASSED, 0 FAILED** ([tests/test_gameplay_prototype.gd](tests/test_gameplay_prototype.gd))
     - Prototype Scene Smoke Playtest: **ALL PASSED, 0 ERRORS** ([tests/test_playtest_smoke.gd](tests/test_playtest_smoke.gd))
-  - **Phase 3B — Soldier Deployment & Temporary Equipment Management**: **COMPLETED**
+  - **Phase 3B — Soldier Deployment & Temporary Equipment Management**: **COMPLETED** (Commit `4f01bfe`)
     - Model regu agregat sementara `DeploymentComposition` dengan identitas kanonikal `make_composition_id(p, s, a)` dan derivasi peran deterministik.
     - Seleksi perlengkapan sadar stok (*stock-aware selection*) dan reservasi atomik seketika dari gudang senjata bersama.
     - Penghapusan 100% pembuatan equipment otomatis (`_ensure_equipment_quantity_for_role` terhapus total).
@@ -34,10 +35,15 @@ Spesifikasi teknis implementasi Phase 3B tersedia di [docs/design/PHASE_3B_SOLDI
     - Prajurit gugur permanen memotong total populasi hidup.
     - Invariant konservasi $\text{Warehouse} + \text{Reserved} == \text{Total Owned}$ terjaga 100%.
     - Test Suite Phase 3B: **27/27 PASSED, 0 FAILED** ([tests/test_soldier_deployment_temporary.gd](tests/test_soldier_deployment_temporary.gd)).
-    - Regression Suites: Phase 1 (5/5), Phase 2 (21/21), Phase 3A (11/11), Scene Smoke (ALL PASS).
-  - **Phase 3C — Hero Equipment Foundation**: **PLANNED**
-    - Slot perlengkapan hero minimal (Primary Weapon, Secondary, Armor) dari gudang benteng bersama.
-    - Manajemen persistent gear hero lintas gelombang dan pengembalian otomatis saat permadeath.
+  - **Phase 3C — Hero Equipment Foundation**: **COMPLETED**
+    - Integrasi perlengkapan Hero dengan gudang senjata bersama benteng (*Shared Fortress Warehouse*).
+    - Slot perlengkapan hero minimal: Primary Weapon (`SWORD`, `SPEAR`, `BOW`), Secondary (`SHIELD`), dan Armor (`HEAVY_ARMOR`).
+    - Kepemilikan perlengkapan persisten lintas gelombang bagi hero yang bertahan hidup.
+    - Mekanisme pengembalian otomatis seluruh perlengkapan hero yang gugur saat permadeath tepat 1 kali ke gudang benteng.
+    - Proteksi Battle Lock: mutasi perlengkapan hero dilarang keras saat state `BATTLE`.
+    - Invariant konservasi global: $\text{Warehouse} + \text{Hero-held} + \text{Soldier-reserved} == \text{Total Owned}$.
+    - Test Suite Phase 3C: **22/22 PASSED, 0 FAILED** ([tests/test_hero_equipment_foundation.gd](tests/test_hero_equipment_foundation.gd)).
+    - Regression Suites: Phase 1 (5/5), Phase 2 (21/21), Phase 3A (11/11), Phase 3B (27/27), Scene Smoke (ALL PASS).
   - **Phase 3D — Prototype UX & Interaction Polish**: **PLANNED**
   - **Phase 3E — Final Prototype Verification & Phase 3 Exit Gate**: **PLANNED**
 - **Phase 4 — Hero System**: **LOCKED**

@@ -102,6 +102,24 @@ func is_equipment_option_available(eq_type: String, count: int) -> bool:
 	return coordinator.is_equipment_option_available(eq_type, count)
 
 
+func equip_hero(hero_id: String, slot: String, eq_type: String) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.equip_hero(hero_id, slot, eq_type)
+
+
+func unequip_hero(hero_id: String, slot: String) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.unequip_hero(hero_id, slot)
+
+
+func swap_hero_equipment(hero_id: String, slot: String, new_eq_type: String) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.swap_hero_equipment(hero_id, slot, new_eq_type)
+
+
 func inspect_wave() -> bool:
 	if coordinator == null:
 		return false

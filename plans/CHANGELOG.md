@@ -4,6 +4,26 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.4.4] - Phase 3C: Hero Equipment Foundation (Completed)
+
+### Added
+- **Hero Equipment Slots & Domain Integration** (`scripts/domain/model/hero_model.gd`):
+  - Slot perlengkapan: `primary_equipment`, `secondary_equipment`, `armor_equipment`.
+  - Metode manajemen: `equip()`, `unequip()`, `has_equipment()`, `get_equipment()`, `get_equipped_items()`, `clear_equipment()`.
+  - Skalasi stat tempur: `get_effective_atk()` mengalikan bonus pengali weapon (`get_power_multiplier()`); `get_effective_def()` mengalikan bonus armor dan secondary shield.
+  - Dukungan kloning mendalam slot perlengkapan pada `HeroModel.clone()`.
+- **Shared Warehouse & Hero Equipment Coordination** (`scripts/application/coordinators/game_coordinator.gd`):
+  - API koordinasi: `equip_hero()`, `unequip_hero()`, `swap_hero_equipment()`, `get_hero()`.
+  - Integrasi stok gudang bersama: hero dan prajurit bersaing secara deterministik atas persediaan yang sama di `_warehouse`.
+  - Penegakan Battle Lock: equip, unequip, dan swap dilarang keras saat state `BATTLE`.
+  - Hero Permadeath Equipment Return: seluruh perlengkapan pahlawan yang gugur dikembalikan otomatis tepat 1 kali ke gudang bersama pada fase `proceed_from_result()`.
+  - Hero Survival Persistence: pahlawan yang bertahan hidup mempertahankan perlengkapannya lintas gelombang.
+- **Phase 3C Automated Test Suite** (`tests/test_hero_equipment_foundation.gd`):
+  - 22 pengujian otomatis tervalidasi 100% lulus (22/22 PASS, 0 FAIL) mencakup seluruh skenario B16.
+  - Zero regression pada seluruh suite: Phase 1 (5/5), Phase 2 (21/21), Phase 3A (11/11), Phase 3B (27/27), dan Playtest Scene Smoke (Total 86 unit/integration tests).
+
+---
+
 ## [0.4.3] - Phase 3B: Temporary Soldier Deployment & Equipment Management (Completed)
 
 ### Added

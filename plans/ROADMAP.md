@@ -55,10 +55,12 @@ High-level roadmap pengembangan proyek `fortress_game`.
     - Prajurit selamat kembali ke kolam prajurit benteng; prajurit gugur terpotong permanen.
     - Penegakan ketat invariant konservasi: $\text{Total Owned} = \text{Warehouse} + \text{Reserved Deployment}$.
     - Test Suite Phase 3B: 27/27 PASSED, 0 FAILED. Zero regression pada Phase 1, Phase 2, dan Phase 3A.
-  - **Phase 3C — Hero Equipment Foundation**: **PLANNED**
-    - Slot perlengkapan minimal Hero (Weapon, Armor).
-    - Integrasi equip/unequip/swap hero dengan gudang benteng.
-    - Pengembalian perlengkapan hero ke gudang secara otomatis saat permadeath.
+  - **Phase 3C — Hero Equipment Foundation**: **COMPLETED**
+    - Slot perlengkapan minimal Hero (Primary Weapon, Secondary, Armor) terintegrasi dengan gudang senjata benteng bersama.
+    - Kepemilikan perlengkapan persisten lintas gelombang bagi hero yang bertahan hidup.
+    - Pengembalian perlengkapan hero ke gudang benteng secara otomatis saat permadeath (tepat 1 kali).
+    - Proteksi Battle Lock selama simulasi pertempuran aktif.
+    - Test Suite Phase 3C: 22/22 PASSED, 0 FAILED. Zero regression pada seluruh fase sebelumnya.
   - **Phase 3D — Prototype UX & Interaction Polish**: **PLANNED**
     - Kontrol UI untuk pasang/tukar gear prajurit & hero serta dismiss prajurit.
     - Eliminasi gameplay dead-ends dan transparansi telemetri inventaris.
