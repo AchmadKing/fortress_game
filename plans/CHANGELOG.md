@@ -4,25 +4,26 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
-## [Unreleased] - Phase 2: Mathematical / Systems Prototype (Completed & Awaiting Review)
+## [0.3.0] - Phase 2: Mathematical / Systems Prototype (Completed & Validated)
+
+### Fixed & Refactored (Four Corrective Items)
+1. **Roadmap & Phase Synchronization**: Seluruh dokumen status (`CURRENT_PHASE.md`, `ROADMAP.md`, `CHANGELOG.md`, `README.md`) disinkronkan ke status resmi `Phase 2 — COMPLETED` dan `Phase 3 — NOT STARTED / LOCKED`.
+2. **Worker & Economy Correction**: Menghapus seluruh referensi ke `Production Worker` dan `base_passive_income`. Pekerja sah hanya mencakup `Blacksmith`, `Repair`, `Construction`, dan `Idle`. Sumber pendapatan utama benteng berasal dari Battle Loot kemenangan pertempuran.
+3. **Equipment Quantity & Ownership Model**: Memperbaiki kalkulasi efektivitas militer agar kuantitas perlengkapan riil di gudang membatasi jumlah prajurit yang mendapatkan bonus tier. Menguji secara ketat Kasus A, B, C, dan D serta mengecualikan perlengkapan yang rusak (*broken*).
+4. **Equipment Loss & Deterministic Hero Survival/Death**:
+   - Korban prajurit (*casualties*) secara deterministik menyebabkan peluang kehilangan perlengkapan ($35\%$) dan keausan berat ($65\%$).
+   - Kelangsungan hidup hero dievaluasi berdasarkan keparahan breach, kelelahan (*fatigue*), dan pertahanan (*defense*). Keruntuhan benteng tidak otomatis membunuh seluruh hero sekaligus. Hero yang gugur dinyatakan `is_alive = false` dan keluar permanen dari active combat, EXP, chemistry, dan pemulihan stamina.
 
 ### Added
-- Dokumen desain sistem matematika final ([docs/design/MATHEMATICAL_SYSTEMS_PROTOTYPE.md](docs/design/MATHEMATICAL_SYSTEMS_PROTOTYPE.md)) yang memisahkan Core Mathematical Formulas dari Balance Tuning Parameters.
-- Domain data models untuk simulasi matematika:
-  - `scripts/domain/model/population_model.gd`: Model demografi (konservasi populasi, konversi militer, kematian permanen prajurit, isolasi tentara bayaran).
-  - `scripts/domain/model/hero_model.gd`: Model pahlawan individual (EXP scaling, star constraints, fatigue/rest, chemistry party, permadeath).
-  - `scripts/domain/model/equipment_model.gd`: Model perlengkapan (tier 1-5, durabilitas, degradasi per battle, penalti broken, biaya perbaikan).
-  - `scripts/domain/model/fortress_model.gd`: Model integritas benteng (HP persisten, reduksi damage armor, Game Over saat $HP \le 0$).
-- Modul simulasi headless:
-  - `scripts/simulation/economy_manager.gd`: Manajer alokasi kerja (produksi, reparasi, pandai besi, konstruksi), neraca kas, dan pemeliharaan upah.
-  - `scripts/simulation/wave_generator.gd`: Generator ancaman gelombang 1–100 berbasis threat budget deterministik dengan anti-spike wave 1–5.
-  - `scripts/simulation/combat_engine.gd`: Engine pertempuran multi-fase deterministik (Ranged Volley, Frontline Clash, Melee & Heroes, Wall Breach, Resolution) tanpa mengandalkan Battle Power tunggal.
-  - `scripts/simulation/headless_simulator.gd`: Simulator komprehensif untuk pengujian multi-gelombang hingga 100 wave.
-- Test suite otomatis Phase 2 ([tests/test_mathematical_prototype.gd](tests/test_mathematical_prototype.gd)) yang memvalidasi 18 tes (9 unit boundary, 8 skenario stres A-H, dan kestabilan 100-wave) dengan hasil **18 PASSED, 0 FAILED**.
+- Dokumen desain matematika final ([docs/design/MATHEMATICAL_SYSTEMS_PROTOTYPE.md](docs/design/MATHEMATICAL_SYSTEMS_PROTOTYPE.md)).
+- Domain data models: `equipment_model.gd`, `fortress_model.gd`, `hero_model.gd`, `population_model.gd`.
+- Simulation modules: `combat_engine.gd`, `economy_manager.gd`, `wave_generator.gd`, `headless_simulator.gd`.
+- Automated test suite: `tests/test_mathematical_prototype.gd` (21 tes lulus: 12 unit boundaries, 8 skenario stres A–H, dan simulasi 100 gelombang).
 
 ### Verified
-- Phase 1 Architecture Regression: **5 PASSED, 0 FAILED** (tanpa regresi arsitektur).
-- 100-Wave Simulation Stability: Berhasil menyelesaikan 100 gelombang berturut-turut tanpa Game Over, tanpa eksploit infinite gold, dan tanpa death spiral.
+- **Phase 1 Architecture Regression**: **5 PASSED, 0 FAILED** (tanpa regresi arsitektur).
+- **Phase 2 Mathematical Tests**: **21 PASSED, 0 FAILED**.
+- **100-Wave System Stability**: 100 gelombang berhasil diselesaikan tanpa Game Over dengan neraca kas dan populasi yang seimbang di bawah kebijakan otomasi manajemen.
 
 ---
 

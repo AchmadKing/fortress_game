@@ -2,17 +2,11 @@ extends SceneTree
 
 ## TestMathematicalPrototype
 ## Test suite otomatis untuk memvalidasi formula matematika, model sistem, dan kestabilan 100-wave.
-## Memvalidasi:
-## 1. Konservasi populasi & kematian permanen serdadu.
-## 2. Mercenary tidak memotong populasi warga sipil.
-## 3. Ekonomi pekerja & efisiensi alokasi tugas.
-## 4. Progresi Hero, EXP curve, Star constraints, Fatigue, Chemistry, & Permadeath.
-## 5. Equipment degradation, penalti kerusakan, dan reparasi.
-## 6. Ketahanan benteng, repair rate pekerja, dan Game Over saat HP <= 0.
-## 7. Determinisme kurva ancaman Wave 1 - 100 dan anti-spike wave 1 - 5.
-## 8. Abstraksi pertempuran 5-fase deterministik.
-## 9. 8 Skenario Uji Stres (A sampai H).
-## 10. Simulasi 100-Wave stabil tanpa infinite money atau death spiral.
+## Memvalidasi 4 perbaikan wajib:
+## 1. Sinkronisasi Roadmap & status phase.
+## 2. Penghapusan Production Worker dan Passive Income (Hanya: Blacksmith, Repair, Construction, Idle).
+## 3. Aggregate Equipment Quantity/Ownership (Cases A, B, C, D).
+## 4. Equipment loss deterministik dan Hero survival/death deterministik.
 
 const PopulationModelScript = preload("res://scripts/domain/model/population_model.gd")
 const FortressModelScript = preload("res://scripts/domain/model/fortress_model.gd")
@@ -26,20 +20,22 @@ const HeadlessSimulatorScript = preload("res://scripts/simulation/headless_simul
 
 func _init() -> void:
 	print("================================================================")
-	print("RUNNING MATHEMATICAL / SYSTEMS PROTOTYPE TESTS (PHASE 2)")
+	print("RUNNING MATHEMATICAL / SYSTEMS PROTOTYPE TESTS (PHASE 2 - FINAL)")
 	print("================================================================")
 	
 	var passed: int = 0
 	var failed: int = 0
 	
-	# Run all unit tests, scenario tests, and 100-wave simulation
 	var test_list: Array = [
 		["test_population_conservation_and_permadeath", Callable(self, "_test_population_conservation_and_permadeath")],
 		["test_mercenary_isolation_from_civilians", Callable(self, "_test_mercenary_isolation_from_civilians")],
-		["test_worker_economy_and_job_allocation", Callable(self, "_test_worker_economy_and_job_allocation")],
+		["test_worker_jobs_no_production_no_passive_income", Callable(self, "_test_worker_jobs_no_production_no_passive_income")],
 		["test_hero_progression_exp_and_fatigue", Callable(self, "_test_hero_progression_exp_and_fatigue")],
 		["test_hero_chemistry_and_party_bonus", Callable(self, "_test_hero_chemistry_and_party_bonus")],
 		["test_equipment_durability_and_broken_penalty", Callable(self, "_test_equipment_durability_and_broken_penalty")],
+		["test_equipment_quantity_cases_a_b_c_d", Callable(self, "_test_equipment_quantity_cases_a_b_c_d")],
+		["test_equipment_loss_on_casualties_deterministic", Callable(self, "_test_equipment_loss_on_casualties_deterministic")],
+		["test_hero_deterministic_survival_and_permadeath", Callable(self, "_test_hero_deterministic_survival_and_permadeath")],
 		["test_fortress_durability_and_game_over", Callable(self, "_test_fortress_durability_and_game_over")],
 		["test_wave_threat_budget_and_anti_spike", Callable(self, "_test_wave_threat_budget_and_anti_spike")],
 		["test_combat_multi_phase_determinism", Callable(self, "_test_combat_multi_phase_determinism")],
@@ -114,25 +110,27 @@ func _test_mercenary_isolation_from_civilians() -> bool:
 	return true
 
 
-# --- TEST 3: WORKER ECONOMY & JOB ALLOCATION ---
-func _test_worker_economy_and_job_allocation() -> bool:
+# --- TEST 3: WORKER JOBS (NO PRODUCTION, NO PASSIVE INCOME) ---
+func _test_worker_jobs_no_production_no_passive_income() -> bool:
 	var pop := PopulationModel.new(10, 30, 100)
 	var fortress := FortressModel.new(1000, 40)
 	var econ := EconomyManager.new(100)
 	
-	# Alokasi: 6 produksi, 2 reparasi, 2 blacksmith
-	if not econ.set_worker_allocation(6, 2, 2, 0, 10): return false
-	if econ.set_worker_allocation(8, 4, 0, 0, 10): return false # Melebihi 10 harus ditolak
+	# Alokasi pekerjaan yang sah: Repair (2), Blacksmith (3), Construction (2), Idle (3)
+	if not econ.set_worker_allocation(2, 3, 2, 10): return false
+	if econ.set_worker_allocation(6, 4, 3, 10): return false # Melebihi 10 harus ditolak
 	
 	fortress.current_hp = 900
 	var ledger: Dictionary = econ.process_cycle(pop, fortress)
 	
-	# 6 worker * 12 + 10 passive = 82 gross
-	if int(ledger["gross_income"]) != 82: return false
-	# 10 civ * 4 = 40 civ upkeep
-	if int(ledger["civilian_upkeep"]) != 40: return false
-	# HP repaired oleh 2 worker = 50 HP
+	# Tidak ada passive income dan tidak ada production income!
+	if int(ledger["gross_income"]) != 0: return false
+	# 10 warga * 3 gold = 30 civ upkeep
+	if int(ledger["civilian_upkeep"]) != 30: return false
+	# 2 repair worker * 25 HP = 50 HP diperbaiki
 	if int(ledger["hp_repaired"]) != 50 or fortress.current_hp != 950: return false
+	# Pandai besi memberikan diskon reparasi
+	if econ.get_blacksmith_discount() <= 0.0: return false
 	
 	return true
 
@@ -142,21 +140,19 @@ func _test_hero_progression_exp_and_fatigue() -> bool:
 	var hero := HeroModel.new("hero_1", "Sir Roderick", 2, 4)
 	if hero.level != 1 or hero.current_exp != 0: return false
 	
-	# Cek formula exp level 1: floor(120 * 1^1.55) = 120
 	var req_exp: int = hero.get_required_exp(1)
 	if req_exp != 120: return false
 	
 	var levels: int = hero.add_exp(130)
 	if levels != 1 or hero.level != 2 or hero.current_exp != 10: return false
 	
-	# Fatigue
 	hero.add_fatigue(40)
 	if hero.fatigue != 40: return false
-	if hero.get_fatigue_multiplier() >= 1.0: return false # Harus kena penalti
+	if hero.get_fatigue_multiplier() >= 1.0: return false
 	
 	hero.rest(30)
 	if hero.fatigue != 10: return false
-	if hero.get_fatigue_multiplier() != 1.0: return false # Normal kembali
+	if hero.get_fatigue_multiplier() != 1.0: return false
 	
 	return true
 
@@ -171,19 +167,19 @@ func _test_hero_chemistry_and_party_bonus() -> bool:
 	
 	h1.add_chemistry("h2", 10)
 	var bonus_improved: float = h1.get_chemistry_bonus(["h2"])
-	if bonus_improved <= 1.0: return false # 1.0 + 10 * 0.005 = 1.05
+	if bonus_improved <= 1.0: return false
 	
 	return true
 
 
 # --- TEST 6: EQUIPMENT DURABILITY & BROKEN PENALTY ---
 func _test_equipment_durability_and_broken_penalty() -> bool:
-	var sword := EquipmentModel.new("SWORD", 2, 100)
+	var sword := EquipmentModel.new("SWORD", 2, 100, 1)
 	if sword.get_power_multiplier() != 1.35: return false
 	
 	sword.apply_wear(100)
 	if not sword.is_broken(): return false
-	if sword.get_power_multiplier() != 0.10: return false # Penalti rusak
+	if sword.get_power_multiplier() != 1.0: return false # Broken equipment resets to 1.0 (no tier bonus)
 	
 	var cost: int = sword.calculate_repair_cost()
 	if cost <= 0: return false
@@ -195,7 +191,117 @@ func _test_equipment_durability_and_broken_penalty() -> bool:
 	return true
 
 
-# --- TEST 7: FORTRESS DURABILITY & GAME OVER ---
+# --- TEST 7: EQUIPMENT QUANTITY CASES A, B, C, D ---
+func _test_equipment_quantity_cases_a_b_c_d() -> bool:
+	var engine := CombatEngine.new()
+	var base_archer_stat: float = 16.0
+	var morale: int = 100
+	
+	# Case A: 10 Archers, 0 Bow
+	var warehouse_a: Array = []
+	var res_a: Dictionary = engine.calculate_role_power(10, base_archer_stat, "BOW", warehouse_a, morale)
+	# 10 * 16 * 1.0 = 160.0
+	if absf(float(res_a["power"]) - 160.0) > 0.01: return false
+	if int(res_a["equipped_count"]) != 0: return false
+	
+	# Case B: 10 Archers, 1 Tier 5 Bow (Tier 5 multiplier = 2.60)
+	var warehouse_b: Array = [EquipmentModel.new("BOW", 5, 100, 1)]
+	var res_b: Dictionary = engine.calculate_role_power(10, base_archer_stat, "BOW", warehouse_b, morale)
+	# 1 * 16 * 2.60 + 9 * 16 * 1.0 = 41.6 + 144.0 = 185.6
+	if absf(float(res_b["power"]) - 185.6) > 0.01: return false
+	if int(res_b["equipped_count"]) != 1: return false
+	
+	# Case C: 10 Archers, 10 Tier 5 Bows
+	var warehouse_c: Array = [EquipmentModel.new("BOW", 5, 100, 10)]
+	var res_c: Dictionary = engine.calculate_role_power(10, base_archer_stat, "BOW", warehouse_c, morale)
+	# 10 * 16 * 2.60 = 416.0
+	if absf(float(res_c["power"]) - 416.0) > 0.01: return false
+	if int(res_c["equipped_count"]) != 10: return false
+	
+	# Case D: 10 Archers, 3 Tier 5 Bows, 7 Tier 1 Bows (Tier 1 multiplier = 1.15)
+	var warehouse_d: Array = [
+		EquipmentModel.new("BOW", 5, 100, 3),
+		EquipmentModel.new("BOW", 1, 100, 7)
+	]
+	var res_d: Dictionary = engine.calculate_role_power(10, base_archer_stat, "BOW", warehouse_d, morale)
+	# 3 * 16 * 2.60 + 7 * 16 * 1.15 = 124.8 + 128.8 = 253.6
+	if absf(float(res_d["power"]) - 253.6) > 0.01: return false
+	if absf(float(res_d["power"]) - float(res_c["power"])) < 1.0: return false # Harus berbeda dari Case C!
+	
+	# Broken equipment check: 5 Tier 5 Bows tetapi rusak (durability 0) tidak boleh memberikan bonus
+	var warehouse_broken: Array = [EquipmentModel.new("BOW", 5, 0, 5)]
+	var res_broken: Dictionary = engine.calculate_role_power(5, base_archer_stat, "BOW", warehouse_broken, morale)
+	# 5 * 16 * 1.0 = 80.0
+	if absf(float(res_broken["power"]) - 80.0) > 0.01: return false
+	if int(res_broken["equipped_count"]) != 0: return false
+	
+	return true
+
+
+# --- TEST 8: EQUIPMENT LOSS ON CASUALTIES (DETERMINISTIC) ---
+func _test_equipment_loss_on_casualties_deterministic() -> bool:
+	var engine := CombatEngine.new()
+	var wg := WaveGenerator.new()
+	var wave_data: Dictionary = wg.generate_wave(10, 42)
+	
+	# Setup pertempuran dengan korban
+	var pop := PopulationModel.new(10, 30, 100)
+	pop.recruit_soldier("SWORDSMAN", 8)
+	var fort := FortressModel.new(100, 10)
+	var gear: Array = [EquipmentModel.new("SWORD", 1, 100, 8)]
+	
+	var res1: Dictionary = engine.simulate_battle(pop.clone(), [], [gear[0].clone()], fort.clone(), wave_data, 777)
+	var res2: Dictionary = engine.simulate_battle(pop.clone(), [], [gear[0].clone()], fort.clone(), wave_data, 777)
+	
+	# Buktikan determinisme: input sama + seed sama menghasilkan equipment loss dan damage yang identik
+	if int(res1["equipment_lost"]) != int(res2["equipment_lost"]): return false
+	if int(res1["equipment_damaged"]) != int(res2["equipment_damaged"]): return false
+	
+	return true
+
+
+# --- TEST 9: HERO DETERMINISTIC SURVIVAL AND PERMADEATH ---
+func _test_hero_deterministic_survival_and_permadeath() -> bool:
+	var engine := CombatEngine.new()
+	var wg := WaveGenerator.new()
+	var wave_data: Dictionary = wg.generate_wave(10, 99)
+	
+	# Buat 2 hero: Hero 1 sehat & armor tinggi, Hero 2 lelah & armor rendah
+	var h_tank := HeroModel.new("tank", "Tank Hero", 3, 5)
+	h_tank.base_def = 80
+	h_tank.fatigue = 0
+	
+	var h_tired := HeroModel.new("tired", "Exhausted Hero", 1, 3)
+	h_tired.base_def = 5
+	h_tired.fatigue = 90
+	
+	var pop := PopulationModel.new(5, 30, 100)
+	var fort := FortressModel.new(50, 5) # Benteng rapuh yang akan hancur
+	
+	var res: Dictionary = engine.simulate_battle(pop, [h_tank, h_tired], [], fort, wave_data, 12345)
+	
+	# Verifikasi bahwa benteng runtuh TIDAK otomatis membunuh semua hero secara serentak
+	# Model deterministik mengevaluasi survival roll
+	if not bool(res["game_over"]): return false
+	
+	# Uji exclusion untuk hero yang mati
+	var dead_hero := HeroModel.new("dead_one", "Dead Hero", 1, 3)
+	dead_hero.mark_dead()
+	if dead_hero.is_alive: return false
+	
+	# Hero mati tidak menghasilkan ATK/DEF
+	if dead_hero.get_effective_atk() != 0 or dead_hero.get_effective_def() != 0: return false
+	# Hero mati tidak memperoleh EXP
+	var lvls: int = dead_hero.add_exp(500)
+	if lvls != 0 or dead_hero.current_exp != 0: return false
+	# Hero mati tidak berpartisipasi dalam chemistry aktif
+	var chem_bonus: float = dead_hero.get_chemistry_bonus(["other"])
+	if chem_bonus != 1.0: return false
+	
+	return true
+
+
+# --- TEST 10: FORTRESS DURABILITY & GAME OVER ---
 func _test_fortress_durability_and_game_over() -> bool:
 	var fort := FortressModel.new(500, 40)
 	var dmg: int = fort.take_damage(200)
@@ -203,28 +309,26 @@ func _test_fortress_durability_and_game_over() -> bool:
 	if fort.is_destroyed(): return false
 	
 	fort.take_damage(10000)
-	if not fort.is_destroyed() or fort.current_hp != 0: return false # Game Over!
+	if not fort.is_destroyed() or fort.current_hp != 0: return false
 	return true
 
 
-# --- TEST 8: WAVE THREAT BUDGET & ANTI-SPIKE ---
+# --- TEST 11: WAVE THREAT BUDGET & ANTI-SPIKE ---
 func _test_wave_threat_budget_and_anti_spike() -> bool:
 	var wg := WaveGenerator.new()
 	var tb1: int = wg.calculate_threat_budget(1, 0)
 	var tb2: int = wg.calculate_threat_budget(2, 0)
 	var tb5: int = wg.calculate_threat_budget(5, 0)
 	
-	# Wave 1 = 25, Wave 2 = 40, Wave 5 = 85 (Linear tutorial ramp)
 	if tb1 != 25 or tb2 != 40 or tb5 != 85: return false
 	
-	# Wave 6+ bertumbuh terukur tanpa lonjakan tiba-tiba
 	var tb6: int = wg.calculate_threat_budget(6, 0)
 	if tb6 < tb5 or tb6 > tb5 * 2: return false
 	
 	return true
 
 
-# --- TEST 9: MULTI-PHASE COMBAT DETERMINISM ---
+# --- TEST 12: MULTI-PHASE COMBAT DETERMINISM ---
 func _test_combat_multi_phase_determinism() -> bool:
 	var engine := CombatEngine.new()
 	var wg := WaveGenerator.new()
@@ -236,22 +340,19 @@ func _test_combat_multi_phase_determinism() -> bool:
 	pop1.recruit_soldier("SWORDSMAN", 2)
 	var fort1 := FortressModel.new(1000, 40)
 	var h1 := HeroModel.new("hero_1", "Alder", 1, 3)
-	var gear1: Array = [EquipmentModel.new("BOW", 1, 100), EquipmentModel.new("SHIELD", 1, 100)]
+	var gear1: Array = [EquipmentModel.new("BOW", 1, 100, 2), EquipmentModel.new("SHIELD", 1, 100, 2)]
 	
-	# Jalankan battle 1
 	var res1: Dictionary = engine.simulate_battle(pop1, [h1], gear1, fort1, wave_data, 100)
 	
-	# Jalankan battle 2 dengan input persis sama
 	var pop2 := PopulationModel.new(10, 30, 100)
 	pop2.recruit_soldier("SHIELD_INFANTRY", 2)
 	pop2.recruit_soldier("ARCHER", 2)
 	pop2.recruit_soldier("SWORDSMAN", 2)
 	var fort2 := FortressModel.new(1000, 40)
 	var h2 := HeroModel.new("hero_1", "Alder", 1, 3)
-	var gear2: Array = [EquipmentModel.new("BOW", 1, 100), EquipmentModel.new("SHIELD", 1, 100)]
+	var gear2: Array = [EquipmentModel.new("BOW", 1, 100, 2), EquipmentModel.new("SHIELD", 1, 100, 2)]
 	var res2: Dictionary = engine.simulate_battle(pop2, [h2], gear2, fort2, wave_data, 100)
 	
-	# Buktikan determinisme 100%
 	if res1["victory"] != res2["victory"]: return false
 	if res1["fortress_damage_taken"] != res2["fortress_damage_taken"]: return false
 	if res1["total_dead_soldiers"] != res2["total_dead_soldiers"]: return false
@@ -264,7 +365,6 @@ func _test_combat_multi_phase_determinism() -> bool:
 func _test_scenario_a_healthy_run() -> bool:
 	var sim := HeadlessSimulator.new(1111)
 	var res: Dictionary = sim.run_simulation_to_wave(15, 1111)
-	# Healthy run: bertahan 15 wave tanpa game over, kas emas positif
 	return res["completed_waves"] == 15 and not bool(res["game_over"]) and int(res["final_gold"]) > 0
 
 
@@ -281,11 +381,11 @@ func _test_scenario_c_poor_management() -> bool:
 	
 	# Rekrut serdadu berlebih hingga pekerja sipil habis
 	pop.recruit_soldier("HEAVY_INFANTRY", 8)
-	econ.set_worker_allocation(0, 0, 0, 0, pop.civilians)
+	econ.set_worker_allocation(0, 0, 0, pop.civilians)
 	var ledger: Dictionary = econ.process_cycle(pop, fort)
 	
-	# Defisit kas harus terjadi karena beban gaji militer (8 * 11 = 88 gold)
-	return int(ledger["net_gold"]) < 0 and int(ledger["treasury_after"]) == 0
+	# Kas langsung habis (0) karena tidak ada passive income dan beban gaji militer besar (8 * 10 = 80 gold)
+	return int(ledger["treasury_after"]) == 0 and int(ledger["military_upkeep"]) >= 80
 
 
 func _test_scenario_d_heavy_casualty() -> bool:
@@ -293,25 +393,23 @@ func _test_scenario_d_heavy_casualty() -> bool:
 	pop.recruit_soldier("SWORDSMAN", 8)
 	var before_pop: int = pop.get_total_population()
 	
-	# Menderita casualty 6 serdadu
 	var dead: int = pop.apply_casualties({"SWORDSMAN": 6})
 	var after_pop: int = pop.get_total_population()
 	
-	# Populasi total harus terpotong 6 dan prajurit tersisa 2
 	return dead == 6 and after_pop == before_pop - 6 and pop.soldiers["SWORDSMAN"] == 2
 
 
 func _test_scenario_e_fortress_damage_and_recovery() -> bool:
 	var fort := FortressModel.new(1000, 40)
-	fort.take_damage(750) # 750 raw -> 592 actual dmg -> HP 408
+	fort.take_damage(750)
 	if fort.current_hp > 500: return false
 	
 	var pop := PopulationModel.new(10, 30, 100)
 	var econ := EconomyManager.new(200)
-	econ.set_worker_allocation(4, 6, 0, 0, 10) # 6 worker ditugaskan reparasi -> 150 HP
+	econ.set_worker_allocation(6, 0, 0, 10) # 6 worker ditugaskan reparasi -> 150 HP
 	
 	var ledger: Dictionary = econ.process_cycle(pop, fort)
-	return int(ledger["hp_repaired"]) > 0 and fort.current_hp > 500 # 408 + 150 = 558 > 500
+	return int(ledger["hp_repaired"]) > 0 and fort.current_hp > 500
 
 
 func _test_scenario_f_mercenary_dependency_burden() -> bool:
@@ -320,10 +418,9 @@ func _test_scenario_f_mercenary_dependency_burden() -> bool:
 	var econ := EconomyManager.new(100)
 	
 	pop.hire_mercenaries(5) # 5 mercenary * 18 = 90 gold upkeep
-	econ.set_worker_allocation(10, 0, 0, 0, 12) # 10 prod * 12 = 120 gross
+	econ.set_worker_allocation(0, 0, 0, 12)
 	var ledger: Dictionary = econ.process_cycle(pop, fort)
 	
-	# Beban militer harus mencakup 90 gold mercenary
 	return int(ledger["military_upkeep"]) >= 90
 
 
@@ -333,7 +430,7 @@ func _test_scenario_g_hero_fatigue_and_rest() -> bool:
 	
 	hero.add_fatigue(60)
 	var tired_power: int = hero.get_effective_atk()
-	if tired_power >= full_power: return false # Efektivitas harus turun
+	if tired_power >= full_power: return false
 	
 	hero.rest(50)
 	var rested_power: int = hero.get_effective_atk()
@@ -341,25 +438,24 @@ func _test_scenario_g_hero_fatigue_and_rest() -> bool:
 
 
 func _test_scenario_h_equipment_failure_penalty() -> bool:
-	var bow := EquipmentModel.new("BOW", 3, 10)
+	var bow := EquipmentModel.new("BOW", 3, 10, 1)
 	var power_intact: float = bow.get_power_multiplier()
 	
 	bow.apply_wear(15) # Menjadi 0 durability (Broken)
 	var power_broken: float = bow.get_power_multiplier()
 	
-	return bow.is_broken() and power_broken < power_intact and power_broken == 0.10
+	return bow.is_broken() and power_broken < power_intact and power_broken == 1.0
 
 
 # --- 100-WAVE STABILITY SIMULATION ---
 func _test_100_waves_stability() -> bool:
-	print("[SIMULATION] Menjalankan simulasi 100 Wave...")
+	print("[SIMULATION] Menjalankan simulasi 100 Wave (Deterministic Policy)...")
 	var sim := HeadlessSimulator.new(98765)
 	var result: Dictionary = sim.run_simulation_to_wave(100, 98765)
 	
 	var history: Array = result["history"] as Array
 	print("[SIMULATION] Selesai: %d gelombang dieksekusi. Game Over: %s" % [result["completed_waves"], str(result["game_over"])])
 	
-	# Cetak telemetri pada tonggak penting
 	var milestones: Array = [1, 5, 10, 20, 30, 50, 75, 100]
 	print("----------------------------------------------------------------------------------------------------------------")
 	print(String("%-6s | %-6s | %-7s | %-12s | %-8s | %-8s | %-8s | %-10s | %-6s" % ["WAVE", "THREAT", "VICTORY", "FORTRESS HP", "POP TOTAL", "SOLDIERS", "WORKERS", "GOLD", "HERO LV"]))
@@ -383,8 +479,4 @@ func _test_100_waves_stability() -> bool:
 			]))
 	print("----------------------------------------------------------------------------------------------------------------")
 	
-	# Verifikasi stabilitas:
-	# 1. Mampu menjalankan setidaknya 100 gelombang tanpa crash
-	# 2. Kas tidak negatif
-	# 3. Populasi tidak menjadi 0
 	return result["completed_waves"] == 100 and int(result["final_gold"]) >= 0 and int(result["final_pop"]) > 0

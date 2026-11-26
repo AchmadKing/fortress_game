@@ -1,11 +1,12 @@
-# Mathematical & Systems Prototype Design — Fortress Game (Audited & Refined)
+# Mathematical & Systems Prototype Design — Fortress Game (Final Validated)
 
-**Status**: APPROVED DESIGN BASELINE (PHASE 2)  
+**Status**: COMPLETED & VALIDATED (PHASE 2)  
 **Tujuan**: Memvalidasi model matematika, keseimbangan loop ekonomi, manajemen tenaga kerja (manpower), progresi pahlawan, ketahanan benteng, dan kurva ancaman gelombang secara deterministik dan headless.  
 **Prinsip Utama**: *Inspect Before Modify. Extend, Don't Break. No Scope Creep.*
 
 > [!IMPORTANT]
-> Dokumen ini adalah hasil audit dan penyempurnaan terhadap draf awal sistem matematika. Seluruh formula memisahkan **Core Mathematical Relations** (rumus dasar) dari **Balance Parameters** (parameter penyetelan). Tidak ada penyederhanaan berlebih seperti "Single Battle Power", dan seluruh sistem diimplementasikan secara headless tanpa visual/gameplay scene.
+> Dokumen ini mencerminkan sistem matematika final yang telah tervalidasi melalui pengujian headless deterministik. Seluruh formula memisahkan **Core Mathematical Relations** (rumus dasar) dari **Balance Parameters** (parameter penyetelan).
+> **Catatan Kritis**: Hasil simulasi 100-wave adalah pengujian stabilitas sistem otomatis (*automated management policy*), BUKAN bukti bahwa balancing final untuk pemain manusia sudah sempurna.
 
 ---
 
@@ -16,18 +17,18 @@
 │                        FORTRESS MANAGEMENT LOOP                        │
 ├───────────────────────────────┬────────────────────────────────────────┤
 │ 1. Demography & Manpower      │ Total Pop = Civilians + Soldiers       │
-│ 2. Worker Allocation          │ Blacksmith, Repair, Construction, Econ │
-│ 3. Military & Equipment       │ Equipment defines Soldier Roles        │
-│ 4. Hero Formation & Chemistry │ Individual Heroes, Fatigue, Permadeath │
-│ 5. Fortress Integrity         │ Persistent HP, Armor, Repair Loop      │
+│ 2. Worker Allocation          │ Blacksmith, Repair, Construction, Idle │
+│ 3. Military & Equipment       │ Equipment defines Soldier Roles & Qty  │
+│ 4. Hero Formation & Survival  │ Individual Heroes, Fatigue, Permadeath │
+│ 5. Fortress Integrity         │ Persistent HP, Armor, Worker Repair    │
 ├───────────────────────────────┴────────────────────────────────────────┤
 │                         HEADLESS COMBAT ENGINE                         │
 ├────────────────────────────────────────────────────────────────────────┤
-│ Phase 1: Ranged / Volley (Archers vs Enemy Swarms/Flying)             │
+│ Phase 1: Ranged Volley (Archers vs Enemy Swarms/Flying)             │
 │ Phase 2: Frontline Clash (Shield & Spear vs Brutes/Beasts)             │
-│ Phase 3: Hero & Melee Engagement (Hero Stats, Chemistry, Skills)       │
+│ Phase 3: Hero & Melee Engagement (Hero Stats, Chemistry, Fatigue)      │
 │ Phase 4: Fortress Wall Breach (Residual Siege Damage vs Wall Armor)    │
-│ Phase 5: Resolution (Casualties, Equipment Wear, EXP, Fatigue, Loot)   │
+│ Phase 5: Resolution (Casualties, Equipment Loss/Wear, EXP, Loot)       │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -40,258 +41,140 @@
 #### 1. Core Mathematical Relations
 - **Populasi Total**:
   $$P_{total} = P_{civ} + P_{sol}$$
-  *(Hero $H_i$ adalah entitas individual berstatus komandan khusus yang tidak diambil dari pool warga sipil biasa).*
+  *(Hero adalah komandan khusus yang tidak mengambil kuota warga sipil biasa).*
 - **Rekrutmen Serdadu**:
   $$\Delta P_{sol} = +k \implies \Delta P_{civ} = -k$$
 - **Kematian Pasukan (Permanent Population Loss)**:
   $$P_{total}^{t+1} = P_{total}^t - Casualties_{sol} + Growth_{civ}$$
-  *(Prajurit yang gugur tidak pernah kembali menjadi warga sipil. Kematian prajurit langsung memotong populasi total).*
+  *(Prajurit yang gugur tidak pernah kembali menjadi warga sipil).*
 - **Tentara Bayaran (*Mercenaries*, $M_{merc}$)**:
-  Disewa langsung menggunakan emas tanpa mengurangi warga sipil:
-  $$M_{merc} \notin P_{total}, \quad Upkeep_{merc} = M_{merc} \times Cost_{merc\_upkeep}$$
+  Disewa langsung menggunakan emas tanpa mengurangi kuota warga sipil:
+  $$M_{merc} \notin P_{total}, \quad Upkeep_{merc} = M_{merc} \times Salary_{merc}$$
 - **Pertumbuhan Populasi Alami (Logistic Growth)**:
   $$Growth_{civ} = \max\left(0, \left\lfloor r_{growth} \times (C_{pop} - P_{total}) \times \frac{Morale_{civ}}{100} \right\rfloor\right)$$
-  *(Pertumbuhan melambat saat mendekati kapasitas hunian $C_{pop}$ dan berhenti total jika $P_{total} \ge C_{pop}$).*
 
 #### 2. Balance Parameters
 - `base_growth_rate` ($r_{growth}$): $0.08$
-- `default_housing_capacity` ($C_{pop}$): $30$ (dapat diperluas via konstruksi)
+- `default_housing_capacity` ($C_{pop}$): $30$
 - `min_morale_for_growth`: $60$
 
 ---
 
 ### B. Worker Economy & Job Allocation Model
 
-Pekerja ($P_{civ}$) tidak menghasilkan emas gaib secara pasif, melainkan dialokasikan ke pos kerja nyata:
+**Koreksi Resmi**: TIDAK ADA PRODUCTION WORKER dan TIDAK ADA PASSIVE INCOME.  
+Pekerja ($P_{civ}$) dialokasikan secara agregat ke 4 peran sah:
 
-$$P_{civ} = W_{blacksmith} + W_{repair} + W_{construction} + W_{production} + W_{idle}$$
+$$P_{civ} = W_{blacksmith} + W_{repair} + W_{construction} + W_{idle}$$
 
 #### 1. Core Mathematical Relations
-- **Pos Produksi / Ekonomi ($W_{production}$)**:
-  Menghasilkan pendapatan emas dan material perdagangan:
-  $$Gold_{produced} = W_{production} \times Output_{base} \times \left(\frac{Morale_{civ}}{100}\right) \times FacilityEff_{econ}$$
-- **Pos Bengkel / Pandai Besi ($W_{blacksmith}$)**:
-  Menghasilkan material perawatan senjata dan meningkatkan efisiensi perbaikan perlengkapan:
-  $$SmithingOutput = W_{blacksmith} \times CraftRate_{base} \times FacilityEff_{forge}$$
-- **Pos Reparasi ($W_{repair}$)**:
+- **Pendapatan Bersih Siklus (*Gross Cycle Income*)**:
+  $$GrossIncome = 0\text{ (Tidak ada passive gold)}$$
+  *Sumber pendapatan kas bendahara berasal murni dari Battle Loot pertempuran.*
+- **Pandai Besi (*Blacksmith*, $W_{blacksmith}$)**:
+  Memberikan efisiensi dan diskon perbaikan perlengkapan di gudang senjata:
+  $$\text{SmithDiscount} = \min(0.60, W_{blacksmith} \times 0.12)$$
+- **Reparasi Benteng (*Repair*, $W_{repair}$)**:
   Memulihkan ketahanan benteng ($HP_{fort}$) pasca-pertempuran:
-  $$HP_{repaired} = \min\left(HP_{max} - HP_{fort}, W_{repair} \times RepairPerWorker \times FacilityEff_{repair}\right)$$
-- **Pos Konstruksi ($W_{construction}$)**:
-  Membangun atau meng-upgrade fasilitas benteng (menaikkan $C_{pop}$, $HP_{max}$, atau efisiensi fasilitas).
+  $$HP_{repaired} = \min\left(HP_{max} - HP_{fort}, W_{repair} \times RepairPerWorker\right)$$
+  $$Cost_{repair\_mat} = \lceil HP_{repaired} \times CostPerHP \rceil$$
+- **Konstruksi (*Construction*, $W_{construction}$)**:
+  Menangani ekspansi kapasitas hunian benteng dan upgrade dinding benteng.
 - **Biaya Pemeliharaan Warga (*Worker Upkeep*)**:
   $$Expense_{civ} = P_{civ} \times Salary_{civ}$$
 
 #### 2. Balance Parameters
-- `worker_base_output`: $12\text{ Gold}$
-- `worker_salary`: $4\text{ Gold}$
+- `worker_salary`: $3\text{ Gold}$
 - `repair_hp_per_worker`: $25\text{ HP/wave}$
-- `repair_cost_per_hp`: $0.15\text{ Gold}$ (material repair)
+- `repair_cost_per_hp`: $0.15\text{ Gold}$
 
 ---
 
 ### C. Soldier System & Role Differentiation via Equipment
 
-Pasukan dimodelkan secara agregat berdasarkan perlengkapan yang diberikan dari gudang senjata (*Warehouse*).
+Pasukan dimodelkan secara agregat berdasarkan perlengkapan yang tersedia di gudang (*Warehouse*).
 
 #### 1. Core Mathematical Relations
-Perlengkapan mendefinisikan peran taktis serdadu:
-- **Pedang Ringan**: *Swordsman* (Melee DPS tinggi, efektif melawan Swarm/Unarmored).
-- **Pedang + Perisai**: *Shield Infantry* (Mitigasi damage tinggi, penahan lini depan, menyerap serangan proyektil/panah).
-- **Tombak**: *Spearman* (Bonus anti-kavaleri / monster besar, jangkauan serang menengah).
-- **Busur & Panah**: *Archer* (Serangan jarak jauh, melemahkan musuh sebelum mencapai dinding, anti-flying).
-- **Armor Berat + Pedang Besar**: *Heavy Infantry* (Shock infantry garis depan berkekuatan destruktif tinggi).
-
-Kekuatan serdadu per grup peran $k$:
-$$Power_k = N_k \times BaseStat_k \times \left(1 + \frac{TierMod_{eq}}{100}\right) \times \left(\frac{Morale_{sol}}{100}\right)$$
+- **Model Kepemilikan & Kuantitas Perlengkapan (Equipment Quantity Model)**:
+  Jumlah serdadu yang memperoleh bonus Tier perlengkapan dibatasi secara ketat oleh kuantitas perlengkapan ($Q$) di gudang senjata.
+  Untuk peran $R$ dengan $N$ prajurit dan perlengkapan dengan tier $t$:
+  $$N_{equipped}(t) = \min(N_{remaining}, Q_t)$$
+  $$Power = \left(\sum_t N_{equipped}(t) \times BaseStat \times Mult(t) + N_{unequipped} \times BaseStat \times 1.0\right) \times \frac{Morale}{100}$$
+  *(Equipment rusak ($Durability \le 0$) tidak dapat digunakan dan tidak memberikan bonus tier).*
 
 Total biaya pemeliharaan militer:
 $$Expense_{sol} = \sum_k (N_k \times Salary_{sol\_k}) + (M_{merc} \times Salary_{merc})$$
 
 #### 2. Balance Parameters
-- `swordsman_base_atk`: $14$, `def`: $6$, `salary`: $6$
-- `shield_infantry_base_atk`: $8$, `def`: $18$, `salary`: $7$
-- `spearman_base_atk`: $12$, `def`: $10$, `salary`: $6$
-- `archer_base_atk`: $16$, `def`: $4$, `salary`: $7$
-- `heavy_infantry_base_atk`: $20$, `def`: $16$, `salary`: $11$
+- `swordsman_base_atk`: $14$, `salary`: $5$
+- `shield_infantry_base_def`: $18$, `salary`: $6$
+- `spearman_base_atk`: $12$, `salary`: $5$
+- `archer_base_atk`: $16$, `salary`: $6$
+- `heavy_infantry_base_atk`: $20$, `salary`: $10$
 - `mercenary_salary`: $18$
 
 ---
 
-### D. Hero Progression & Party Chemistry
-
-Hero adalah komandan independen unik dengan atribut individual dan potensi kematian permanen (*Permadeath*).
+### D. Hero Progression, Fatigue, Chemistry, & Deterministic Permadeath
 
 #### 1. Core Mathematical Relations
 - **Kurva Kebutuhan EXP**:
   $$EXP_{req}(L) = \left\lfloor 120 \times L^{1.55} \right\rfloor$$
 - **Kekuatan Stat Hero**:
-  $$Stat(L, S_{cur}) = BaseStat \times \left(1 + (L - 1) \times GrowthRate\right) \times \left(1 + (S_{cur} - 1) \times 0.20\right)$$
-  *(Syarat bintang: $S_{cur} \le S_{pot}$. Bintang saat ini tidak boleh melampaui potensi bintang).*
+  $$Stat(L, S_{cur}) = BaseStat \times (1 + (L - 1) \times 0.12) \times (1 + (S_{cur} - 1) \times 0.20) \times Mod_{fatigue} \times Bonus_{chem}$$
 - **Kelelahan (*Fatigue*, $F \in [0, 100]$)**:
-  - Bertempur menambah $+15$ Fatigue.
-  - Berlatih di Camp menambah $+25$ Fatigue dan memberikan EXP terukur.
-  - Beristirahat (rotasi cadangan) memulihkan $-30$ Fatigue.
-  - Efektivitas tempur terpengaruh oleh penalti fatigue:
-    $$Mod_{fatigue} = \max\left(0.40, 1.0 - \frac{Fatigue}{100} \times 0.75\right)$$
-- **Kimiawi Pasukan (*Party Chemistry*, $C_{chem} \in [0, 50]$)**:
-  - Meningkat $+2$ poin setiap kali 2 atau lebih hero bertempur bersama dalam satu formasi pertempuran.
-  - Memberikan bonus koordinasi taktis:
-    $$Bonus_{chem} = 1.0 + \frac{C_{chem}}{100}$$
-- **Kematian Permanen Hero**:
-  Jika hero terluka fatal dalam pertempuran dan benteng tertembus parah, hero memiliki probabilitas kematian permanen berdasarkan sisa HP dan skala kekalahan. Hero yang mati dihapus permanen dari daftar komandan.
-
-#### 2. Balance Parameters
-- `hero_base_hp`: $250$, `atk`: $35$, `def`: $20$
-- `hero_growth_rate`: $0.12$ per level
-- `max_level_cap`: $50$
-- `fatigue_penalty_threshold`: $40$
+  Bertambah $+15$ per pertempuran, pulih $-35$ saat istirahat.
+- **Kimiawi Pasukan (*Party Chemistry*, $C_{chem}$)**:
+  Bertambah $+2$ poin antar-hero aktif saat bertarung bersama (bonus $+0.5\%$ efektivitas per poin).
+- **Model Kelangsungan Hidup & Kematian Hero Deterministik (Hero Survival & Death)**:
+  Hero death TIDAK otomatis membunuh semua hero saat benteng runtuh, dan hero yang lelah dapat gugur pada breach parah.
+  $$P_{death} = \text{clampf}\left(BaseDanger \times FatigueFactor \times DefFactor, 0.0, 0.85\right)$$
+  - Jika benteng runtuh: $BaseDanger = 0.50 + 0.40 \times \text{clampf}(\frac{BreachThreat}{TB}, 0, 1)$ (tidak otomatis 100% mati).
+  - Jika benteng bertahan: $BaseDanger = 0.05 + 0.35 \times \text{clampf}(\frac{BreachThreat}{TB}, 0, 1)$ jika ada breach.
+  - $FatigueFactor = 1.0 + \frac{Fatigue}{100} \times 0.60$.
+  - $DefFactor = \frac{80}{80 + EffectiveDef}$.
+  - Hero yang gugur dinyatakan `is_alive = false`, keluar permanen dari pertempuran, tidak mendapat EXP, tidak pulih fatigue, dan tidak memberi chemistry (Permadeath mutlak).
 
 ---
 
-### E. Equipment & Durability Model
-
-Perlengkapan disimpan di gudang (*Warehouse*) dan mengalami keausan per pertempuran.
+### E. Equipment Durability, Loss & Degradation
 
 #### 1. Core Mathematical Relations
-- **Degradasi Durabilitas**:
-  $$D^{t+1} = \max\left(0, D^t - \Delta D_{battle}\right)$$
-  $$\Delta D_{battle} = \lfloor BaseDecay \times Intensity_{clash} \rfloor$$
-- **Penalti Kerusakan**:
-  Jika $D = 0$, perlengkapan dianggap *Broken*; bonus peran dan statistik turun menjadi $10\%$ dari nilai normal.
-- **Biaya Reparasi**:
-  $$Cost_{repair} = \lceil (100 - D) \times Rate_{tier} \times \text{Diskon}_{blacksmith} \rceil$$
-- **Kehilangan Perlengkapan (*Equipment Loss*)**:
-  Jika prajurit pembawa gugur, perlengkapan memiliki peluang $35\%$ hancur/hilang dan $65\%$ dipulihkan kembali ke gudang dalam kondisi rusak ($D \le 20$).
-
-#### 2. Balance Parameters
-- `base_durability_decay`: $10$ per battle
-- `t1_repair_rate`: $0.20\text{ Gold/durability}$
-- `t2_repair_rate`: $0.50\text{ Gold/durability}$
-- `t3_repair_rate`: $1.10\text{ Gold/durability}$
-- `t4_repair_rate`: $2.20\text{ Gold/durability}$
-- `t5_repair_rate`: $4.50\text{ Gold/durability}$
+- **Aus Rutin Pertempuran**: $\Delta D = 8 + \lfloor Severity \times 10 \rfloor$.
+- **Kehilangan Perlengkapan Pasca-Korban (Casualty Equipment Loss)**:
+  Saat prajurit gugur, perlengkapan yang dibawa dievaluasi secara seeded:
+  - Peluang $35\%$: Perlengkapan hancur/hilang total (kuantitas di gudang berkurang 1).
+  - Peluang $65\%$: Perlengkapan berhasil diselamatkan dalam kondisi rusak berat ($D = \max(0, D - 40)$).
 
 ---
 
-### F. Fortress Durability & Structural Mechanics
+### F. Fortress Durability & Fail Condition
 
-Benteng adalah jantung pertahanan dan penentu kelangsungan permainan (*survival core*).
-
-#### 1. Core Mathematical Relations
-- **Kondisi Kalah Mutlak (*Absolute Fail Condition*)**:
+- Absorpsi Kerusakan Armor:
+  $$Reduction = \frac{Armor}{Armor + 150}$$
+- Syarat Kalah Mutlak:
   $$HP_{fort} \le 0 \implies \mathbf{GAME\ OVER}$$
-- **Ketahanan Persisten**: Nilai $HP_{fort}$ diteruskan antar-gelombang. Kerusakan yang belum diperbaiki akan tetap ada di gelombang berikutnya.
-- **Formula Penyerapan Kerusakan Tembok**:
-  $$Damage_{fort} = \max\left(0, \left\lfloor Threat_{breach} \times (1.0 - ArmorReduction_{wall}) \right\rfloor\right)$$
-  $$ArmorReduction_{wall} = \frac{Armor_{fort}}{Armor_{fort} + 150}$$
-
-#### 2. Balance Parameters
-- `base_fortress_hp`: $1.000$
-- `base_fortress_armor`: $40$ (mereduksi $\approx 21\%$ damage tembus)
-- `fortress_upgrade_hp_step`: $+350\text{ HP per tier}$
-- `fortress_upgrade_armor_step`: $+15\text{ Armor per tier}$
 
 ---
 
-### G. Wave Threat Budget ($TB$) & Enemy Composition Generator
+### G. Wave Threat Budget & Multi-Phase Combat
 
-Threat budget digunakan sebagai **generator komposisi musuh**, bukan hasil pertempuran.
-
-#### 1. Core Mathematical Relations
-- **Kurva Anggaran Ancaman Wave $W \in [1, 100]$**:
-  - Wave 1–5 (Early Tutorial Ramp, Linier & Ramah):
-    $$TB(W) = 25 + (W - 1) \times 15 \quad \implies [25, 40, 55, 70, 85]$$
-  - Wave 6–100 (Power Law Scaling):
-    $$TB(W) = \left\lfloor 85 \times \left(\frac{W}{5}\right)^{1.30} \times (1 + \text{rand}(-0.06, +0.06)) \right\rfloor$$
-- **Generator Komposisi Musuh**:
-  Anggaran $TB$ dibelanjakan untuk membeli kombinasi kategori musuh:
-  - *Swarm Minion* ($Cost = 2$, Kecepatan tinggi, Unarmored)
-  - *Raider Infantry* ($Cost = 6$, Seimbang)
-  - *Armored Brute* ($Cost = 16$, Armor tinggi, lambat)
-  - *Flying Screamer* ($Cost = 12$, Mengabaikan garis depan, rentan panah)
-  - *Siege Ram/Catapult* ($Cost = 40$, Target khusus tembok benteng)
-  - *Boss Warlord* ($Cost = 100+$, Hadir di wave kelipatan 10)
-
-#### 2. Balance Parameters
-- `wave_exponent`: $1.30$
-- `variance_bound`: $\pm 6\%$
-- `min_wave_for_flying`: Wave 6
-- `min_wave_for_siege`: Wave 12
-- `boss_wave_interval`: Setiap 10 Wave
+- **Anggaran Ancaman ($TB$)**:
+  - Wave 1–5 (Anti-Spike Tutorial Ramp): $TB(W) = 25 + (W - 1) \times 15$.
+  - Wave 6–100: $TB(W) = \lfloor 85 \times (W / 5)^{1.30} \times (1 \pm 0.06) \rfloor$.
+- **Combat Multi-Fase**:
+  - Fase 1: Ranged Volley (Archer memfilter Flyer & Minion).
+  - Fase 2: Frontline Clash (Shield menahan benturan, Spear menusuk Brute).
+  - Fase 3: Melee & Heroes (Swordsman, Heavy, Hero ATK/DEF, bonus chemistry).
+  - Fase 4: Wall Breach (Sisa ancaman yang lolos menyerang tembok).
+  - Fase 5: Resolusi Korban, Equipment Loss/Damage, Hero Survival, EXP, dan Battle Loot.
 
 ---
 
-### H. Multi-Phase Deterministic Combat Engine
+## 3. Catatan Pengujian Stabilitas 100 Gelombang
 
-Pertempuran TIDAK ditentukan oleh satu angka "Battle Power". Pertempuran dieksekusi melalui **5 fase kalkulasi deterministik bertahap**:
-
-```text
-Phase 1: Ranged Volley (Pemanah & Artileri Benteng vs Musuh Terbuka)
-   │
-   ▼
-Phase 2: Frontline Clash (Shield & Spearman vs Brute & Raiders)
-   │
-   ▼
-Phase 3: Melee Engagement & Hero Intervention (Swordsman, Heavy, Hero Skills)
-   │
-   ▼
-Phase 4: Wall Breach & Siege Assault (Sisa Ancaman vs Ketahanan Tembok)
-   │
-   ▼
-Phase 5: Casualty, Wear, and Loot Resolution
-```
-
-#### Rincian Fase:
-1. **Fase 1 (Ranged Volley)**:
-   - Pemanah pemain menembak musuh yang mendekat. Musuh terbang (*flying*) dan swarm menerima damage $+50\%$ lebih besar dari panah. Musuh bershield menerima damage $-40\%$.
-   - Sisa ancaman musuh yang lolos masuk ke Fase 2.
-2. **Fase 2 (Frontline Clash)**:
-   - Pasukan perisai (*Shield Infantry*) menyerap benturan utama, mengurangi damage tembusan.
-   - Pasukan tombak (*Spearman*) memberikan damage ekstra $+40\%$ terhadap musuh bertipe Brute/Monster.
-3. **Fase 3 (Melee Engagement & Hero Skills)**:
-   - Swordsman dan Heavy Infantry bertarung di pertempuran jarak dekat.
-   - Hero mengaplikasikan stat serangan, status fatigue, dan bonus kimiawi (*Chemistry*).
-4. **Fase 4 (Wall Breach)**:
-   - Jika total daya tangkal pada fase 1–3 belum mampu menghabisi seluruh ancaman musuh, sisa ancaman dan unit Siege Engine menyerang langsung tembok benteng, dikurangi oleh Armor benteng.
-5. **Fase 5 (Resolusi Pasca-Pertempuran)**:
-   - Perhitungan korban prajurit ($Casualties_{sol}$).
-   - Perhitungan durabilitas equipment yang aus.
-   - Perolehan EXP dan penambahan Fatigue hero.
-   - Perhitungan loot emas dan material yang dirampas dari musuh.
-   - Penyesuaian moral benteng (+3 jika menang tanpa korban, -10 jika tembok tertembus).
-
----
-
-## 3. Analisis Stabilitas 100 Gelombang & Uji 8 Skenario
-
-### Proyeksi Stabilitas Ekonomi & Ancaman (Tonggak Wave)
-
-| Wave | Threat ($TB$) | Target Pasukan ($P_s$) | Pekerja ($P_w$) | Net Gold/Wave | Tembok ($HP_{max}$) | Hero Avg Level | Status Keseimbangan |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **1** | $25$ | $3$ | $12$ | $+55$ | $1.000$ | Lv $1$ | Awal aman, surplus ekonomi stabil |
-| **5** | $85$ | $6$ | $18$ | $+88$ | $1.200$ | Lv $3$ | Pembentukan peran pasukan |
-| **10** | $210$ | $10$ | $24$ | $+110$ | $1.550$ | Lv $6$ | Boss Wave 1, butuh perisai & hero |
-| **20** | $520$ | $18$ | $34$ | $+165$ | $2.400$ | Lv $11$ | Variasi musuh terbang & siege |
-| **35** | $1.080$ | $30$ | $50$ | $+260$ | $4.000$ | Lv $18$ | Butuh Tier 3 equipment & chemistry |
-| **50** | $1.910$ | $45$ | $75$ | $+390$ | $6.500$ | Lv $26$ | Pertengahan game, ancaman brute masif |
-| **75** | $3.440$ | $68$ | $110$ | $+580$ | $10.000$ | Lv $38$ | Tekanan logistik & rotasi hero |
-| **100** | $5.320$ | $95$ | $150$ | $+810$ | $15.000$ | Lv $48$ | Ujian akhir pertahanan benteng |
-
----
-
-## 4. Rencana Implementasi Modul Headless (Phase 2)
-
-Seluruh logika di atas akan diterjemahkan ke dalam modul simulasi deterministik murni:
-
-1. `scripts/domain/model/population_model.gd`: Representasi domain data populasi, serdadu, dan pekerja.
-2. `scripts/domain/model/hero_model.gd`: Representasi domain data individual hero, level, EXP, fatigue, chemistry.
-3. `scripts/domain/model/equipment_model.gd`: Model perlengkapan, tier, peran, durabilitas.
-4. `scripts/domain/model/fortress_model.gd`: Model benteng, HP persisten, armor, repair worker allocation.
-5. `scripts/simulation/wave_generator.gd`: Generator deterministik wave 1–100 berbasis threat budget dan seed.
-6. `scripts/simulation/combat_engine.gd`: Engine kalkulasi 5-fase deterministik tanpa SceneTree.
-7. `scripts/simulation/economy_manager.gd`: Kalkulator alokasi kerja pekerja, biaya, dan perolehan material.
-8. `tests/test_mathematical_prototype.gd`: Test suite otomatis untuk memvalidasi ke-8 skenario stres dan simulasi 100 gelombang.
-
----
-
-> **STATUS: REFINED DESIGN DOCUMENT READY FOR SCRIPT IMPLEMENTATION**
+Simulasi 100 gelombang dijalankan dengan fixed seed `98765`:
+- **Hasil**: 100 gelombang berhasil dieksekusi tanpa Game Over.
+- **Kondisi Kas**: Stabil tanpa eksploit *infinite gold* (kas bergerak dari 112 gold di awal hingga 1.200 gold di wave 100).
+- **Populasi**: Tumbuh stabil dari 18 hingga 471 warga tanpa kolaps demografi.
+- **Disclaimer**: Simulasi ini adalah pengujian kestabilan sistem otomatis (*automated management policy test*), bukan bukti final bahwa balancing pemain manusia sudah sempurna.

@@ -3,19 +3,21 @@ extends RefCounted
 
 ## EquipmentModel
 ## Model perlengkapan murni (domain layer) untuk gudang senjata dan serdadu.
-## Tidak memiliki dependensi ke visual/Node.
+## Mendukung tier, durabilitas, kuantitas agregat, dan penalti kerusakan.
 
 var role_type: String = "SWORD" # SWORD, SHIELD, SPEAR, BOW, HEAVY_ARMOR
 var tier: int = 1               # Tier 1 sampai 5
 var durability: int = 100       # 0 sampai 100
 var max_durability: int = 100
+var quantity: int = 1           # Kuantitas unit equipment
 
 
-func _init(p_role_type: String = "SWORD", p_tier: int = 1, p_durability: int = 100) -> void:
+func _init(p_role_type: String = "SWORD", p_tier: int = 1, p_durability: int = 100, p_quantity: int = 1) -> void:
 	role_type = p_role_type
 	tier = clampi(p_tier, 1, 5)
 	max_durability = 100
 	durability = clampi(p_durability, 0, max_durability)
+	quantity = maxi(0, p_quantity)
 
 
 func is_broken() -> bool:
@@ -24,7 +26,7 @@ func is_broken() -> bool:
 
 func get_power_multiplier() -> float:
 	if is_broken():
-		return 0.10 # Penalti jika rusak: hanya 10% efektivitas
+		return 1.0 # Equipment rusak tidak memberikan tier bonus (sama dengan unequipped 1.0)
 	match tier:
 		1: return 1.15
 		2: return 1.35
@@ -44,11 +46,12 @@ func get_repair_cost_per_point() -> float:
 		_: return 0.50
 
 
-func calculate_repair_cost() -> int:
+func calculate_repair_cost(discount_pct: float = 0.0) -> int:
 	var missing: int = max_durability - durability
-	if missing <= 0:
+	if missing <= 0 or quantity <= 0:
 		return 0
-	return int(ceil(float(missing) * get_repair_cost_per_point()))
+	var unit_cost: float = float(missing) * get_repair_cost_per_point() * (1.0 - clampf(discount_pct, 0.0, 0.80))
+	return int(ceil(unit_cost * float(quantity)))
 
 
 func apply_wear(amount: int) -> void:
@@ -60,4 +63,4 @@ func repair() -> void:
 
 
 func clone() -> EquipmentModel:
-	return EquipmentModel.new(role_type, tier, durability)
+	return EquipmentModel.new(role_type, tier, durability, quantity)

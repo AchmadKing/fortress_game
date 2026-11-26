@@ -31,11 +31,14 @@ High-level roadmap pengembangan proyek `fortress_game`.
   - Membangun baseline arsitektur yang ringan (*lightweight*), hemat memori, dan optimal untuk platform target mobile Android serta hardware development yang terbatas.
 
 ## Phase 2 — Mathematical / Systems Prototype
-- **Status**: IN PROGRESS — PLANNING
+- **Status**: COMPLETED
 - **Tujuan**: Memvalidasi formula angka dasar, stat scaling, dan simulasi logic tanpa visual berat.
+  - Empat corrective items review selesai (sinkronisasi roadmap, penghapusan passive income & production worker, perbaikan model kuantitas equipment, implementasi equipment loss & survival hero deterministik).
+  - Seluruh pengujian headless (21/21 Phase 2 tests, 5/5 Phase 1 regression tests) tervalidasi lulus.
+  - Simulasi 100-wave stabil tanpa eksploit ekonomi maupun death spiral.
 
 ## Phase 3 — Gameplay Prototype
-- **Status**: NOT STARTED
+- **Status**: NOT STARTED / LOCKED
 - **Tujuan**: Prototipe interaksi gameplay minimum yang dapat dimainkan.
 
 ## Phase 4 — Hero System
