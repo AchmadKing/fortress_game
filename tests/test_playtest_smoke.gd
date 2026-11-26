@@ -43,6 +43,17 @@ func _init() -> void:
 	var ok_rec: bool = proto.controller.recruit_soldier("SWORDSMAN", 1)
 	assert(ok_rec, "Rekrut serdadu gagal")
 
+	# 2b. Buat deployment prajurit & verifikasi Deployed Soldiers
+	print("[PLAYTEST] 2b. Membuat penempatan serdadu & verifikasi Deployed Soldiers...")
+	var ok_deploy: bool = proto.controller.create_soldier_deployment(3, "SWORD", "SHIELD", "NONE")
+	assert(ok_deploy, "Penempatan serdadu gagal")
+	assert(proto.controller.get_total_deployed_soldiers() == 3, "Total deployed soldiers harus 3")
+
+	# 2c. Pasang perlengkapan Hero
+	print("[PLAYTEST] 2c. Memasang perlengkapan hero...")
+	var ok_hero_eq: bool = proto.controller.equip_hero("hero_alder", "PRIMARY", "SWORD")
+	assert(ok_hero_eq, "Equip hero gagal")
+
 	# 3. Wave Preview
 	print("[PLAYTEST] 3. Masuk ke WAVE_PREVIEW...")
 	var ok_prev: bool = proto.controller.inspect_wave()
@@ -87,6 +98,18 @@ func _init() -> void:
 	assert(ok_proc, "Proceed gagal")
 	assert(proto.coordinator.get_current_state().game_phase == "PREPARATION", "State harus kembali ke PREPARATION")
 	assert(proto.coordinator.get_current_state().current_wave == 2, "Harus Wave 2")
+
+	# 8b. Uji reparasi Pandai Besi (Blacksmith Repair)
+	print("[PLAYTEST] 8b. Menguji reparasi Pandai Besi...")
+	var EquipmentModel = preload("res://scripts/domain/model/equipment_model.gd")
+	proto.coordinator._return_equipment_to_warehouse(EquipmentModel.new("SWORD", 1, 60, 1))
+	assert(proto.controller.get_warehouse_damaged_stock("SWORD") >= 1, "Harus ada damaged sword")
+	var repair_cost: int = proto.controller.get_equipment_repair_cost("SWORD", 1)
+	assert(repair_cost > 0, "Biaya perbaikan harus > 0")
+	var gold_pre: int = proto.coordinator.get_treasury_gold()
+	var ok_rep: bool = proto.controller.repair_equipment("SWORD", 1)
+	assert(ok_rep, "Reparasi Pandai Besi gagal")
+	assert(proto.coordinator.get_treasury_gold() == (gold_pre - repair_cost), "Kas emas harus berkurang sesuai biaya reparasi")
 
 	# 9. Uji kondisi Game Over
 	print("[PLAYTEST] 9. Menguji kondisi Game Over...")

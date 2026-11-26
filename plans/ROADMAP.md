@@ -38,7 +38,7 @@ High-level roadmap pengembangan proyek `fortress_game`.
   - Simulasi 100-wave stabil tanpa eksploit ekonomi maupun death spiral.
 
 ## Phase 3 — Gameplay Prototype
-- **Status**: IN PROGRESS (PHASES 3A–3D COMPLETED / ITERATION 3E PLANNED)
+- **Status**: COMPLETED
 - **Tujuan**: Prototipe interaksi gameplay minimum yang dapat dimainkan (*playable prototype*) di Godot Editor berbasis arsitektur Phase 1 dan sistem matematika Phase 2.
   - **Phase 3A — Baseline & Stabilization**: **COMPLETED** (Commit `2452397`)
     - Gameplay State Machine terintegrasi (`BOOT` s/d `GAME_OVER`).
@@ -61,7 +61,7 @@ High-level roadmap pengembangan proyek `fortress_game`.
     - Pengembalian perlengkapan hero ke gudang benteng secara otomatis saat permadeath (tepat 1 kali).
     - Proteksi Battle Lock selama simulasi pertempuran aktif.
     - Test Suite Phase 3C: 22/22 PASSED, 0 FAILED. Zero regression pada seluruh fase sebelumnya.
-  - **Phase 3D — Prototype UX & Interaction Polish**: **COMPLETED (INCL. FOLLOW-UP CORRECTIONS)**
+  - **Phase 3D — Prototype UX & Interaction Polish**: **COMPLETED (INCL. FOLLOW-UP CORRECTIONS)** (Commits `463f91c`, `ba3c0c5`)
     - State & Phase guidance banner kontekstual pada header (`BOOT`, `PREPARATION`, `WAVE_PREVIEW`, `BATTLE`, `RESULT`, `RECOVERY`, `GAME_OVER`).
     - Soldier Deployment Builder: custom count, primary weapon, secondary weapon, armor, preview derivasi peran dinamis, dan verifikasi ketersediaan stok & prajurit seketika.
     - Active Deployment Groups List: tampilan transparan rincian regu, tombol Edit/Reconfigure atomik dengan rollback otomatis jika gagal, dan tombol Cancel/Remove untuk pengembalian instan.
@@ -70,14 +70,17 @@ High-level roadmap pengembangan proyek `fortress_game`.
     - Eliminasi dead-end interaction & feedback banner aksi sukses/gagal yang informatif.
     - Hasil dan pemulihan (Result & Recovery) komprehensif: evaluasi kerusakan benteng, korban serdadu, status pahlawan, return gear hero permadeath, dan kepastian gear serdadu bersifat sementara.
     - Follow-up corrections: tampilan `Deployed Soldiers: <sum>` terpisah dari kolam cadangan prajurit; aturan durabilitas serdadu selamat (kembali 100% usable); resolusi korban (35% musnah, 65% rusak berat); reparasi Pandai Besi berbasis Gold dengan diskon alokasi pekerja; penegakan invariant konservasi stok usable vs damaged.
-    - Test Suites: Phase 3D interaction (10/10 PASS) + Follow-up corrections (23/23 PASS). Full regression 119 unit/integration tests PASS + Scene Smoke Playtest ALL PASS.
-  - **Phase 3E — Final Prototype Verification & Phase 3 Exit Gate**: **PLANNED**
-    - Automated tests untuk konservasi gear dan derivasi peran.
-    - Stres playtest 20 wave berturut-turut pada hardware berspesifikasi rendah.
-    - Verifikasi gerbang keluar sebelum pembukaan Phase 4.
+    - Test Suites: Phase 3D interaction (10/10 PASS) + Follow-up corrections (23/23 PASS).
+  - **Phase 3E — Final Prototype Verification & Phase 3 Exit Gate**: **COMPLETED**
+    - Verifikasi ketat 15 kriteria integritas fungsional melalui `tests/test_phase3e_final_verification.gd` (15/15 PASS, 0 FAIL).
+    - Simulasi stres 20 wave berturut-turut lulus 100% tanpa crash, kebocoran memori, pertumbuhan array tak terbatas, atau pelanggaran invariant gudang bersama.
+    - Scene Smoke Playtest terintegrasi di Godot SceneTree: ALL PASS, 0 ERRORS.
+    - Full regression across all 9 suites: 134 unit/integration tests PASSED + 1 Scene Smoke Playtest suite (100% PASS).
+    - Seluruh 16 kriteria gerbang keluar (*Phase 3 Exit Gate*) terpenuhi.
+    - Phase 3 resmi DITUTUP (*CLOSED*).
 
 ## Phase 4 — Hero System
-- **Status**: LOCKED (AWAITING PHASE 3 COMPLETION)
+- **Status**: LOCKED / NOT STARTED (AWAITING EXPLICIT DEVELOPER APPROVAL)
 - **Tujuan**: Struktur dan sistem hero/karakter mendalam (talent tree, active/passive skills, recruitment/tavern, ascension).
 
 ## Phase 5 — Fortress & Management Systems

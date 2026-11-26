@@ -4,6 +4,48 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.4.7] - Phase 3E: Final Prototype Verification & Phase 3 Exit Gate (Completed)
+
+### Added
+- **Phase 3E Verification Test Suite** (`tests/test_phase3e_final_verification.gd`):
+  - 15 pengujian otomatis komprehensif menguji seluruh invariant dan gerbang keluar Phase 3:
+    1. `test_complete_state_machine_cycle`: Siklus penuh state machine dari BOOT s/d PREPARATION gelombang berikutnya.
+    2. `test_legal_and_illegal_state_transitions`: Penolakan seluruh transisi ilegal di seluruh state.
+    3. `test_soldier_deployment_conservation`: Reservasi atomik dan pengembalian instan serdadu dan perlengkapan.
+    4. `test_soldier_casualty_equipment_resolution`: Verifikasi resolusi korban 35% musnah / 65% rusak berat.
+    5. `test_surviving_soldier_gear_returns_at_100`: Verifikasi perlengkapan serdadu selamat kembali 100% durabilitas tanpa aus.
+    6. `test_damaged_equipment_remains_non_usable`: Perlengkapan rusak ditolak dari builder penempatan.
+    7. `test_destroyed_equipment_is_permanently_removed`: Perlengkapan hancur dihapus permanen dari kepemilikan.
+    8. `test_blacksmith_repair_restores_durability`: Pemulihan durabilitas ke 100% dan status usable.
+    9. `test_repair_gold_validation`: Validasi kas emas dan penolakan atomik saat kas tidak mencukupi.
+    10. `test_hero_equipment_persistence`: Persistensi perlengkapan Hero yang selamat melintasi gelombang.
+    11. `test_hero_death_equipment_return_exactly_once`: Pengembalian perlengkapan hero permadeath tepat 1 kali.
+    12. `test_shared_warehouse_conservation_across_all_actions`: Invariant kepemilikan gudang bersama $\text{Total} = \text{USBL} + \text{DMGD} + \text{HERO} + \text{REGD}$ terbukti valid di setiap aksi.
+    13. `test_duplicate_result_and_recovery_prevention`: Penolakan eksekusi ganda pada pertempuran dan recovery.
+    14. `test_multi_deployment_soldier_accounting`: Akuntansi akurat penempatan serdadu di berbagai regu agregat.
+    15. `test_deterministic_20_wave_stress_simulation`: Simulasi stres deterministik 20 wave berturut-turut dengan verifikasi invariant setiap gelombang.
+- **Enhanced Prototype Scene Smoke Playtest** (`tests/test_playtest_smoke.gd`):
+  - Memperluas skenario smoke test UI untuk mencakup penempatan serdadu, verifikasi tampilan Deployed Soldiers, pasang perlengkapan Hero, dan reparasi Pandai Besi di dalam SceneTree Godot.
+
+### Verified
+- **Full Regression Suite**:
+  - Phase 1 Architecture Boundaries: 5/5 PASSED
+  - Phase 2 Mathematical Systems: 21/21 PASSED
+  - Phase 3A Gameplay Baseline: 11/11 PASSED
+  - Phase 3B Soldier Deployment: 27/27 PASSED
+  - Phase 3C Hero Equipment Foundation: 22/22 PASSED
+  - Phase 3D Prototype UX & Polish: 10/10 PASSED
+  - Phase 3D Follow-up Corrections: 23/23 PASSED
+  - Phase 3E Final Verification: 15/15 PASSED
+  - Prototype Scene Smoke Playtest: ALL PASS, 0 ERRORS
+  - **Total: 134 unit/integration tests + 1 Smoke Playtest suite PASSED 100%**.
+- **Phase 3 Exit Gate**:
+  - Seluruh 16 kriteria gerbang keluar terpenuhi tanpa pengecualian.
+  - Phase 3 (Gameplay Prototype) resmi ditutup (**CLOSED**).
+  - Phase 4 tetap terkunci (**LOCKED**).
+
+---
+
 ## [0.4.6] - Phase 3D: Follow-up Corrections (Deployed Soldier Status & Durability/Repair)
 
 ### Added

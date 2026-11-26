@@ -72,6 +72,10 @@ func create_deployment(count: int, primary: String, secondary: String = "NONE", 
 	return coordinator.create_deployment(count, primary, secondary, armor)
 
 
+func create_soldier_deployment(count: int, primary: String, secondary: String = "NONE", armor: String = "NONE") -> bool:
+	return create_deployment(count, primary, secondary, armor)
+
+
 func remove_deployment(composition_id: String) -> bool:
 	if coordinator == null:
 		return false
