@@ -1,0 +1,20 @@
+[gd_scene load_steps=4 format=3 uid="uid://c6f0p8q7prototype"]
+
+[ext_resource type="Script" path="res://scripts/presentation/scenes/main_prototype.gd" id="1_root"]
+[ext_resource type="Script" path="res://scripts/presentation/controllers/game_controller.gd" id="2_ctrl"]
+[ext_resource type="Script" path="res://scripts/presentation/views/prototype_debug_view.gd" id="3_view"]
+
+[node name="MainPrototype" type="Node"]
+script = ExtResource("1_root")
+
+[node name="GameController" type="Node" parent="."]
+script = ExtResource("2_ctrl")
+
+[node name="PrototypeDebugView" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("3_view")

@@ -4,6 +4,37 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.4.0] - Phase 3: Playable Gameplay Prototype (Implemented & Validated)
+
+### Added
+- **Gameplay State Machine** (`scripts/application/state_machine/gameplay_state_machine.gd`):
+  - State deterministik: `BOOT`, `PREPARATION`, `WAVE_PREVIEW`, `BATTLE`, `RESULT`, `RECOVERY`, `GAME_OVER`.
+  - Validasi transisi ketat, menolak transisi ilegal.
+- **Commander Command DTO** (`scripts/domain/command/commander_command.gd`):
+  - 6 intensi perintah komandan: `HOLD`, `ADVANCE`, `RETREAT`, `PROTECT`, `FOCUS`, `FOLLOW`.
+- **GameCoordinator Application Orchestration** (`scripts/application/coordinators/game_coordinator.gd`):
+  - Mengorkestrasi aliran data satu arah (*unidirectional data flow*), memvalidasi aksi player, memanggil engine simulasi Phase 2, dan memancarkan `state_changed(snapshot)`.
+- **Domain Snapshot Extension** (`scripts/domain/state/game_state_snapshot.gd`):
+  - Payload terstruktur untuk model benteng, populasi, hero, gudang equipment, bendahara, gelombang, dan telemetry tempur dengan backward compatibility penuh ke Phase 1.
+- **Simulation Runner Extension** (`scripts/simulation/simulation_runner.gd`):
+  - Orchestration methods untuk `WaveGenerator`, `CombatEngine`, dan `EconomyManager` tanpa menduplikasi formula matematika Phase 2.
+- **Presentation Controller & View** (`scripts/presentation/controllers/game_controller.gd`, `scripts/presentation/views/prototype_debug_view.gd`):
+  - Controller tempo pertempuran (Pause/Resume, Speed 1x, 2x, 4x) dan pemetaan input keyboard/UI.
+  - Reactive text-based debug telemetry HUD yang pasif mengamati snapshot tanpa polling `_process()`.
+- **Prototype Scene** (`scenes/prototype/main_prototype.tscn`, `scripts/presentation/scenes/main_prototype.gd`):
+  - Playable scene minimal yang dapat dijalankan langsung di Godot Editor.
+- **Automated Test Suites**:
+  - `tests/test_gameplay_prototype.gd`: 11 unit & integration tests Phase 3 (100% PASS).
+  - `tests/test_playtest_smoke.gd`: Automated smoke playtest scene integration (ALL PASS, 0 ERRORS).
+
+### Verified
+- **Phase 1 Architecture Regression**: **5/5 PASSED, 0 FAILED**.
+- **Phase 2 Mathematical Regression**: **21/21 PASSED, 0 FAILED**.
+- **Phase 3 Gameplay Prototype Tests**: **11/11 PASSED, 0 FAILED**.
+- **Prototype Smoke Playtest**: **ALL PASSED, 0 ERRORS**.
+
+---
+
 ## [0.3.0] - Phase 2: Mathematical / Systems Prototype (Completed & Validated)
 
 ### Fixed & Refactored (Four Corrective Items)

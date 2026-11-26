@@ -29,9 +29,10 @@ Tujuan tahap ini adalah membuat proyek mudah dikembangkan, mudah dipahami AI, mu
   - `Phase 0 — Workspace & Development Environment Setup`: **COMPLETED**
   - `Phase 1 — Core Game Architecture`: **COMPLETED / APPROVED**
   - `Phase 2 — Mathematical / Systems Prototype`: **COMPLETED**
+  - `Phase 3 — Gameplay Prototype`: **IMPLEMENTED / PLAYABLE PROTOTYPE**
 - **Fase Berikutnya**:
-  - `Phase 3 — Gameplay Prototype`: **NOT STARTED / LOCKED**
-- **Gameplay Development**: **NOT STARTED**
+  - `Phase 4 — Hero System`: **NOT STARTED / LOCKED**
+- **Gameplay Development**: **PHASE 3 PLAYABLE PROTOTYPE READY FOR PLAYTEST**
 
 Rincian perencanaan dan aturan proyek dapat dilihat pada:
 - [Roadmap Pengembangan](plans/ROADMAP.md)

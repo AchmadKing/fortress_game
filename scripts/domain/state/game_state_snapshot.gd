@@ -4,11 +4,29 @@ extends RefCounted
 ## GameStateSnapshot
 ## Murni merepresentasikan snapshot data state game (domain layer).
 ## Tidak memiliki dependensi ke Node, SceneTree, UI, rendering, atau file I/O.
+## Diperluas di Phase 3 untuk menampung snapshot model benteng, populasi, pahlawan,
+## gudang senjata, bendahara, gelombang, status pertempuran, dan state machine.
 
+# Phase 1 Core Fields
 var tick: int = 0
 var session_id: String = ""
 var state_name: String = "INITIAL"
 var metadata: Dictionary = {}
+
+# Phase 3 Gameplay Prototype Structured Fields
+var current_wave: int = 1
+var game_phase: String = "BOOT"
+var fortress_data: Dictionary = {}
+var population_data: Dictionary = {}
+var heroes_data: Array = []
+var warehouse_data: Array = []
+var economy_data: Dictionary = {}
+var current_wave_data: Dictionary = {}
+var last_battle_result: Dictionary = {}
+var last_commander_command: Dictionary = {}
+var battle_speed: float = 1.0
+var battle_paused: bool = false
+var battle_phase_name: String = ""
 
 
 func _init(p_tick: int = 0, p_session_id: String = "", p_state_name: String = "INITIAL", p_metadata: Dictionary = {}) -> void:
@@ -16,10 +34,37 @@ func _init(p_tick: int = 0, p_session_id: String = "", p_state_name: String = "I
 	session_id = p_session_id
 	state_name = p_state_name
 	metadata = p_metadata.duplicate(true)
+	game_phase = p_state_name if p_state_name != "INITIAL" else "BOOT"
+	current_wave = 1
+	fortress_data = {}
+	population_data = {}
+	heroes_data = []
+	warehouse_data = []
+	economy_data = {}
+	current_wave_data = {}
+	last_battle_result = {}
+	last_commander_command = {}
+	battle_speed = 1.0
+	battle_paused = false
+	battle_phase_name = ""
 
 
 func clone() -> GameStateSnapshot:
-	return GameStateSnapshot.new(tick, session_id, state_name, metadata)
+	var copy := GameStateSnapshot.new(tick, session_id, state_name, metadata)
+	copy.current_wave = current_wave
+	copy.game_phase = game_phase
+	copy.fortress_data = fortress_data.duplicate(true)
+	copy.population_data = population_data.duplicate(true)
+	copy.heroes_data = heroes_data.duplicate(true)
+	copy.warehouse_data = warehouse_data.duplicate(true)
+	copy.economy_data = economy_data.duplicate(true)
+	copy.current_wave_data = current_wave_data.duplicate(true)
+	copy.last_battle_result = last_battle_result.duplicate(true)
+	copy.last_commander_command = last_commander_command.duplicate(true)
+	copy.battle_speed = battle_speed
+	copy.battle_paused = battle_paused
+	copy.battle_phase_name = battle_phase_name
+	return copy
 
 
 func to_dictionary() -> Dictionary:
@@ -27,7 +72,20 @@ func to_dictionary() -> Dictionary:
 		"tick": tick,
 		"session_id": session_id,
 		"state_name": state_name,
-		"metadata": metadata.duplicate(true)
+		"metadata": metadata.duplicate(true),
+		"current_wave": current_wave,
+		"game_phase": game_phase,
+		"fortress_data": fortress_data.duplicate(true),
+		"population_data": population_data.duplicate(true),
+		"heroes_data": heroes_data.duplicate(true),
+		"warehouse_data": warehouse_data.duplicate(true),
+		"economy_data": economy_data.duplicate(true),
+		"current_wave_data": current_wave_data.duplicate(true),
+		"last_battle_result": last_battle_result.duplicate(true),
+		"last_commander_command": last_commander_command.duplicate(true),
+		"battle_speed": battle_speed,
+		"battle_paused": battle_paused,
+		"battle_phase_name": battle_phase_name
 	}
 
 
@@ -39,4 +97,29 @@ static func from_dictionary(data: Dictionary) -> GameStateSnapshot:
 	if data.has("metadata") and data["metadata"] is Dictionary:
 		p_metadata = (data["metadata"] as Dictionary).duplicate(true)
 	
-	return GameStateSnapshot.new(p_tick, p_session_id, p_state_name, p_metadata)
+	var snapshot := GameStateSnapshot.new(p_tick, p_session_id, p_state_name, p_metadata)
+	snapshot.current_wave = int(data.get("current_wave", 1))
+	snapshot.game_phase = str(data.get("game_phase", snapshot.state_name))
+	
+	if data.has("fortress_data") and data["fortress_data"] is Dictionary:
+		snapshot.fortress_data = (data["fortress_data"] as Dictionary).duplicate(true)
+	if data.has("population_data") and data["population_data"] is Dictionary:
+		snapshot.population_data = (data["population_data"] as Dictionary).duplicate(true)
+	if data.has("heroes_data") and data["heroes_data"] is Array:
+		snapshot.heroes_data = (data["heroes_data"] as Array).duplicate(true)
+	if data.has("warehouse_data") and data["warehouse_data"] is Array:
+		snapshot.warehouse_data = (data["warehouse_data"] as Array).duplicate(true)
+	if data.has("economy_data") and data["economy_data"] is Dictionary:
+		snapshot.economy_data = (data["economy_data"] as Dictionary).duplicate(true)
+	if data.has("current_wave_data") and data["current_wave_data"] is Dictionary:
+		snapshot.current_wave_data = (data["current_wave_data"] as Dictionary).duplicate(true)
+	if data.has("last_battle_result") and data["last_battle_result"] is Dictionary:
+		snapshot.last_battle_result = (data["last_battle_result"] as Dictionary).duplicate(true)
+	if data.has("last_commander_command") and data["last_commander_command"] is Dictionary:
+		snapshot.last_commander_command = (data["last_commander_command"] as Dictionary).duplicate(true)
+		
+	snapshot.battle_speed = float(data.get("battle_speed", 1.0))
+	snapshot.battle_paused = bool(data.get("battle_paused", false))
+	snapshot.battle_phase_name = str(data.get("battle_phase_name", ""))
+	
+	return snapshot
