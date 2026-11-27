@@ -22,6 +22,8 @@ const HeroRole = preload("res://scripts/domain/model/hero_role.gd")
 const HeroLifecycleState = preload("res://scripts/domain/model/hero_lifecycle_state.gd")
 const HeroSkill = preload("res://scripts/domain/model/hero_skill.gd")
 const PartyModel = preload("res://scripts/domain/model/party_model.gd")
+const BattlefieldZone = preload("res://scripts/domain/model/battlefield_zone.gd")
+const EnemyArchetype = preload("res://scripts/domain/model/enemy_archetype.gd")
 
 var coordinator: GameCoordinator
 var controller: GameController
@@ -65,6 +67,47 @@ var _btn_action: Button
 
 var _lbl_warehouse: Label
 var _blacksmith_container: VBoxContainer
+
+# Phase 6F Tactical Battle UI References & State
+var _battlefield_panel: PanelContainer
+var _zone_panels: Dictionary = {}
+var _zone_labels: Dictionary = {}
+var _zone_status_labels: Dictionary = {}
+var _zone_detail_labels: Dictionary = {}
+
+var _lbl_battle_telemetry_header: Label
+var _btn_battle_pause_resume: Button
+var _btn_battle_speed_1x: Button
+var _btn_battle_speed_2x: Button
+var _btn_battle_speed_4x: Button
+var _btn_battle_step_tick: Button
+var _btn_battle_resolve_instantly: Button
+
+var _opt_cmd_source: OptionButton
+var _opt_cmd_target_zone: OptionButton
+var _opt_cmd_target_entity: OptionButton
+var _btn_cmd_advance: Button
+var _btn_cmd_move: Button
+var _btn_cmd_hold: Button
+var _btn_cmd_retreat: Button
+var _btn_cmd_protect: Button
+var _btn_cmd_focus: Button
+var _btn_cmd_follow: Button
+var _lbl_cmd_feedback: Label
+
+var _lbl_party1_summary: Label
+var _lbl_casualties_summary: Label
+var _lbl_fortress_battle_status: Label
+
+var _result_overlay: PanelContainer
+var _lbl_result_headline: Label
+var _lbl_result_body: Label
+var _btn_result_proceed: Button
+
+var _game_over_overlay: PanelContainer
+var _lbl_game_over_headline: Label
+var _lbl_game_over_body: Label
+var _btn_game_over_restart: Button
 
 var _last_snapshot: GameStateSnapshot
 
@@ -456,8 +499,11 @@ func _build_ui() -> void:
 	main_vbox.add_child(bottom_panel)
 
 	_btn_start_battle = Button.new()
-	_btn_start_battle.text = "Start Battle (Terkunci pada Phase 5)"
+	_btn_start_battle.name = "BtnStartBattle"
+	_btn_start_battle.text = "Start Battle (Hanya pada Wave Preview)"
 	_btn_start_battle.disabled = true
+	_btn_start_battle.custom_minimum_size = Vector2(160, 44)
+	_btn_start_battle.pressed.connect(func(): _action_start_battle())
 	bottom_hbox.add_child(_btn_start_battle)
 
 	var bottom_spacer := Control.new()
@@ -489,6 +535,18 @@ func _on_state_changed(snapshot: GameStateSnapshot) -> void:
 
 	# Phase Guidance Banner
 	_lbl_phase_guidance.text = _get_phase_guidance_text(snapshot.game_phase)
+
+	# Bottom Start Battle Button update
+	if _btn_start_battle != null:
+		if snapshot.game_phase == "WAVE_PREVIEW":
+			_btn_start_battle.text = "⚔ START BATTLE ⚔"
+			_btn_start_battle.disabled = false
+		elif snapshot.game_phase == "BATTLE":
+			_btn_start_battle.text = "⚔ Pertempuran Berlangsung ⚔"
+			_btn_start_battle.disabled = true
+		else:
+			_btn_start_battle.text = "Start Battle (Hanya pada Wave Preview)"
+			_btn_start_battle.disabled = true
 
 	# Left Column updates
 	var f_data: Dictionary = snapshot.fortress_data
@@ -1440,7 +1498,20 @@ func _render_blacksmith_workshop(snapshot: GameStateSnapshot) -> void:
 # ==============================================================================
 
 func _render_stage_actions(snapshot: GameStateSnapshot) -> void:
+	if snapshot.game_phase == "BATTLE":
+		_render_tactical_battle_ui(snapshot)
+		return
+
+	_battlefield_panel = null
+	_zone_panels.clear()
+	_zone_labels.clear()
+	_zone_status_labels.clear()
+	_zone_detail_labels.clear()
+	_result_overlay = null
+	_game_over_overlay = null
+
 	for child in _panel_stage_actions.get_children():
+		_panel_stage_actions.remove_child(child)
 		child.queue_free()
 
 	match snapshot.game_phase:
@@ -1537,93 +1608,13 @@ func _render_stage_actions(snapshot: GameStateSnapshot) -> void:
 			btn_hbox.add_child(btn_cancel)
 
 		"BATTLE":
-			var lbl := Label.new()
-			lbl.text = "=== BATTLE IN PROGRESS ==="
-			_panel_stage_actions.add_child(lbl)
-
-			var lock_lbl := Label.new()
-			lock_lbl.text = "[⚔ BATTLE LOCK: Konfigurasi regu, perlengkapan hero & gudang TERKUNCI selama tempur]"
-			_panel_stage_actions.add_child(lock_lbl)
-
-			var note_lbl := Label.new()
-			note_lbl.text = "Kontrol komandan dan tempo (Pause / 1x / 2x / 4x) tetap aktif."
-			_panel_stage_actions.add_child(note_lbl)
-
-			var cmd_lbl := Label.new()
-			cmd_lbl.text = "Commander Commands (Intents):"
-			_panel_stage_actions.add_child(cmd_lbl)
-
-			var cmd_hbox := HBoxContainer.new()
-			_panel_stage_actions.add_child(cmd_hbox)
-
-			var commands := ["HOLD", "ADVANCE", "MOVE", "RETREAT", "PROTECT", "FOCUS", "FOLLOW"]
-			for cmd in commands:
-				var btn_cmd := Button.new()
-				btn_cmd.text = cmd
-				btn_cmd.pressed.connect(func(c=cmd): _send_command(c))
-				cmd_hbox.add_child(btn_cmd)
-
-			var btn_resolve := Button.new()
-			btn_resolve.text = "⚡ Resolve Battle Instantly"
-			btn_resolve.pressed.connect(func(): if controller: controller.resolve_battle_immediately())
-			_panel_stage_actions.add_child(btn_resolve)
+			_render_tactical_battle_ui(snapshot)
 
 		"RESULT":
-			var lbl := Label.new()
-			var res: Dictionary = snapshot.last_battle_result
-			var vic: bool = bool(res.get("victory", false))
-			lbl.text = "=== BATTLE RESULT: %s ===" % ("VICTORY!" if vic else "DEFEAT / BREACH!")
-			_panel_stage_actions.add_child(lbl)
-
-			var f_data: Dictionary = snapshot.fortress_data
-			var cur_hp: int = int(f_data.get("current_hp", 0))
-			var max_hp: int = int(f_data.get("max_hp", 1000))
-			var dmg_taken: int = int(res.get("fortress_damage_taken", 0))
-
-			var dead_s: int = int(res.get("total_dead_soldiers", 0))
-			var eq_lost: int = int(res.get("equipment_lost", 0))
-			var eq_dmg: int = int(res.get("equipment_damaged", 0))
-			var loot_gold: int = int(res.get("loot_gold", 0))
-			var exp_val: int = int(res.get("exp_per_hero", 0))
-
-			var res_details := Label.new()
-			res_details.text = "• Kerusakan Benteng: %d (Sisa HP: %d / %d)\n• Korban Serdadu: %d prajurit gugur permanen\n• Perlengkapan: %d hancur permanen | %d rusak berat (-40 dur)\n• Hadiah: +%d Gold | +%d EXP per Hero" % [
-				dmg_taken, cur_hp, max_hp, dead_s, eq_lost, eq_dmg, loot_gold, exp_val
-			]
-			_panel_stage_actions.add_child(res_details)
-
-			var hero_loss: bool = false
-			for h in snapshot.heroes_data:
-				if not bool(h.get("is_alive", true)):
-					hero_loss = true
-					break
-			if hero_loss:
-				var h_notice := Label.new()
-				h_notice.text = "[HERO PERMADEATH: Hero yang gugur telah melepaskan seluruh perlengkapannya kembali ke gudang bersama.]"
-				_panel_stage_actions.add_child(h_notice)
-
-			var recovery_note := Label.new()
-			recovery_note.text = "[INFO RECOVERY: Seluruh perlengkapan prajurit yang selamat telah dikembalikan ke gudang benteng. Penempatan serdadu bersifat sementara per gelombang.]"
-			_panel_stage_actions.add_child(recovery_note)
-
-			var btn_proceed := Button.new()
-			btn_proceed.text = ">> PROCEED (RECOVERY / NEXT WAVE) >>"
-			btn_proceed.pressed.connect(func(): if controller: controller.proceed_from_result())
-			_panel_stage_actions.add_child(btn_proceed)
+			_render_battle_result_ui(snapshot)
 
 		"GAME_OVER":
-			var lbl := Label.new()
-			lbl.text = "☠ GAME OVER — FORTRESS COLLAPSED ☠"
-			_panel_stage_actions.add_child(lbl)
-
-			var desc := Label.new()
-			desc.text = "Benteng hancur total (HP 0). Pertahanan berakhir pada Wave %d." % snapshot.current_wave
-			_panel_stage_actions.add_child(desc)
-
-			var btn_restart := Button.new()
-			btn_restart.text = "↺ RESTART SESSION"
-			btn_restart.pressed.connect(func(): if controller: controller.restart_session())
-			_panel_stage_actions.add_child(btn_restart)
+			_render_game_over_ui(snapshot)
 
 
 # ==============================================================================
@@ -2081,32 +2072,7 @@ func _action_start_battle() -> void:
 
 
 func _send_command(cmd_type: String) -> void:
-	if controller == null:
-		return
-	var ok: bool = false
-	match cmd_type:
-		"ADVANCE":
-			ok = controller.command_advance("party_1", "CENTER_APPROACH")
-		"MOVE":
-			ok = controller.command_move("party_1", "WALL")
-		"HOLD":
-			ok = controller.command_hold("party_1")
-		"RETREAT":
-			ok = controller.command_retreat("party_1")
-		"PROTECT":
-			ok = controller.command_protect("party_1", "FORTRESS")
-		"FOCUS":
-			ok = controller.command_focus_target("party_1", "ORC_FRONTLINE")
-		"FOLLOW":
-			var depls = controller.coordinator.get_active_deployments() if controller.coordinator else []
-			var t_id = depls[0].composition_id if depls.size() > 0 else "party_1"
-			ok = controller.command_follow("party_1", t_id) if t_id != "party_1" else controller.command_hold("party_1")
-		_:
-			ok = controller.send_commander_command(cmd_type)
-	if ok:
-		_set_feedback("[COMMAND] Commander Command dieksekusi: [%s]." % cmd_type)
-	else:
-		_set_feedback("[COMMAND DITOLAK] Commander Command [%s] tidak sah untuk situasi saat ini." % cmd_type)
+	_execute_selected_command(cmd_type)
 
 
 func _set_feedback(msg: String) -> void:
@@ -2297,3 +2263,805 @@ func _action_reassign_worker(from_job: String, to_job: String, count: int = 1) -
 		_set_feedback("[PEKERJA] Berhasil memindahkan %d pekerja dari %s ke %s." % [count, from_job, to_job])
 	else:
 		_set_feedback("[DITOLAK] Gagal memindahkan pekerja. Jumlah pekerja tidak mencukupi atau sedang bertempur.")
+
+
+# ==============================================================================
+# PHASE 6F: TACTICAL BATTLE UI RENDERING & IN-PLACE TICK UPDATES
+# ==============================================================================
+
+func _render_tactical_battle_ui(snapshot: GameStateSnapshot) -> void:
+	if _battlefield_panel == null or not is_instance_valid(_battlefield_panel) or _battlefield_panel.get_parent() != _panel_stage_actions:
+		for child in _panel_stage_actions.get_children():
+			_panel_stage_actions.remove_child(child)
+			child.queue_free()
+		_build_tactical_battle_ui()
+	_update_tactical_battle_ui(snapshot)
+
+
+func _build_tactical_battle_ui() -> void:
+	_battlefield_panel = PanelContainer.new()
+	_panel_stage_actions.add_child(_battlefield_panel, true)
+	_battlefield_panel.name = "BattlefieldPanel"
+
+	var main_vbox := VBoxContainer.new()
+	main_vbox.name = "BattlefieldMainVBox"
+	_battlefield_panel.add_child(main_vbox)
+
+	# --- 1. Header Telemetry & Pacing Controls ---
+	var telemetry_box := VBoxContainer.new()
+	main_vbox.add_child(telemetry_box)
+
+	_lbl_battle_telemetry_header = Label.new()
+	_lbl_battle_telemetry_header.name = "LblBattleTelemetryHeader"
+	_lbl_battle_telemetry_header.text = "⏱ TICK: 0 | TEMPO: 1.0x | STATUS: RUNNING | GELOMBANG: 1"
+	telemetry_box.add_child(_lbl_battle_telemetry_header)
+
+	var pacing_hbox := HBoxContainer.new()
+	pacing_hbox.name = "BattlePacingHBox"
+	telemetry_box.add_child(pacing_hbox)
+
+	_btn_battle_pause_resume = Button.new()
+	_btn_battle_pause_resume.name = "BtnPauseResume"
+	_btn_battle_pause_resume.text = "⏸ PAUSE"
+	_btn_battle_pause_resume.custom_minimum_size = Vector2(80, 44)
+	_btn_battle_pause_resume.pressed.connect(func():
+		if controller:
+			controller.toggle_battle_pause()
+	)
+	pacing_hbox.add_child(_btn_battle_pause_resume)
+
+	_btn_battle_speed_1x = Button.new()
+	_btn_battle_speed_1x.name = "BtnSpeed1x"
+	_btn_battle_speed_1x.text = "[1x]"
+	_btn_battle_speed_1x.custom_minimum_size = Vector2(44, 44)
+	_btn_battle_speed_1x.pressed.connect(func():
+		if controller:
+			controller.set_speed(1.0)
+	)
+	pacing_hbox.add_child(_btn_battle_speed_1x)
+
+	_btn_battle_speed_2x = Button.new()
+	_btn_battle_speed_2x.name = "BtnSpeed2x"
+	_btn_battle_speed_2x.text = "2x"
+	_btn_battle_speed_2x.custom_minimum_size = Vector2(44, 44)
+	_btn_battle_speed_2x.pressed.connect(func():
+		if controller:
+			controller.set_speed(2.0)
+	)
+	pacing_hbox.add_child(_btn_battle_speed_2x)
+
+	_btn_battle_speed_4x = Button.new()
+	_btn_battle_speed_4x.name = "BtnSpeed4x"
+	_btn_battle_speed_4x.text = "4x"
+	_btn_battle_speed_4x.custom_minimum_size = Vector2(44, 44)
+	_btn_battle_speed_4x.pressed.connect(func():
+		if controller:
+			controller.set_speed(4.0)
+	)
+	pacing_hbox.add_child(_btn_battle_speed_4x)
+
+	_btn_battle_step_tick = Button.new()
+	_btn_battle_step_tick.name = "BtnStepTick"
+	_btn_battle_step_tick.text = "⏭ Step Tick"
+	_btn_battle_step_tick.custom_minimum_size = Vector2(80, 44)
+	_btn_battle_step_tick.pressed.connect(func():
+		if controller:
+			controller.step_simulation()
+	)
+	pacing_hbox.add_child(_btn_battle_step_tick)
+
+	_btn_battle_resolve_instantly = Button.new()
+	_btn_battle_resolve_instantly.name = "BtnResolveInstantly"
+	_btn_battle_resolve_instantly.text = "⚡ Selesaikan Instan"
+	_btn_battle_resolve_instantly.custom_minimum_size = Vector2(160, 44)
+	_btn_battle_resolve_instantly.pressed.connect(func():
+		if controller:
+			controller.resolve_battle_immediately()
+	)
+	pacing_hbox.add_child(_btn_battle_resolve_instantly)
+
+	main_vbox.add_child(HSeparator.new())
+
+	# --- 2. Structural Condition & Casualties ---
+	var struct_hbox := HBoxContainer.new()
+	main_vbox.add_child(struct_hbox)
+
+	_lbl_fortress_battle_status = Label.new()
+	_lbl_fortress_battle_status.name = "LblFortressBattleStatus"
+	_lbl_fortress_battle_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_lbl_fortress_battle_status.text = "Benteng: HP 1000/1000 | Armor: 50 | Dinding: HP 500/500 | Gerbang: HP 300/300"
+	struct_hbox.add_child(_lbl_fortress_battle_status)
+
+	_lbl_casualties_summary = Label.new()
+	_lbl_casualties_summary.name = "LblCasualtiesSummary"
+	_lbl_casualties_summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_lbl_casualties_summary.text = "Korban: Prajurit Gugur: 0 | Hero Gugur: 0 | Kerusakan Benteng: 0"
+	struct_hbox.add_child(_lbl_casualties_summary)
+
+	main_vbox.add_child(HSeparator.new())
+
+	# --- 3. Canonical 7 Zones Battlefield Map ---
+	var battlefield_map := VBoxContainer.new()
+	battlefield_map.name = "BattlefieldMapContainer"
+	main_vbox.add_child(battlefield_map)
+
+	_zone_panels.clear()
+	_zone_labels.clear()
+	_zone_status_labels.clear()
+	_zone_detail_labels.clear()
+
+	# Zone 1: OUTER_FIELD (Top)
+	battlefield_map.add_child(_create_zone_card("OUTER_FIELD"))
+
+	# Middle row: LEFT_FLANK, CENTER_APPROACH, RIGHT_FLANK
+	var mid_row := HBoxContainer.new()
+	mid_row.name = "MidRowZones"
+	battlefield_map.add_child(mid_row)
+	mid_row.add_child(_create_zone_card("LEFT_FLANK"))
+	mid_row.add_child(_create_zone_card("CENTER_APPROACH"))
+	mid_row.add_child(_create_zone_card("RIGHT_FLANK"))
+
+	# Defense line row: WALL, GATE
+	var def_row := HBoxContainer.new()
+	def_row.name = "DefRowZones"
+	battlefield_map.add_child(def_row)
+	def_row.add_child(_create_zone_card("WALL"))
+	def_row.add_child(_create_zone_card("GATE"))
+
+	# Citadel row: FORTRESS
+	battlefield_map.add_child(_create_zone_card("FORTRESS"))
+
+	main_vbox.add_child(HSeparator.new())
+
+	# --- 4. Party 1 Active Tactical Forces Visualization ---
+	var forces_panel := PanelContainer.new()
+	forces_panel.name = "Party1ForcesPanel"
+	main_vbox.add_child(forces_panel)
+
+	var forces_vbox := VBoxContainer.new()
+	forces_panel.add_child(forces_vbox)
+
+	_lbl_party1_summary = Label.new()
+	_lbl_party1_summary.name = "LblParty1Summary"
+	_lbl_party1_summary.text = "Party 1 Tempur: (Memuat status pasukan...)"
+	forces_vbox.add_child(_lbl_party1_summary)
+
+	main_vbox.add_child(HSeparator.new())
+
+	# --- 5. Commander Command Controls ---
+	var cmd_panel := PanelContainer.new()
+	cmd_panel.name = "CommanderCommandPanel"
+	main_vbox.add_child(cmd_panel)
+
+	var cmd_vbox := VBoxContainer.new()
+	cmd_panel.add_child(cmd_vbox)
+
+	var cmd_title := Label.new()
+	cmd_title.text = "⚔ KONTROL TAKTIS KOMANDAN (INTENTS) ⚔"
+	cmd_vbox.add_child(cmd_title)
+
+	var sel_row := HBoxContainer.new()
+	cmd_vbox.add_child(sel_row)
+
+	var lbl_src := Label.new()
+	lbl_src.text = "Sumber:"
+	sel_row.add_child(lbl_src)
+
+	_opt_cmd_source = OptionButton.new()
+	_opt_cmd_source.name = "OptCmdSource"
+	_opt_cmd_source.custom_minimum_size = Vector2(130, 44)
+	_opt_cmd_source.add_item("party_1")
+	_opt_cmd_source.set_item_metadata(0, "party_1")
+	sel_row.add_child(_opt_cmd_source)
+
+	var lbl_tz := Label.new()
+	lbl_tz.text = "Zona Target:"
+	sel_row.add_child(lbl_tz)
+
+	_opt_cmd_target_zone = OptionButton.new()
+	_opt_cmd_target_zone.name = "OptCmdTargetZone"
+	_opt_cmd_target_zone.custom_minimum_size = Vector2(140, 44)
+	for i in range(BattlefieldZone.CANONICAL_ZONES.size()):
+		var z: String = BattlefieldZone.CANONICAL_ZONES[i]
+		_opt_cmd_target_zone.add_item(z)
+		_opt_cmd_target_zone.set_item_metadata(i, z)
+	for idx in range(_opt_cmd_target_zone.item_count):
+		if _opt_cmd_target_zone.get_item_text(idx) == "CENTER_APPROACH":
+			_opt_cmd_target_zone.selected = idx
+			break
+	sel_row.add_child(_opt_cmd_target_zone)
+
+	var lbl_te := Label.new()
+	lbl_te.text = "Entitas/Arketipe:"
+	sel_row.add_child(lbl_te)
+
+	_opt_cmd_target_entity = OptionButton.new()
+	_opt_cmd_target_entity.name = "OptCmdTargetEntity"
+	_opt_cmd_target_entity.custom_minimum_size = Vector2(130, 44)
+	var entity_options := ["FORTRESS", "GATE", "WALL", "MINION", "RAIDER", "BRUTE", "FLYER", "SIEGE", "BOSS"]
+	for idx in range(entity_options.size()):
+		var ent: String = entity_options[idx]
+		_opt_cmd_target_entity.add_item(ent)
+		_opt_cmd_target_entity.set_item_metadata(idx, ent)
+	sel_row.add_child(_opt_cmd_target_entity)
+
+	var btn_row := HBoxContainer.new()
+	cmd_vbox.add_child(btn_row)
+
+	_btn_cmd_advance = Button.new()
+	_btn_cmd_advance.name = "BtnCmd_ADVANCE"
+	_btn_cmd_advance.text = "ADVANCE"
+	_btn_cmd_advance.custom_minimum_size = Vector2(80, 44)
+	_btn_cmd_advance.pressed.connect(func(): _execute_selected_command("ADVANCE"))
+	btn_row.add_child(_btn_cmd_advance)
+
+	_btn_cmd_move = Button.new()
+	_btn_cmd_move.name = "BtnCmd_MOVE"
+	_btn_cmd_move.text = "MOVE"
+	_btn_cmd_move.custom_minimum_size = Vector2(70, 44)
+	_btn_cmd_move.pressed.connect(func(): _execute_selected_command("MOVE"))
+	btn_row.add_child(_btn_cmd_move)
+
+	_btn_cmd_hold = Button.new()
+	_btn_cmd_hold.name = "BtnCmd_HOLD_POSITION"
+	_btn_cmd_hold.text = "HOLD POSITION"
+	_btn_cmd_hold.custom_minimum_size = Vector2(110, 44)
+	_btn_cmd_hold.pressed.connect(func(): _execute_selected_command("HOLD_POSITION"))
+	btn_row.add_child(_btn_cmd_hold)
+
+	_btn_cmd_retreat = Button.new()
+	_btn_cmd_retreat.name = "BtnCmd_RETREAT"
+	_btn_cmd_retreat.text = "RETREAT"
+	_btn_cmd_retreat.custom_minimum_size = Vector2(80, 44)
+	_btn_cmd_retreat.pressed.connect(func(): _execute_selected_command("RETREAT"))
+	btn_row.add_child(_btn_cmd_retreat)
+
+	_btn_cmd_protect = Button.new()
+	_btn_cmd_protect.name = "BtnCmd_PROTECT"
+	_btn_cmd_protect.text = "PROTECT"
+	_btn_cmd_protect.custom_minimum_size = Vector2(80, 44)
+	_btn_cmd_protect.pressed.connect(func(): _execute_selected_command("PROTECT"))
+	btn_row.add_child(_btn_cmd_protect)
+
+	_btn_cmd_focus = Button.new()
+	_btn_cmd_focus.name = "BtnCmd_FOCUS_TARGET"
+	_btn_cmd_focus.text = "FOCUS TARGET"
+	_btn_cmd_focus.custom_minimum_size = Vector2(110, 44)
+	_btn_cmd_focus.pressed.connect(func(): _execute_selected_command("FOCUS_TARGET"))
+	btn_row.add_child(_btn_cmd_focus)
+
+	_btn_cmd_follow = Button.new()
+	_btn_cmd_follow.name = "BtnCmd_FOLLOW"
+	_btn_cmd_follow.text = "FOLLOW"
+	_btn_cmd_follow.custom_minimum_size = Vector2(80, 44)
+	_btn_cmd_follow.pressed.connect(func(): _execute_selected_command("FOLLOW"))
+	btn_row.add_child(_btn_cmd_follow)
+
+	_lbl_cmd_feedback = Label.new()
+	_lbl_cmd_feedback.name = "LblCommandFeedback"
+	_lbl_cmd_feedback.text = "Siap menerima perintah komandan."
+	cmd_vbox.add_child(_lbl_cmd_feedback)
+
+
+func _create_zone_card(zone_id: String) -> PanelContainer:
+	var card := PanelContainer.new()
+	card.name = "ZonePanel_" + zone_id
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var vbox := VBoxContainer.new()
+	card.add_child(vbox)
+
+	var lbl_status := Label.new()
+	lbl_status.name = "LblZoneStatus_" + zone_id
+	lbl_status.text = "%s [EMPTY]" % zone_id
+	vbox.add_child(lbl_status)
+
+	var lbl_detail := Label.new()
+	lbl_detail.name = "LblZoneDetail_" + zone_id
+	lbl_detail.text = "Musuh: -\nKawan: -"
+	vbox.add_child(lbl_detail)
+
+	_zone_panels[zone_id] = card
+	_zone_status_labels[zone_id] = lbl_status
+	_zone_detail_labels[zone_id] = lbl_detail
+	return card
+
+
+func _get_zone_status(zone_id: String, snapshot: GameStateSnapshot) -> String:
+	if zone_id == "WALL" and snapshot.wall_hp <= 0:
+		return "[BREACHED]"
+	if zone_id == "GATE" and snapshot.gate_hp <= 0:
+		return "[BREACHED]"
+	if zone_id == "FORTRESS" and snapshot.fortress_hp <= 0:
+		return "[DESTROYED]"
+
+	var enemy_count: int = 0
+	for eg in snapshot.enemy_groups_data:
+		var z_eg: String = str(eg.get("current_zone", ""))
+		var q_eg: int = int(eg.get("quantity", eg.get("count", 0)))
+		var hp_eg: int = int(eg.get("current_hp_pool", 0))
+		if z_eg == zone_id and q_eg > 0 and hp_eg > 0:
+			enemy_count += q_eg
+
+	var friendly_count: int = 0
+	if str(snapshot.battle_party_data.get("current_zone", "")) == zone_id:
+		friendly_count += int(snapshot.battle_party_data.get("soldiers_count", 0)) + snapshot.battle_party_data.get("member_hero_ids", []).size()
+
+	for dep in snapshot.battle_deployments_data:
+		if str(dep.get("zone", "")) == zone_id and int(dep.get("count", 0)) > 0:
+			friendly_count += int(dep.get("count", 0))
+
+	if enemy_count > 0 and friendly_count > 0:
+		return "[CONTESTED]"
+	if enemy_count > 0 and friendly_count == 0:
+		return "[ENEMY OCCUPIED]"
+	if enemy_count == 0 and friendly_count > 0:
+		return "[FRIENDLY]"
+
+	if zone_id == "WALL" and snapshot.wall_hp < 500:
+		return "[DAMAGED]"
+	if zone_id == "GATE" and snapshot.gate_hp < 300:
+		return "[DAMAGED]"
+	if zone_id == "FORTRESS" and snapshot.fortress_hp < 1000:
+		return "[DAMAGED]"
+
+	return "[EMPTY]"
+
+
+func _get_zone_details_string(zone_id: String, snapshot: GameStateSnapshot) -> String:
+	var enemy_strs: Array[String] = []
+	for eg in snapshot.enemy_groups_data:
+		var z_eg: String = str(eg.get("current_zone", ""))
+		var q_eg: int = int(eg.get("quantity", eg.get("count", 0)))
+		var hp_eg: int = int(eg.get("current_hp_pool", 0))
+		if z_eg == zone_id and q_eg > 0 and hp_eg > 0:
+			var arch: String = str(eg.get("enemy_type", eg.get("archetype", "ENEMY")))
+			var count: int = q_eg
+			var cur_hp: int = hp_eg
+			var max_hp: int = int(eg.get("max_hp_pool", cur_hp))
+			var is_boss: bool = bool(eg.get("is_boss", false))
+			var trait_str: String = str(eg.get("special_trait", ""))
+			var traits: Array = eg.get("traits", [])
+			var tag_str: String = ""
+			if is_boss:
+				tag_str += "[BOSS] "
+			if not trait_str.is_empty():
+				tag_str += "[%s] " % trait_str
+			elif not traits.is_empty():
+				tag_str += "[%s] " % ",".join(traits)
+			enemy_strs.append("%s (x%d, HP %d/%d %s)" % [arch, count, cur_hp, max_hp, tag_str.strip_edges()])
+
+	var friendly_strs: Array[String] = []
+	if str(snapshot.battle_party_data.get("current_zone", "")) == zone_id:
+		var hero_names: Array[String] = []
+		for hid in snapshot.battle_party_data.get("member_hero_ids", []):
+			for hd in snapshot.heroes_data:
+				if hd.get("hero_id", "") == hid:
+					var alive_tag: String = "" if bool(hd.get("is_alive", true)) else "†"
+					hero_names.append(hd.get("hero_name", hid) + alive_tag)
+					break
+		var s_cnt: int = int(snapshot.battle_party_data.get("soldiers_count", 0))
+		var form: String = str(snapshot.battle_party_data.get("formation", "NONE"))
+		if not hero_names.is_empty() or s_cnt > 0:
+			var h_label: String = ", ".join(hero_names) if not hero_names.is_empty() else "(Tanpa Hero)"
+			friendly_strs.append("Party 1 (%s | %d prajurit [%s])" % [h_label, s_cnt, form])
+
+	for dep in snapshot.battle_deployments_data:
+		if str(dep.get("zone", "")) == zone_id and int(dep.get("count", 0)) > 0:
+			var r_name: String = str(dep.get("resolved_role", dep.get("role", "SOLDIER")))
+			var c_cnt: int = int(dep.get("count", 0))
+			var f_name: String = str(dep.get("formation", "NONE"))
+			friendly_strs.append("%s x%d [%s]" % [r_name, c_cnt, f_name])
+
+	var lines: Array[String] = []
+	if enemy_strs.is_empty():
+		lines.append("Musuh: -")
+	else:
+		lines.append("Musuh: " + "; ".join(enemy_strs))
+
+	if friendly_strs.is_empty():
+		lines.append("Kawan: -")
+	else:
+		lines.append("Kawan: " + "; ".join(friendly_strs))
+
+	if zone_id == "WALL":
+		lines.append("Kondisi Dinding: %d / 500 HP" % snapshot.wall_hp)
+	elif zone_id == "GATE":
+		lines.append("Kondisi Gerbang: %d / 300 HP" % snapshot.gate_hp)
+	elif zone_id == "FORTRESS":
+		lines.append("Kondisi Benteng: %d / 1000 HP" % snapshot.fortress_hp)
+
+	var pressure: int = int(snapshot.battle_zone_pressure.get(zone_id, 0))
+	if pressure > 0:
+		lines.append("Tekanan Tempur: %d" % pressure)
+
+	return "\n".join(lines)
+
+
+func _update_tactical_battle_ui(snapshot: GameStateSnapshot) -> void:
+	if _battlefield_panel == null or not is_instance_valid(_battlefield_panel):
+		return
+
+	# 1. Telemetry Header & Controls
+	if _lbl_battle_telemetry_header != null:
+		var status_str: String = "PAUSED" if snapshot.battle_paused else "RUNNING"
+		_lbl_battle_telemetry_header.text = "⏱ TICK: %d | TEMPO: %.1fx | STATUS: %s | GELOMBANG: %d" % [
+			snapshot.battle_tick,
+			snapshot.battle_speed,
+			status_str,
+			snapshot.current_wave
+		]
+
+	if _btn_battle_pause_resume != null:
+		_btn_battle_pause_resume.text = "▶ RESUME" if snapshot.battle_paused else "⏸ PAUSE"
+
+	if _btn_battle_speed_1x != null:
+		_btn_battle_speed_1x.text = "[1x]" if is_equal_approx(snapshot.battle_speed, 1.0) else "1x"
+	if _btn_battle_speed_2x != null:
+		_btn_battle_speed_2x.text = "[2x]" if is_equal_approx(snapshot.battle_speed, 2.0) else "2x"
+	if _btn_battle_speed_4x != null:
+		_btn_battle_speed_4x.text = "[4x]" if is_equal_approx(snapshot.battle_speed, 4.0) else "4x"
+
+	# 2. Structural Condition & Casualties
+	if _lbl_fortress_battle_status != null:
+		var armor_val: int = int(snapshot.fortress_data.get("armor", 50))
+		_lbl_fortress_battle_status.text = "Benteng: HP %d/1000 | Armor: %d | Dinding: HP %d/500 | Gerbang: HP %d/300" % [
+			snapshot.fortress_hp,
+			armor_val,
+			snapshot.wall_hp,
+			snapshot.gate_hp
+		]
+
+	if _lbl_casualties_summary != null:
+		var dead_s: int = int(snapshot.battle_casualties.get("dead_soldiers", 0))
+		var dead_h_count: int = snapshot.battle_heroes_killed.size()
+		var dmg_fort: int = int(snapshot.battle_casualties.get("fortress_damage", 0))
+		_lbl_casualties_summary.text = "Korban: Prajurit Gugur: %d | Hero Gugur: %d | Kerusakan Benteng: %d" % [
+			dead_s, dead_h_count, dmg_fort
+		]
+
+	# 3. Canonical 7 Zones
+	for zone_id in BattlefieldZone.CANONICAL_ZONES:
+		var status_str: String = _get_zone_status(zone_id, snapshot)
+		if _zone_status_labels.has(zone_id):
+			(_zone_status_labels[zone_id] as Label).text = "%s %s" % [zone_id, status_str]
+		if _zone_detail_labels.has(zone_id):
+			(_zone_detail_labels[zone_id] as Label).text = _get_zone_details_string(zone_id, snapshot)
+
+	# 4. Party 1 Tactical Forces Summary
+	if _lbl_party1_summary != null:
+		var p1_lines: Array[String] = []
+		var p1_zone: String = str(snapshot.battle_party_data.get("current_zone", "GATE"))
+		var p1_intent: String = str(snapshot.battle_party_data.get("tactical_intent", "HOLD_POSITION"))
+		var p1_form: String = str(snapshot.battle_party_data.get("formation", "BALANCED"))
+		var p1_members: Array = snapshot.battle_party_data.get("member_hero_ids", [])
+		var p1_leader: String = str(snapshot.battle_party_data.get("leader_hero_id", ""))
+
+		p1_lines.append("=== PARTY 1 TEMPUR (Zona: %s | Formasi: %s | Intensi: %s) ===" % [p1_zone, p1_form, p1_intent])
+		if p1_members.is_empty():
+			p1_lines.append("  (Tidak ada hero yang ditugaskan ke Party 1)")
+		else:
+			for hid in p1_members:
+				var h_data: Dictionary = {}
+				for hd in snapshot.heroes_data:
+					if hd.get("hero_id", "") == hid:
+						h_data = hd
+						break
+				if h_data.is_empty():
+					continue
+				var h_name: String = str(h_data.get("hero_name", hid))
+				var h_role: String = str(h_data.get("role", "HERO"))
+				var h_alive: bool = bool(h_data.get("is_alive", true))
+				var h_hp: int = int(h_data.get("base_hp", 100))
+				var h_fat: int = int(h_data.get("fatigue", 0))
+				var h_mor: int = int(h_data.get("morale", 100))
+				var leader_tag: String = " [LEADER]" if hid == p1_leader else ""
+				if h_alive:
+					p1_lines.append("  • %s (%s)%s: HP %d | Fatigue: %d/100 | Morale: %d/150 [ALIVE]" % [
+						h_name, h_role, leader_tag, h_hp, h_fat, h_mor
+					])
+				else:
+					p1_lines.append("  • %s (%s)%s: [GUGUR (Permadeath)]" % [h_name, h_role, leader_tag])
+
+		# Aura
+		var aura_strs: Array[String] = []
+		if snapshot.battle_aura_data.has("attack_bonus") and float(snapshot.battle_aura_data["attack_bonus"]) > 0.0:
+			aura_strs.append("+%.0f%% ATK" % (float(snapshot.battle_aura_data["attack_bonus"]) * 100.0))
+		if snapshot.battle_aura_data.has("defense_bonus") and float(snapshot.battle_aura_data["defense_bonus"]) > 0.0:
+			aura_strs.append("+%.0f%% DEF" % (float(snapshot.battle_aura_data["defense_bonus"]) * 100.0))
+		if snapshot.battle_aura_data.has("morale_bonus") and float(snapshot.battle_aura_data["morale_bonus"]) > 0.0:
+			aura_strs.append("+%.0f Morale" % float(snapshot.battle_aura_data["morale_bonus"]))
+		if not aura_strs.is_empty():
+			p1_lines.append("  Aura Aktif: " + ", ".join(aura_strs))
+
+		# Soldier deployments
+		if not snapshot.battle_deployments_data.is_empty():
+			p1_lines.append("Regu Serdadu Tempur:")
+			for dep in snapshot.battle_deployments_data:
+				var r: String = str(dep.get("resolved_role", dep.get("role", "SOLDIER")))
+				var cnt: int = int(dep.get("count", 0))
+				var z: String = str(dep.get("zone", "GATE"))
+				var f: String = str(dep.get("formation", "NONE"))
+				p1_lines.append("  - %d %s di %s [%s]" % [cnt, r, z, f])
+
+		_lbl_party1_summary.text = "\n".join(p1_lines)
+
+	# 5. Populate OptionButton sources if new active deployments exist
+	if _opt_cmd_source != null:
+		var cur_sel: int = _opt_cmd_source.selected
+		var cur_id: String = ""
+		if cur_sel >= 0 and cur_sel < _opt_cmd_source.item_count:
+			cur_id = str(_opt_cmd_source.get_item_metadata(cur_sel))
+		
+		var expected_sources: Array[String] = ["party_1"]
+		for dep in snapshot.battle_deployments_data:
+			var cid: String = str(dep.get("composition_id", ""))
+			if not cid.is_empty() and not expected_sources.has(cid):
+				expected_sources.append(cid)
+		
+		if _opt_cmd_source.item_count != expected_sources.size():
+			_opt_cmd_source.clear()
+			for idx in range(expected_sources.size()):
+				var sid: String = expected_sources[idx]
+				var sname: String = "Party 1 (Heroes)" if sid == "party_1" else sid
+				_opt_cmd_source.add_item(sname)
+				_opt_cmd_source.set_item_metadata(idx, sid)
+				if sid == cur_id:
+					_opt_cmd_source.selected = idx
+
+
+func _execute_selected_command(cmd_type: String) -> void:
+	if controller == null:
+		return
+
+	var source_id: String = "party_1"
+	if _opt_cmd_source != null and _opt_cmd_source.selected >= 0:
+		var meta = _opt_cmd_source.get_item_metadata(_opt_cmd_source.selected)
+		if meta != null and not str(meta).is_empty():
+			source_id = str(meta)
+
+	var target_zone: String = "CENTER_APPROACH"
+	if _opt_cmd_target_zone != null and _opt_cmd_target_zone.selected >= 0:
+		var meta = _opt_cmd_target_zone.get_item_metadata(_opt_cmd_target_zone.selected)
+		if meta != null and not str(meta).is_empty():
+			target_zone = str(meta)
+
+	var target_entity: String = "FORTRESS"
+	if _opt_cmd_target_entity != null and _opt_cmd_target_entity.selected >= 0:
+		var meta = _opt_cmd_target_entity.get_item_metadata(_opt_cmd_target_entity.selected)
+		if meta != null and not str(meta).is_empty():
+			target_entity = str(meta)
+
+	var ok: bool = false
+	match cmd_type:
+		"ADVANCE":
+			ok = controller.command_advance(source_id, target_zone)
+		"MOVE":
+			ok = controller.command_move(source_id, target_zone)
+		"HOLD", "HOLD_POSITION":
+			ok = controller.command_hold_position(source_id)
+		"RETREAT":
+			ok = controller.command_retreat(source_id)
+		"PROTECT":
+			ok = controller.command_protect(source_id, target_entity)
+		"FOCUS", "FOCUS_TARGET":
+			ok = controller.command_focus_target(source_id, target_entity)
+		"FOLLOW":
+			ok = controller.command_follow(source_id, target_entity)
+		_:
+			ok = controller.send_commander_command(cmd_type, source_id, target_zone, target_zone, target_entity, target_entity)
+
+	if ok:
+		var msg: String = "[COMMAND] Perintah [%s] berhasil dikirim ke unit %s." % [cmd_type, source_id]
+		if _lbl_cmd_feedback != null:
+			_lbl_cmd_feedback.text = msg
+		_set_feedback(msg)
+	else:
+		var rej: String = "[DITOLAK] Perintah [%s] ditolak! Target tidak valid untuk unit %s." % [cmd_type, source_id]
+		if _lbl_cmd_feedback != null:
+			_lbl_cmd_feedback.text = rej
+		_set_feedback(rej)
+
+
+func _render_battle_result_ui(snapshot: GameStateSnapshot) -> void:
+	for child in _panel_stage_actions.get_children():
+		_panel_stage_actions.remove_child(child)
+		child.queue_free()
+	_result_overlay = PanelContainer.new()
+	_panel_stage_actions.add_child(_result_overlay, true)
+	_result_overlay.name = "BattleResultPanel"
+
+	var vbox := VBoxContainer.new()
+	_result_overlay.add_child(vbox)
+
+	var res: Dictionary = snapshot.last_battle_result
+	var vic: bool = bool(res.get("victory", false))
+
+	_lbl_result_headline = Label.new()
+	_lbl_result_headline.name = "LblResultHeadline"
+	_lbl_result_headline.text = "=== BATTLE RESULT: %s ===" % ("VICTORY!" if vic else "DEFEAT / BREACH!")
+	vbox.add_child(_lbl_result_headline)
+
+	var f_data: Dictionary = snapshot.fortress_data
+	var cur_hp: int = int(f_data.get("current_hp", snapshot.fortress_hp))
+	var max_hp: int = int(f_data.get("max_hp", 1000))
+	var dmg_taken: int = int(res.get("fortress_damage_taken", 0))
+
+	var dead_s: int = int(res.get("total_dead_soldiers", 0))
+	var eq_lost: int = int(res.get("equipment_lost", 0))
+	var eq_dmg: int = int(res.get("equipment_damaged", 0))
+	var loot_gold: int = int(res.get("loot_gold", 0))
+	var exp_val: int = int(res.get("exp_per_hero", 0))
+
+	_lbl_result_body = Label.new()
+	_lbl_result_body.name = "LblResultBody"
+	_lbl_result_body.text = "• Kerusakan Benteng: %d (Sisa HP: %d / %d)\n• Korban Serdadu: %d prajurit gugur permanen\n• Perlengkapan: %d hancur permanen | %d rusak berat (-40 dur)\n• Hadiah: +%d Gold | +%d EXP per Hero" % [
+		dmg_taken, cur_hp, max_hp, dead_s, eq_lost, eq_dmg, loot_gold, exp_val
+	]
+	vbox.add_child(_lbl_result_body)
+
+	var hero_loss: bool = false
+	for h in snapshot.heroes_data:
+		if not bool(h.get("is_alive", true)):
+			hero_loss = true
+			break
+	if hero_loss:
+		var h_notice := Label.new()
+		h_notice.name = "LblHeroPermadeathNotice"
+		h_notice.text = "[HERO PERMADEATH: Hero yang gugur telah melepaskan seluruh perlengkapannya kembali ke gudang bersama.]"
+		vbox.add_child(h_notice)
+
+	var recovery_note := Label.new()
+	recovery_note.text = "[INFO RECOVERY: Seluruh perlengkapan prajurit yang selamat telah dikembalikan ke gudang benteng. Penempatan serdadu bersifat sementara per gelombang.]"
+	vbox.add_child(recovery_note)
+
+	_btn_result_proceed = Button.new()
+	_btn_result_proceed.name = "BtnProceedResult"
+	_btn_result_proceed.text = ">> PROCEED (RECOVERY / NEXT WAVE) >>"
+	_btn_result_proceed.custom_minimum_size = Vector2(200, 44)
+	_btn_result_proceed.pressed.connect(func(): if controller: controller.proceed_from_result())
+	vbox.add_child(_btn_result_proceed)
+
+
+func _render_game_over_ui(snapshot: GameStateSnapshot) -> void:
+	for child in _panel_stage_actions.get_children():
+		_panel_stage_actions.remove_child(child)
+		child.queue_free()
+	_game_over_overlay = PanelContainer.new()
+	_panel_stage_actions.add_child(_game_over_overlay, true)
+	_game_over_overlay.name = "GameOverPanel"
+
+	var vbox := VBoxContainer.new()
+	_game_over_overlay.add_child(vbox)
+
+	_lbl_game_over_headline = Label.new()
+	_lbl_game_over_headline.name = "LblGameOverHeadline"
+	_lbl_game_over_headline.text = "☠ GAME OVER — FORTRESS COLLAPSED ☠"
+	vbox.add_child(_lbl_game_over_headline)
+
+	_lbl_game_over_body = Label.new()
+	_lbl_game_over_body.name = "LblGameOverBody"
+	_lbl_game_over_body.text = "Benteng hancur total (HP 0). Pertahanan berakhir pada Wave %d." % snapshot.current_wave
+	vbox.add_child(_lbl_game_over_body)
+
+	_btn_game_over_restart = Button.new()
+	_btn_game_over_restart.name = "BtnRestartSession"
+	_btn_game_over_restart.text = "↺ RESTART SESSION"
+	_btn_game_over_restart.custom_minimum_size = Vector2(180, 44)
+	_btn_game_over_restart.pressed.connect(func(): if controller: controller.restart_session())
+	vbox.add_child(_btn_game_over_restart)
+
+
+# ==============================================================================
+# PHASE 6F: TACTICAL BATTLE UI PUBLIC INSPECTION METHODS
+# ==============================================================================
+
+func get_zone_panel(zone_name: String) -> PanelContainer:
+	return _zone_panels.get(zone_name, null)
+
+
+func get_zone_status_text(zone_name: String) -> String:
+	if _zone_status_labels.has(zone_name) and _zone_status_labels[zone_name] != null:
+		return (_zone_status_labels[zone_name] as Label).text
+	return ""
+
+
+func get_zone_detail_text(zone_name: String) -> String:
+	if _zone_detail_labels.has(zone_name) and _zone_detail_labels[zone_name] != null:
+		return (_zone_detail_labels[zone_name] as Label).text
+	return ""
+
+
+func get_battlefield_container() -> Control:
+	return _battlefield_panel
+
+
+func get_command_button(cmd_name: String) -> Button:
+	match cmd_name.strip_edges().to_upper():
+		"ADVANCE":
+			return _btn_cmd_advance
+		"MOVE":
+			return _btn_cmd_move
+		"HOLD", "HOLD_POSITION", "HOLD POSITION":
+			return _btn_cmd_hold
+		"RETREAT":
+			return _btn_cmd_retreat
+		"PROTECT":
+			return _btn_cmd_protect
+		"FOCUS", "FOCUS_TARGET", "FOCUS TARGET":
+			return _btn_cmd_focus
+		"FOLLOW":
+			return _btn_cmd_follow
+		_:
+			return null
+
+
+func get_speed_button(speed_val: int) -> Button:
+	match speed_val:
+		1:
+			return _btn_battle_speed_1x
+		2:
+			return _btn_battle_speed_2x
+		4:
+			return _btn_battle_speed_4x
+		_:
+			return null
+
+
+func get_pause_button() -> Button:
+	return _btn_battle_pause_resume
+
+
+func get_command_feedback_text() -> String:
+	if _lbl_cmd_feedback != null:
+		return _lbl_cmd_feedback.text
+	return ""
+
+
+func get_battle_tick_display_text() -> String:
+	if _lbl_battle_telemetry_header != null:
+		return _lbl_battle_telemetry_header.text
+	return ""
+
+
+func get_fortress_status_text() -> String:
+	if _lbl_fortress_battle_status != null:
+		return _lbl_fortress_battle_status.text
+	return ""
+
+
+func get_casualties_display_text() -> String:
+	if _lbl_casualties_summary != null:
+		return _lbl_casualties_summary.text
+	return ""
+
+
+func get_party1_summary_text() -> String:
+	if _lbl_party1_summary != null:
+		return _lbl_party1_summary.text
+	return ""
+
+
+func get_result_title_text() -> String:
+	if _lbl_result_headline != null:
+		return _lbl_result_headline.text
+	return ""
+
+
+func get_game_over_title_text() -> String:
+	if _lbl_game_over_headline != null:
+		return _lbl_game_over_headline.text
+	return ""
+
+
+func is_battlefield_visible() -> bool:
+	return _battlefield_panel != null and is_instance_valid(_battlefield_panel) and _battlefield_panel.get_parent() == _panel_stage_actions and _battlefield_panel.visible
+
+
+func is_result_overlay_visible() -> bool:
+	return _result_overlay != null and is_instance_valid(_result_overlay) and _result_overlay.get_parent() == _panel_stage_actions and _result_overlay.visible
+
+
+func is_game_over_overlay_visible() -> bool:
+	return _game_over_overlay != null and is_instance_valid(_game_over_overlay) and _game_over_overlay.get_parent() == _panel_stage_actions and _game_over_overlay.visible
+

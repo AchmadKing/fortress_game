@@ -4,6 +4,46 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.6.6] - Phase 6F: Tactical Battle UI & Verification Gate
+
+### Added
+- **Tactical Battlefield Overview & 7 Canonical Zones UI** (`scripts/presentation/views/prototype_debug_view.gd`):
+  - Tata letak lanskap medan tempur 7 zona kanonikal (`OUTER_FIELD`, `LEFT_FLANK`, `CENTER_APPROACH`, `RIGHT_FLANK`, `WALL`, `GATE`, `FORTRESS`).
+  - Badge status zona dinamis: `[EMPTY]`, `[FRIENDLY]`, `[ENEMY OCCUPIED]`, `[CONTESTED]`, `[DAMAGED]`, `[BREACHED]`, `[DESTROYED]`.
+  - Visualisasi rincian musuh per zona: arketipe, kuantitas, kolam HP agregat, trait khusus, dan indikator `[BOSS]`.
+  - Visualisasi pasukan kawan per zona: regu serdadu penempatan aktif, peran turunan (`resolved_role`), jumlah, dan formasi taktis.
+- **Pacing & Simulation Tick Controls** (`scripts/presentation/views/prototype_debug_view.gd`, `scripts/presentation/controllers/game_controller.gd`):
+  - Tombol Pause / Resume toggle reaktif (`BtnPauseResume`).
+  - Tombol Kecepatan 1x / 2x / 4x (`BtnSpeed1x`, `BtnSpeed2x`, `BtnSpeed4x`) dengan visual highlight status aktif (`[1x]`, `[2x]`, `[4x]`).
+  - Tombol Step Tick manual (`BtnStepTick`) untuk kontrol per langkah simulasi deterministik.
+  - Tombol Selesaikan Pertempuran Seketika (`BtnResolveImmediately`) untuk penyelesaian battle instan secara deterministik.
+  - Tampilan telemetri header jam pertempuran (`_lbl_battle_clock`): nomor gelombang aktif dan pencacah `battle_tick` monotonik strictly increasing.
+- **Party 1 Tactical Forces & Aura Display** (`scripts/presentation/views/prototype_debug_view.gd`):
+  - Ringkasan pasukan Party 1: zona penempatan, formasi taktis, dan intensi komandan aktif.
+  - Kartu status pahlawan hidup: HP saat ini, tingkat kelelahan (`fatigue`), moral, penanda peran & pemimpin regu `[LEADER]`, serta penanda `[GUGUR (Permadeath)]`.
+  - Telemetri aura pasif kepemimpinan & chemistry aktif (`+X% ATK`, `+Y% DEF`, `+Z Morale`).
+  - Isolasi ketat: Party 2 dan Reserve sepenuhnya dikecualikan dari ringkasan tempur medan laga.
+- **Fortress Structural Condition & Casualties Telemetry** (`scripts/presentation/views/prototype_debug_view.gd`):
+  - Pemantauan real-time HP Benteng, HP Tembok, HP Gerbang, dan Zirah Benteng.
+  - Penghitung akumulatif prajurit gugur, pahlawan gugur, dan kerusakan struktural benteng.
+- **Commander Tactical Commands Panel & Validation Feedback** (`scripts/presentation/views/prototype_debug_view.gd`):
+  - 7 tombol perintah kanonikal: `ADVANCE`, `MOVE`, `HOLD_POSITION`, `RETREAT`, `PROTECT`, `FOCUS_TARGET`, `FOLLOW`.
+  - Selektor dinamis sumber (`OptCmdSource`), target zona (`OptCmdTargetZone`), dan target entitas/musuh (`OptCmdTargetEntity`).
+  - Banner umpan balik validasi perintah real-time (`LblCmdFeedback`) dengan status sukses dan alasan penolakan.
+- **Battle Result & Game Over Overlays** (`scripts/presentation/views/prototype_debug_view.gd`):
+  - Overlay hasil pertempuran (`BattleResultPanel`): headline `VICTORY!` vs `DEFEAT / BREACH!`, rekapitulasi kerusakan benteng, korban serdadu, status pahlawan, split perlengkapan gugur (hancur/rusak), serta tombol `Lanjut ke Fase Pemulihan (Recovery)`.
+  - Overlay Game Over terminal (`GameOverPanel`): headline `☠ GAME OVER — FORTRESS COLLAPSED ☠`, pesan kehancuran benteng, dan tombol `Mulai Ulang Sesi (Restart)`.
+- **Mobile Usability & In-Place Rendering Safety**:
+  - Seluruh tombol kontrol tempo dan perintah memenuhi target sentuh minimum $\ge 44 \times 44$ px.
+  - Pola pembaruan in-place preserving: data diperbarui pada tick simulasi tanpa merekonstruksi node tree (`BattlefieldPanel` identity preserved across ticks).
+- **Automated Verification Suite** (`tests/test_phase6f_tactical_battle_ui.gd`):
+  - 75 automated tests komprehensif mencakup Group A s/d W (UI Initialization & Lifecycle, Zone Rendering & Status Mapping, Enemy Group Visualization, Party 1 Tactical Force, Hero Visualization & Permadeath, Fortress Structural Condition, Wall & Gate Condition, Battle Clock & Tick Display, Pause/Resume UI, Speed Controls 1x/2x/4x, Commander Command Buttons, Command Validation & Rejection Feedback, Battle Lock Preservation, Casualty & Damage Telemetry, Hero Death Display, Victory Display, Defeat Display, Game Over Display, Snapshot Reactive Synchronization, Deep-Copy / Read-Model Safety, Determinism, UI Architecture Delegation Integrity, Minimum 44px Touch Targets, dan Full Wave Lifecycle Interactive Smoke Test).
+  - Hasil: 75/75 PASS ($100\%$).
+  - Full Regression Suite: 977/977 PASS across all 24 test suites.
+  - Prototype Scene Smoke Playtest: ALL PASS.
+
+---
+
 ## [0.6.5] - Phase 6E: Fortress Damage Routing & Casualty Resolution
 
 ### Added

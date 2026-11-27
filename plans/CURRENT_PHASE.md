@@ -8,8 +8,10 @@
 - **Phase 6C — Unit Formations, Party 1 & Aura Mechanics**: **COMPLETED / VERIFIED**
 - **Phase 6D — Commander Commands Execution**: **COMPLETED / VERIFIED**
 - **Phase 6E — Fortress Damage Routing & Casualty Resolution**: **COMPLETED / VERIFIED**
-- **Phase 6F — Tactical Battle UI & Verification Gate**: **NEXT / LOCKED** (Menunggu persetujuan eksplisit developer)
-- **Phase 7+**: **LOCKED**
+- **Phase 6F — Tactical Battle UI & Verification Gate**: **COMPLETED / VERIFIED**
+- **Phase 6 — Tactical Battle & Battlefield Systems**: **COMPLETED / CLOSED**
+- **Phase 7 — Economy & Progression**: **NEXT / LOCKED** (Menunggu persetujuan eksplisit developer)
+- **Phase 8+**: **LOCKED**
 
 Dokumen perencanaan teknis dan arsitektur komprehensif Phase 6 tersedia di [plans/PHASE_6_TACTICAL_BATTLE_PLAN.md](file:///d:/fortress_game/plans/PHASE_6_TACTICAL_BATTLE_PLAN.md).
 
@@ -23,7 +25,7 @@ Dokumen perencanaan teknis dan arsitektur komprehensif Phase 6 tersedia di [plan
 - **Phase 3 — Gameplay Prototype**: **COMPLETED** (Commits `2452397`, `4f01bfe`, `1d3d51d`, `463f91c`, `ba3c0c5`, `e6c0c97`)
 - **Phase 4 — Hero System**: **COMPLETED / CLOSED** (Sub-Phases 4A through 4H COMPLETED / VERIFIED)
 - **Phase 5 — Fortress & Management Systems**: **COMPLETED / CLOSED** (Commit `e765c6e`)
-- **Phase 6 — Tactical Battle & Battlefield Systems**: **IN PROGRESS**
+- **Phase 6 — Tactical Battle & Battlefield Systems**: **COMPLETED / CLOSED**
   - **Phase 6A — Battlefield Zones & Enemy Foundation**: **COMPLETED / VERIFIED**
     - 7 Zona Medan Tempur Kanonikal: `OUTER_FIELD`, `LEFT_FLANK`, `CENTER_APPROACH`, `RIGHT_FLANK`, `WALL`, `GATE`, `FORTRESS` (`BattlefieldZone`).
     - Graf Ketetanggaan Deterministik Simetris (bidirectional, no self-reference).
@@ -86,7 +88,22 @@ Dokumen perencanaan teknis dan arsitektur komprehensif Phase 6 tersedia di [plan
     - Tactical Battle 1,000-Tick Stress Simulation: PASS tanpa kebocoran memori, tanpa angka negatif, dan tanpa desinkronisasi.
     - Full Regression Suite: 902/902 PASS across 22 test suites.
     - Prototype Scene Smoke Playtest: ALL PASS.
-  - **Phase 6F — Tactical Battle UI & Verification Gate**: **NEXT / LOCKED**
+  - **Phase 6F — Tactical Battle UI & Verification Gate**: **COMPLETED / VERIFIED**
+    - Tactical Battle UI fungsional terintegrasi pada `PrototypeDebugView` (`scenes/prototype/main_prototype.tscn`) tanpa mengubah domain formulas atau menduplikasi sistem.
+    - Gambaran Medan Perang Lanskap 7 Zona Kanonikal (`OUTER_FIELD`, `LEFT_FLANK`, `CENTER_APPROACH`, `RIGHT_FLANK`, `WALL`, `GATE`, `FORTRESS`) dengan badge status dinamis (`[EMPTY]`, `[FRIENDLY]`, `[ENEMY OCCUPIED]`, `[CONTESTED]`, `[DAMAGED]`, `[BREACHED]`, `[DESTROYED]`).
+    - Visualisasi Regu Agregat Musuh: arketipe, jumlah prajurit, kolam HP agregat, trait khusus, dan indikator Boss.
+    - Visualisasi Pasukan Taktis Aktif Party 1: serdadu penempatan, peran regu, formasi, kartu status pahlawan (HP, fatigue, moral, indikator permadeath), serta aura kepemimpinan & kemitraan aktif. Party 2 dan Reserve terisolasi penuh dari paparan visual tempur.
+    - Kartu Kondisi Struktural Benteng: HP Benteng, HP Tembok, HP Gerbang, dan Zirah Benteng.
+    - Kontrol Pacing Simulasi: Pause/Resume toggle, tombol Kecepatan 1x/2x/4x dengan visual highlight aktif, tombol Step tick simulasi, dan tombol Selesaikan pertempuran seketika.
+    - Panel Perintah Taktis Komandan: 7 tombol perintah kanonikal (`ADVANCE`, `MOVE`, `HOLD_POSITION`, `RETREAT`, `PROTECT`, `FOCUS_TARGET`, `FOLLOW`), selektor sumber/target dinamis, dan banner feedback validasi perintah.
+    - Telemetri Korban Jiwa & Kerusakan: akumulasi serdadu gugur, pahlawan gugur, dan kerusakan benteng.
+    - Overlay Hasil Pertempuran (`VICTORY` vs `DEFEAT / BREACH`) dengan rincian korban/kerusakan/perlengkapan dan tombol transisi ke Recovery.
+    - Overlay Game Over (`☠ GAME OVER — FORTRESS COLLAPSED ☠`) dengan tombol reset/restart session.
+    - Ukuran Target Sentuh Mobile $\ge 44 \times 44$ px pada seluruh tombol tempo dan perintah taktis.
+    - Update In-Place Preserving: pembaruan data per tick simulasi memutasi teks widget tanpa merekonstruksi node tree (`BattlefieldPanel` identity preserved).
+    - Unit Tests Phase 6F: 75/75 PASS (`tests/test_phase6f_tactical_battle_ui.gd`).
+    - Full Regression Suite: 977/977 PASS across all 24 test suites.
+    - Prototype Scene Smoke Playtest: ALL PASS.
 - **Phase 7 — Economy & Progression**: **LOCKED**
 - **Phase 8 — Content Implementation**: **LOCKED**
 - **Phase 9 — Visual / UI / Pixel Art Integration**: **LOCKED**
@@ -97,6 +114,8 @@ Dokumen perencanaan teknis dan arsitektur komprehensif Phase 6 tersedia di [plan
 ### Aturan & Batasan Saat Ini
 
 > [!IMPORTANT]
-> **PHASE 6E TELAH SELESAI DAN TERVERIFIKASI (COMPLETED & VERIFIED).**
+> **PHASE 6 TELAH SELESAI DAN TERVERIFIKASI PENUH (COMPLETED, VERIFIED & CLOSED).**
+> **PHASE 7 (Economy & Progression) BERSTATUS NEXT / LOCKED.**
+> **DILARANG KERAS memulai implementasi Phase 7 sebelum ada persetujuan eksplisit dari developer.**
 > **PHASE 6F MASIH TERKUNCI (LOCKED)**: DILARANG memulai implementasi Tactical Battle UI sebelum developer memberikan izin/arahan eksplisit (*explicit developer approval*).
 > **PHASE 7+ TETAP LOCKED**: Seluruh fase lanjut tetap terkunci.

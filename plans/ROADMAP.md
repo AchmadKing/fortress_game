@@ -106,25 +106,26 @@ High-level roadmap pengembangan proyek `fortress_game`.
   - Verifikasi: 82/82 tests PASS (inklusif 100-cycle management stress test), 677/677 Full Regression PASS across 17 suites, Scene Smoke Playtest ALL PASS.
 
 ## Phase 6 — Tactical Battle & Battlefield Systems
-- **Status**: IN PROGRESS
+- **Status**: COMPLETED / CLOSED
 - **Tujuan**: Membangun sistem simulasi pertempuran taktis real-time yang dapat diamati dan diarahkan (Football Manager style) berbasis 7 zona medan perang, 6 perintah taktis komandan, dan integrasi penuh integritas benteng, pahlawan Party 1, serdadu agregat, perlengkapan gudang bersama, dan 6 arketipe musuh deterministik. Spesifikasi teknis: [plans/PHASE_6_TACTICAL_BATTLE_PLAN.md](file:///d:/fortress_game/plans/PHASE_6_TACTICAL_BATTLE_PLAN.md).
   - **Phase 6A — Battlefield Zones & Enemy Foundation**: COMPLETED / VERIFIED (Commit `bd75c12`, 30 tests PASS).
   - **Phase 6B — Simulation Tick Loop & Pacing Controls**: COMPLETED / VERIFIED (33 tests PASS, 10.000-tick stress PASS).
   - **Phase 6C — Unit Formations, Party 1 & Aura Mechanics**: COMPLETED / VERIFIED (37 tests PASS, 50-wave participation stress PASS).
   - **Phase 6D — Commander Commands Execution**: COMPLETED / VERIFIED (50 tests PASS, 1.000-command stress test PASS).
   - **Phase 6E — Fortress Damage Routing & Casualty Resolution**: COMPLETED / VERIFIED (75 tests PASS, 1.000-tick tactical stress PASS).
-  - **Phase 6F — Tactical Battle UI & Verification Gate**: NEXT / LOCKED
+  - **Phase 6F — Tactical Battle UI & Verification Gate**: COMPLETED / VERIFIED (75 tests PASS, in-place update preservation, 977/977 Full Regression across 24 suites, Scene Smoke Playtest PASS).
   - Topologi medan perang 7 zona kanonikal (`OUTER_FIELD`, `LEFT_FLANK`, `CENTER_APPROACH`, `RIGHT_FLANK`, `WALL`, `GATE`, `FORTRESS`).
   - Loop simulasi real-time berbasis tick deterministik dengan kontrol tempo (Pause, 1x, 2x, 4x) ringan tanpa physics engine.
   - Penempatan serdadu agregat (bukan unit individual) dan integrasi Party 1 pahlawan aktif.
-  - Implementasi operasional 6 perintah komandan (`HOLD`, `ADVANCE`, `RETREAT`, `PROTECT`, `FOCUS`, `FOLLOW`) pada tingkat regu/zona.
+  - Implementasi operasional 7 perintah komandan (`ADVANCE`, `MOVE`, `HOLD_POSITION`, `RETREAT`, `PROTECT`, `FOCUS_TARGET`, `FOLLOW`) pada tingkat regu/zona.
   - Perutean kerusakan bertingkat ke Gate HP, Wall HP, dan Fortress HP dengan kondisi kekalahan saat Fortress HP $\le 0$.
   - Penegakan aturan korban serdadu & perlengkapan Phase 3D ($35\%$ hancur, $65\%$ rusak) dan kembalinya gear pahlawan permadeath tepat 1x ke gudang bersama.
-  - UI taktis fungsional pada `PrototypeDebugView` berbasis wireframe Phase 5.
-  - Pengujian: minimal 85 tests dan simulasi stres deterministik 50–100 gelombang.
+  - UI taktis fungsional pada `PrototypeDebugView` dengan overlay hasil pertempuran dan game over serta touch target $\ge 44 \times 44$ px.
+  - Verifikasi komprehensif: 300 tests total Phase 6 (30 + 33 + 37 + 50 + 75 + 75), 977 tests Full Regression suite, Scene Smoke Playtest PASS.
 
 ## Phase 7 — Economy & Progression
-- **Status**: NOT STARTED
+- **Status**: NEXT / LOCKED
+- **Tujuan**: Mata uang, resource loop, upgrade progression, dan reward loop.
 - **Tujuan**: Mata uang, resource loop, upgrade progression, dan reward loop.
 
 ## Phase 8 — Content Implementation

@@ -25,6 +25,8 @@ const VALID_ZONES: Array[String] = [
 	ZONE_FORTRESS
 ]
 
+const CANONICAL_ZONES: Array[String] = VALID_ZONES
+
 const TYPE_FIELD: String = "FIELD"
 const TYPE_FLANK: String = "FLANK"
 const TYPE_APPROACH: String = "APPROACH"

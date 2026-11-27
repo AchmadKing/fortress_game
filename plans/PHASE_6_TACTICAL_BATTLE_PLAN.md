@@ -700,8 +700,9 @@ Untuk mencegah *scope creep* dan mematuhi prinsip kehati-hatian, Phase 6 dipecah
 - **Sub-Phase 6E: Fortress Damage Routing & Casualty Resolution** — [x] **COMPLETED / VERIFIED**
   - Integrasi kerusakan terarah ke Wall/Gate/Fortress dan resolusi korban serdadu/perlengkapan Phase 3D.
   - Test suite `tests/test_phase6e_fortress_damage_casualty.gd` (75/75 PASS, 1.000-tick stress simulation PASS).
-- **Sub-Phase 6F: Tactical Battle UI & Verification Gate** — [ ] **NEXT / LOCKED**
-  - Integrasi tampilan medan perang pada `PrototypeDebugView`, full test suite (85+ tests), 50-wave stress test, full regression (18 suites), dan Scene Smoke Playtest.
+- **Sub-Phase 6F: Tactical Battle UI & Verification Gate** — [x] **COMPLETED / VERIFIED**
+  - Integrasi tampilan medan perang lanskap 7 zona, visualisasi musuh agregat & Party 1, kontrol tempo simulasi, kontrol perintah komandan, telemetri kerusakan/korban, overlay hasil pertempuran dan game over pada `PrototypeDebugView`.
+  - Test suite `tests/test_phase6f_tactical_battle_ui.gd` (75/75 PASS), Full Regression (977/977 PASS across 24 suites), Scene Smoke Playtest ALL PASS.
 
 ---
 
@@ -717,16 +718,16 @@ Phase 6 dinyatakan selesai dan siap ditutup hanya jika memenuhi seluruh kriteria
 7. [x] Kerusakan struktur benteng terdistribusi bertingkat (Gate/Wall lalu Fortress) (Phase 6E VERIFIED).
 8. [x] Aturan korban prajurit ($35\%$ hancur, $65\%$ rusak) dan kembalinya gear pahlawan permadeath bekerja presisi (Phase 6E VERIFIED).
 9. [x] Invarian konservasi gudang bersama dan populasi zero-sum terbukti $100\%$ valid di setiap siklus (Phase 6E VERIFIED).
-10. [ ] Suite pengujian Phase 6 (minimal 85 tests) lulus $100\%$.
-11. [ ] Full Automated Regression Suite (18 suites, estimasi ~762 tests) lulus $100\%$ dengan 0 regresi.
-12. [ ] Prototype Scene Smoke Playtest lulus tanpa error pada Godot SceneTree.
-13. [ ] Penggunaan memori stabil di bawah profil hardware 4 GB RAM.
+10. [x] Suite pengujian Phase 6 (total 300 tests: 30 + 33 + 37 + 50 + 75 + 75) lulus $100\%$.
+11. [x] Full Automated Regression Suite (24 suites, 977 tests) lulus $100\%$ dengan 0 regresi.
+12. [x] Prototype Scene Smoke Playtest lulus tanpa error pada Godot SceneTree.
+13. [x] Penggunaan memori stabil di bawah profil hardware 4 GB RAM.
 
 ---
 
 ## 24. Explicit Phase Gate & Hard Stop Rule
 
 > [!CAUTION]
-> **HARD STOP RULE**: Dokumen ini adalah rencana teknis dan arsitektur (**ARCHITECTURE PLAN ONLY**).
-> **DILARANG KERAS** memulai implementasi kode, membuat file skrip baru di `scripts/`, atau mengubah kode simulasi pertempuran sebelum rencana ini ditinjau dan disetujui secara eksplisit oleh developer (*explicit developer approval*).
-> Fase ini berhenti pada tahap perencanaan dan komitmen dokumentasi.
+> **HARD STOP RULE**: Phase 6 telah selesai penuh (**PHASE 6 IS FULLY COMPLETED, VERIFIED & CLOSED**).
+> **DILARANG KERAS** memulai implementasi Phase 7 (Economy & Progression) sebelum ada persetujuan eksplisit dari developer (*explicit developer approval*).
+> Fase ini berhenti pada tahap penutupan Phase 6 dan komitmen dokumentasi.

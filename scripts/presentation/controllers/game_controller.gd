@@ -455,10 +455,10 @@ func cancel_wave_preview() -> bool:
 	return coordinator.cancel_wave_preview()
 
 
-func start_battle() -> bool:
+func start_battle(enable_tactical_sim: bool = true) -> bool:
 	if coordinator == null:
 		return false
-	var ok: bool = coordinator.start_battle()
+	var ok: bool = coordinator.start_battle(enable_tactical_sim)
 	if ok:
 		_battle_step_index = 0
 		_schedule_next_battle_step()
@@ -470,6 +470,14 @@ func send_commander_command(command_type: String, target_group: String = "ALL", 
 		return false
 	var cmd := CommanderCommand.new(command_type, target_group, target_id, 0, target_zone, target_enemy, target_entity)
 	return coordinator.send_commander_command(cmd)
+
+
+func command_hold_position(source_id: String = "party_1") -> bool:
+	return command_hold(source_id)
+
+
+func command_focus(source_id: String = "party_1", enemy_target: String = "") -> bool:
+	return command_focus_target(source_id, enemy_target)
 
 
 # ==============================================================================
@@ -603,6 +611,15 @@ func resume_battle() -> bool:
 	return ok
 
 
+func toggle_battle_pause() -> bool:
+	if coordinator == null:
+		return false
+	if coordinator.is_battle_paused():
+		return resume_battle()
+	else:
+		return pause_battle()
+
+
 func set_speed(speed: float) -> bool:
 	if coordinator == null:
 		return false
@@ -614,10 +631,18 @@ func set_speed(speed: float) -> bool:
 	return ok
 
 
+func set_battle_speed(speed: float) -> bool:
+	return set_speed(speed)
+
+
 func step_simulation() -> bool:
 	if coordinator == null:
 		return false
 	return coordinator.step_simulation()
+
+
+func step_battle_tick() -> bool:
+	return step_simulation()
 
 
 func advance_simulation_time(delta_seconds: float) -> int:
