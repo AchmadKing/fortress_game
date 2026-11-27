@@ -4,6 +4,43 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.6.1] - Phase 6A: Battlefield Zones & Enemy Foundation
+
+### Added
+- **Battlefield Zones Domain Model** (`scripts/domain/model/battlefield_zone.gd`):
+  - Model domain murni `BattlefieldZone` (`RefCounted`) untuk representasi zona medan tempur taktis.
+  - 7 Zona Kanonikal: `ZONE_OUTER_FIELD` (Open Approach), `ZONE_LEFT_FLANK` (Tactical Flank), `ZONE_CENTER_APPROACH` (Frontline Highway), `ZONE_RIGHT_FLANK` (Tactical Flank), `ZONE_WALL` (Elevated Rampart), `ZONE_GATE` (Chokepoint Barrier), `ZONE_FORTRESS` (Inner Core).
+  - Graf Ketetanggaan Kanonikal Deterministik Dua Arah (Symmetric & Bidirectional) tanpa perulangan mandiri (*no self-reference*).
+  - Atribut & Pengali Taktis: bonus pertahanan tembok (+25% DEF) dan jangkauan (+30% RNG), bonus chokepoint gerbang (+40% DEF).
+  - Flag interior benteng (`is_fortress_interior`, eksklusif hanya untuk `ZONE_FORTRESS`) dan perizinan penempatan pasukan (`allow_player_deployment`, non-aktif untuk `ZONE_OUTER_FIELD`).
+  - Validasi invarian zona ketat, isolasi kloning mendalam (*deep-copy*), dan serialisasi dictionary (`to_dictionary()` / `from_dictionary()`).
+- **Enemy Archetypes Domain Model** (`scripts/domain/model/enemy_archetype.gd`):
+  - Model domain murni `EnemyArchetype` (`RefCounted`) untuk mendefinisikan 6 arketipe musuh kanonikal:
+    1. `GOBLIN_SWARM`: Threat 2, HP 20, ATK 4, DEF 2, Speed 1 tick/zona, Target "NEAREST", Trait "SWARM".
+    2. `ORC_FRONTLINE`: Threat 6, HP 65, ATK 12, DEF 8, Speed 2 ticks/zona, Target "DEFENDER", Trait "FRONTLINE".
+    3. `GOBLIN_ARCHER`: Threat 8, HP 35, ATK 14, DEF 4, Speed 2 ticks/zona, Target "RANGED", Trait "RANGED".
+    4. `TROLL_TANK`: Threat 16, HP 220, ATK 25, DEF 18, Speed 3 ticks/zona, Target "GATE", Trait "HIGH_DURABILITY".
+    5. `SIEGE_MONSTER`: Threat 40, HP 450, ATK 60, DEF 25, Speed 4 ticks/zona, Target "STRUCTURE", Trait "STRUCTURE_DAMAGE".
+    6. `FLYING_BYPASS`: Threat 12, HP 50, ATK 16, DEF 5, Speed 1 tick/zona, Target "FORTRESS", Trait "BYPASS_BARRIER".
+  - Pemetaan Deterministik Gelombang Musuh: metode kanonikal `map_legacy_enemy_type()` dan `map_wave_to_enemy_groups()` menerjemahkan keluaran `WaveGenerator` (`MINION`, `RAIDER`, `BRUTE`, `FLYER`, `SIEGE`, `BOSS`) ke instance `EnemyGroup` yang berposisi awal di `OUTER_FIELD`.
+- **Enemy Group Aggregate Model** (`scripts/domain/model/enemy_group.gd`):
+  - Model agregat musuh `EnemyGroup` (`RefCounted`) mematuhi prinsip *No Individual Entity* (musuh tidak pernah diinstansiasi sebagai node terpisah).
+  - Manajemen kolam HP agregat (`max_hp_pool = base_hp_per_unit * quantity`), penyusutan bertahap kuantitas hidup secara proporsional via `apply_damage()`, dan deteksi kekalahan `is_defeated()`.
+  - Dukungan scaling khusus unit Bos (`is_boss = true`): peningkatan HP dasar ($2.5\times$), ATK ($1.5\times$), DEF ($1.25\times$), dan label trait `BOSS_ELITE`.
+  - Validasi invarian konsistensi data (larangan kuantitas negatif, larangan HP > 0 saat kuantitas 0, validitas zona saat ini & target).
+- **Automated Verification Suite** (`tests/test_phase6a_battlefield_enemy_foundation.gd`):
+  - 30 unit tests komprehensif mencakup 5 grup:
+    - Group A: Battlefield Zones & Invariants (Tests 1–6)
+    - Group B: Zone Adjacency & Topology (Tests 7–12)
+    - Group C: Enemy Archetypes & Attributes (Tests 13–18)
+    - Group D: WaveGenerator Mapping & Determinism (Tests 19–24)
+    - Group E: EnemyGroup Model & Invariants (Tests 25–30)
+  - Hasil Uji: 30/30 PASS (100%).
+  - Full Regression Suite: 707/707 PASS di 18 test suites tanpa regresi.
+  - Prototype Scene Smoke Playtest: ALL PASS.
+
+---
+
 ## [0.6.0] - Phase 5: Fortress & Management Systems (Completed & Closed)
 
 ### Added

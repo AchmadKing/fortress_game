@@ -685,9 +685,10 @@ Rencana pengujian dirancang mencakup minimal **85 unit/integration tests** terdi
 
 Untuk mencegah *scope creep* dan mematuhi prinsip kehati-hatian, Phase 6 dipecah menjadi 6 sub-fase terstruktur:
 
-- **Sub-Phase 6A: Battlefield Zones & Enemy Foundation**
+- **Sub-Phase 6A: Battlefield Zones & Enemy Foundation** — [x] **COMPLETED / VERIFIED** (Commit pending)
   - Implementasi model zona taktis, topologi ketetanggaan, dan 6 arketipe musuh kanonikal.
-- **Sub-Phase 6B: Simulation Tick Loop & Pacing Controls**
+  - Test suite `tests/test_phase6a_battlefield_enemy_foundation.gd` (30/30 PASS).
+- **Sub-Phase 6B: Simulation Tick Loop & Pacing Controls** — [ ] **NEXT / LOCKED**
   - Implementasi loop tick simulasi deterministik pada `CombatEngine` dan kontrol tempo (Pause, 1x, 2x, 4x) pada `GameController`.
 - **Sub-Phase 6C: Unit Formations, Party 1 & Aura Mechanics**
   - Integrasi penempatan Party 1 dan regu serdadu agregat ke zona, serta mekanika aura kepemimpinan.
@@ -703,8 +704,8 @@ Untuk mencegah *scope creep* dan mematuhi prinsip kehati-hatian, Phase 6 dipecah
 ## 23. Acceptance Criteria
 
 Phase 6 dinyatakan selesai dan siap ditutup hanya jika memenuhi seluruh kriteria berikut:
-1. [ ] Seluruh 7 zona battlefield berfungsi sesuai aturan ketetanggaan.
-2. [ ] 6 arketipe musuh muncul sesuai kurva gelombang dan bertindak deterministik.
+1. [x] Seluruh 7 zona battlefield berfungsi sesuai aturan ketetanggaan (Phase 6A VERIFIED).
+2. [x] 6 arketipe musuh muncul sesuai kurva gelombang dan bertindak deterministik (Phase 6A VERIFIED).
 3. [ ] Party 1 bertarung aktif; Party 2 dan cadangan terisolasi penuh dari bahaya.
 4. [ ] Serdadu agregat bertarung berdasarkan kuantitas, gear, dan moral tanpa instansiasi node per prajurit.
 5. [ ] 6 perintah komandan dapat dikirimkan dan memengaruhi pergerakan/efektivitas regu secara nyata.
