@@ -4,6 +4,71 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.5.6] - Phase 4E: Hero Skills & Talent Foundation (Implemented & Verified)
+
+### Added
+- **Canonical HeroSkill Domain Model** (`scripts/domain/model/hero_skill.gd`):
+  - Model data murni `HeroSkill` (`RefCounted`) dengan properti `skill_id`, `skill_name`, `required_role`, `required_level`, `skill_type`, dan `power_multiplier`.
+  - Konstanta tipe skill kanonikal: `TYPE_PASSIVE_STAT = "PASSIVE_STAT"` dan `TYPE_AURA = "AURA"`.
+  - Metode validasi invarian `validate_invariants()`: id non-kosong, nama non-kosong, peran valid (`HeroRole`), level disyaratkan $\ge 1$, tipe terdaftar, dan multiplier $> 0.0$.
+  - Katalog skill kanonikal deterministik 4 peran (KNIGHT, ARCHER, MAGE, PRIEST) menyediakan 3 skill spesifik per peran (total 12 skill).
+- **Hero Skill Acquisition & Lifecycle Integration** (`scripts/domain/model/hero_model.gd`, `scripts/application/coordinators/game_coordinator.gd`):
+  - Properti `unlocked_skills: Array` di `HeroModel`.
+  - Metode domain: `has_skill(skill_id)`, `can_unlock_skill(skill_id)`, `unlock_skill(skill_id)`, dan `get_unlocked_skills()`.
+  - Validasi ketat pembukaan skill: kesesuaian peran kanonikal hero, pencapaian level minimum, pencegahan skill duplikat, dan penolakan hero gugur/permadeath.
+  - Orkesstrasi di `GameCoordinator`: `can_unlock_hero_skill(hero_id, skill_id)` dan `unlock_hero_skill(hero_id, skill_id)` dengan proteksi Battle Lock.
+- **Odd-Level Talent Point Rule** (`scripts/domain/model/hero_model.gd`):
+  - Pahlawan memperoleh $+1$ Poin Bakat (*Talent Point*) setiap kali naik ke tingkat ganjil ($3, 5, 7, 9, \dots$) pada `add_exp()`.
+  - Hero tingkat 1 awal memiliki 0 talent points (tidak ada pemberian retroaktif).
+  - Kenaikan multi-tingkat seketika (misal: Lv 1 ke Lv 5) memberikan poin secara kumulatif untuk setiap tingkat ganjil yang dilalui (+2 poin: Lv 3 dan Lv 5).
+  - Invarian bahwa kenaikan bintang (*Ascension*) maupun penumpukan EXP pada level cap tidak mengubah poin bakat.
+- **Three-Branch Talent Tree & Deterministic Scaling** (`scripts/domain/model/hero_model.gd`, `scripts/application/coordinators/game_coordinator.gd`):
+  - Tiga cabang bakat kanonikal: `TALENT_BRANCH_OFFENSE = "OFFENSE"`, `TALENT_BRANCH_DEFENSE = "DEFENSE"`, `TALENT_BRANCH_LEADERSHIP = "LEADERSHIP"`.
+  - Batas maksimal level bakat: `MAX_TALENT_BRANCH_LEVEL = 3` per cabang.
+  - Metode alokasi bakat: `can_allocate_talent(branch_id)`, `allocate_talent(branch_id)`, `get_talent_level(branch_id)`, `get_offense_talent_level()`, `get_defense_talent_level()`, `get_leadership_talent_level()`.
+  - Formula pengali bakat:
+    - OFFENSE: $+2\%$ ATK per tingkat (Lv1: 1.02, Lv2: 1.04, Lv3: 1.06).
+    - DEFENSE: $+2\%$ DEF per tingkat (Lv1: 1.02, Lv2: 1.04, Lv3: 1.06).
+    - LEADERSHIP: $+1\%$ ATK dan $+1\%$ DEF per tingkat (Lv1: 1.01, Lv2: 1.02, Lv3: 1.03).
+    - Formula gabungan: $\text{get\_talent\_atk\_multiplier}() = (1.0 + \text{off\_lvl} \times 0.02) \times (1.0 + \text{ldr\_lvl} \times 0.01)$ dan $\text{get\_talent\_def\_multiplier}() = (1.0 + \text{def\_lvl} \times 0.02) \times (1.0 + \text{ldr\_lvl} \times 0.01)$.
+  - Integrasi stat efektif: `get_effective_atk()` dan `get_effective_def()` mengalikan pengali bakat; kompatibilitas mundur 100% (pengali = 1.0 jika alokasi 0).
+  - Orkesstrasi di `GameCoordinator`: `can_allocate_hero_talent(hero_id, branch_id)` dan `allocate_hero_talent(hero_id, branch_id)` dengan proteksi Battle Lock.
+- **Deep-Copy Clone & Invariant Validation** (`scripts/domain/model/hero_model.gd`):
+  - `HeroModel.clone()` menduplikasi `unlocked_skills`, `talent_points`, dan `allocated_talents`.
+  - `validate_invariants()` memvalidasi `talent_points >= 0` dan tingkat setiap cabang antara $0 \le \text{level} \le 3$.
+- **Snapshot Telemetry Integration** (`scripts/application/coordinators/game_coordinator.gd`):
+  - `GameStateSnapshot.heroes_data` memuat atribut: `unlocked_skills`, `talent_points`, `allocated_talents`, `talent_atk_multiplier`, dan `talent_def_multiplier`.
+- **Phase 4E Automated Test Suite** (`tests/test_phase4e_hero_skills_talents.gd`):
+  - 62 pengujian headless mencakup:
+    - HeroSkill Model & Catalog Tests (1-12)
+    - Skill Unlocking Domain & Coordinator Tests (13-26)
+    - Talent Points Acquisition & Odd-Level Rule Tests (27-38)
+    - Talent Allocation & Branch Integrity Tests (39-50)
+    - Stat Scaling, Multipliers, Invariants & Persistence Tests (51-62)
+
+### Verified
+- **Full Regression Suite**:
+  - Phase 1 Architecture: 5/5 PASSED
+  - Phase 2 Mathematical Systems: 21/21 PASSED
+  - Phase 3A Gameplay Baseline: 11/11 PASSED
+  - Phase 3B Soldier Deployment: 27/27 PASSED
+  - Phase 3C Hero Equipment Foundation: 22/22 PASSED
+  - Phase 3D Prototype UX & Polish: 10/10 PASSED
+  - Phase 3D Follow-up Corrections: 23/23 PASSED
+  - Phase 3E Final Verification: 15/15 PASSED
+  - Phase 4A Hero Domain & Lifecycle: 38/38 PASSED
+  - Phase 4B Hero Progression & EXP: 47/47 PASSED
+  - Phase 4C Hero Recruitment & Roster: 51/51 PASSED
+  - Phase 4D Hero Training, Fatigue & Morale: 54/54 PASSED
+  - Phase 4E Hero Skills & Talents: 62/62 PASSED
+  - Total: **386 / 386 PASSED (100%)**
+  - Scene Smoke Playtest: **ALL PASS (0 ERRORS)**
+- **Phase Status Transition**:
+  - Sub-Phase 4E: **COMPLETED / VERIFIED**.
+  - Sub-Phase 4F: **NEXT / LOCKED**.
+
+---
+
 ## [0.5.5] - Phase 4D: Hero Training, Fatigue & Morale (Implemented & Verified)
 
 ### Added

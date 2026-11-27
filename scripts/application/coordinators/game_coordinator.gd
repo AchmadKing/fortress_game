@@ -868,6 +868,60 @@ func rest_hero(hero_id: String, recovery: int = 25) -> bool:
 	return true
 
 
+# ==============================================================================
+# PHASE 4E HERO SKILLS & TALENTS
+# ==============================================================================
+
+## Memvalidasi kelayakan pahlawan untuk membuka skill kanonikal
+func can_unlock_hero_skill(hero_id: String, skill_id: String) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		return false
+	var hero := get_hero(hero_id)
+	if hero == null:
+		return false
+	return hero.can_unlock_skill(skill_id)
+
+
+## Membuka skill kanonikal untuk pahlawan dengan proteksi Battle Lock
+func unlock_hero_skill(hero_id: String, skill_id: String) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		push_warning("unlock_hero_skill dilarang pada fase BATTLE (Battle Lock)")
+		return false
+	var hero := get_hero(hero_id)
+	if hero == null:
+		return false
+	var success: bool = hero.unlock_skill(skill_id)
+	if success:
+		_update_snapshot()
+		state_changed.emit(_current_state.clone())
+	return success
+
+
+## Memvalidasi kelayakan pahlawan untuk mengalokasikan poin bakat
+func can_allocate_hero_talent(hero_id: String, branch_id: String) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		return false
+	var hero := get_hero(hero_id)
+	if hero == null:
+		return false
+	return hero.can_allocate_talent(branch_id)
+
+
+## Mengalokasikan 1 poin bakat pahlawan ke cabang tertentu dengan proteksi Battle Lock
+func allocate_hero_talent(hero_id: String, branch_id: String) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		push_warning("allocate_hero_talent dilarang pada fase BATTLE (Battle Lock)")
+		return false
+	var hero := get_hero(hero_id)
+	if hero == null:
+		return false
+	var success: bool = hero.allocate_talent(branch_id)
+	if success:
+		_update_snapshot()
+		state_changed.emit(_current_state.clone())
+	return success
+
+
 ## Inspeksi gelombang ancaman berikutnya (transisi PREPARATION -> WAVE_PREVIEW)
 func inspect_wave() -> bool:
 	if _state_machine.current_state != GameplayStateMachine.STATE_PREPARATION:
@@ -1185,6 +1239,11 @@ func _update_snapshot() -> void:
 				"chemistry_map": hero.chemistry_map.duplicate(true),
 				"effective_atk": hero.get_effective_atk(),
 				"effective_def": hero.get_effective_def(),
+				"unlocked_skills": hero.get_unlocked_skills(),
+				"talent_points": hero.talent_points,
+				"allocated_talents": hero.allocated_talents.duplicate(true),
+				"talent_atk_multiplier": hero.get_talent_atk_multiplier(),
+				"talent_def_multiplier": hero.get_talent_def_multiplier(),
 				"primary_equipment": hero.primary_equipment.role_type if hero.primary_equipment != null else "NONE",
 				"secondary_equipment": hero.secondary_equipment.role_type if hero.secondary_equipment != null else "NONE",
 				"armor_equipment": hero.armor_equipment.role_type if hero.armor_equipment != null else "NONE"

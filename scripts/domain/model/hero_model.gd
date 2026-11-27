@@ -8,6 +8,7 @@ extends RefCounted
 
 const HeroRoleScript = preload("res://scripts/domain/model/hero_role.gd")
 const HeroLifecycleStateScript = preload("res://scripts/domain/model/hero_lifecycle_state.gd")
+const HeroSkillScript = preload("res://scripts/domain/model/hero_skill.gd")
 
 # Canonical Role Constants (Delegated to HeroRole)
 const ROLE_KNIGHT: String = "KNIGHT"
@@ -22,6 +23,12 @@ const STATE_IN_PARTY: String = "IN_PARTY"
 const STATE_IN_TRAINING: String = "IN_TRAINING"
 const STATE_BATTLE_ACTIVE: String = "BATTLE_ACTIVE"
 const STATE_PERMADEATH: String = "PERMADEATH"
+
+# Phase 4E Canonical Talent Branch Constants
+const TALENT_BRANCH_OFFENSE: String = "OFFENSE"
+const TALENT_BRANCH_DEFENSE: String = "DEFENSE"
+const TALENT_BRANCH_LEADERSHIP: String = "LEADERSHIP"
+const MAX_TALENT_BRANCH_LEVEL: int = 3
 
 var hero_id: String = ""
 var hero_name: String = ""
@@ -38,6 +45,15 @@ var fatigue: int = 0          # 0 - 100
 var morale: int = 100         # 0 - 150
 var is_alive: bool = true
 var chemistry_map: Dictionary = {} # other_hero_id (String) -> chemistry points (int)
+
+# Phase 4E Hero Skills & Talents
+var unlocked_skills: Array = []
+var talent_points: int = 0
+var allocated_talents: Dictionary = {
+	"OFFENSE": 0,
+	"DEFENSE": 0,
+	"LEADERSHIP": 0
+}
 
 # Phase 3C Hero Equipment Slots
 var primary_equipment: RefCounted = null    # EquipmentModel (SWORD, SPEAR, BOW)
@@ -65,6 +81,13 @@ func _init(
 	morale = 100
 	is_alive = (lifecycle_state != STATE_PERMADEATH)
 	chemistry_map = {}
+	unlocked_skills = []
+	talent_points = 0
+	allocated_talents = {
+		TALENT_BRANCH_OFFENSE: 0,
+		TALENT_BRANCH_DEFENSE: 0,
+		TALENT_BRANCH_LEADERSHIP: 0
+	}
 	primary_equipment = null
 	secondary_equipment = null
 	armor_equipment = null
@@ -150,6 +173,12 @@ func validate_invariants() -> bool:
 		return false
 	if not is_alive and lifecycle_state != STATE_PERMADEATH:
 		return false
+	if talent_points < 0:
+		return false
+	for branch in [TALENT_BRANCH_OFFENSE, TALENT_BRANCH_DEFENSE, TALENT_BRANCH_LEADERSHIP]:
+		var b_lvl: int = int(allocated_talents.get(branch, 0))
+		if b_lvl < 0 or b_lvl > MAX_TALENT_BRANCH_LEVEL:
+			return false
 	return true
 
 
@@ -288,6 +317,8 @@ func add_exp(amount: int) -> int:
 			current_exp -= req
 			level += 1
 			levels_gained += 1
+			if level % 2 == 1:
+				talent_points += 1
 		else:
 			break
 
@@ -387,7 +418,8 @@ func get_effective_atk(party_hero_ids: Array = []) -> int:
 	var gear_scale: float = 1.0
 	if primary_equipment != null and primary_equipment.has_method("get_power_multiplier"):
 		gear_scale = primary_equipment.get_power_multiplier()
-	return int(floor(float(base_atk) * level_scale * star_scale * chem_scale * fat_scale * morale_scale * gear_scale))
+	var talent_scale: float = get_talent_atk_multiplier()
+	return int(floor(float(base_atk) * level_scale * star_scale * chem_scale * fat_scale * morale_scale * gear_scale * talent_scale))
 
 
 func get_effective_def() -> int:
@@ -410,7 +442,110 @@ func get_effective_def() -> int:
 		def_scale *= armor_equipment.get_power_multiplier()
 	if secondary_equipment != null and secondary_equipment.has_method("get_power_multiplier"):
 		def_scale *= (1.0 + (secondary_equipment.get_power_multiplier() - 1.0) * 0.5)
-	return int(floor(float(base_def) * level_scale * star_scale * fat_scale * morale_scale * def_scale))
+	var talent_scale: float = get_talent_def_multiplier()
+	return int(floor(float(base_def) * level_scale * star_scale * fat_scale * morale_scale * def_scale * talent_scale))
+
+
+# ==============================================================================
+# PHASE 4E HERO SKILLS & TALENT METHODS
+# ==============================================================================
+
+## Memeriksa apakah hero telah mempelajari/membuka skill tertentu
+func has_skill(skill_id: String) -> bool:
+	var id: String = skill_id.strip_edges().to_lower()
+	return id in unlocked_skills
+
+
+## Memvalidasi kelayakan hero untuk membuka skill tertentu
+func can_unlock_skill(skill_id: String) -> bool:
+	if not is_alive or lifecycle_state == STATE_PERMADEATH:
+		return false
+	var id: String = skill_id.strip_edges().to_lower()
+	if id.is_empty() or has_skill(id):
+		return false
+	var skill: RefCounted = HeroSkillScript.get_canonical_skill(id)
+	if skill == null:
+		return false
+	if skill.required_role != role:
+		return false
+	if level < skill.required_level:
+		return false
+	return true
+
+
+## Membuka skill kanonikal untuk hero jika memenuhi syarat
+func unlock_skill(skill_id: String) -> bool:
+	if not can_unlock_skill(skill_id):
+		return false
+	var id: String = skill_id.strip_edges().to_lower()
+	unlocked_skills.append(id)
+	return true
+
+
+## Mengembalikan salinan daftar skill yang telah dibuka
+func get_unlocked_skills() -> Array:
+	return unlocked_skills.duplicate()
+
+
+## Memeriksa level alokasi bakat pada cabang tertentu
+func get_talent_level(branch_id: String) -> int:
+	var b: String = branch_id.to_upper().strip_edges()
+	return int(allocated_talents.get(b, 0))
+
+
+## Memeriksa level alokasi bakat cabang OFFENSE
+func get_offense_talent_level() -> int:
+	return get_talent_level(TALENT_BRANCH_OFFENSE)
+
+
+## Memeriksa level alokasi bakat cabang DEFENSE
+func get_defense_talent_level() -> int:
+	return get_talent_level(TALENT_BRANCH_DEFENSE)
+
+
+## Memeriksa level alokasi bakat cabang LEADERSHIP
+func get_leadership_talent_level() -> int:
+	return get_talent_level(TALENT_BRANCH_LEADERSHIP)
+
+
+## Memvalidasi kelayakan alokasi poin bakat ke cabang tertentu
+func can_allocate_talent(branch_id: String) -> bool:
+	if not is_alive or lifecycle_state == STATE_PERMADEATH:
+		return false
+	var b: String = branch_id.to_upper().strip_edges()
+	if not (b in [TALENT_BRANCH_OFFENSE, TALENT_BRANCH_DEFENSE, TALENT_BRANCH_LEADERSHIP]):
+		return false
+	if talent_points <= 0:
+		return false
+	if get_talent_level(b) >= MAX_TALENT_BRANCH_LEVEL:
+		return false
+	return true
+
+
+## Mengalokasikan 1 poin bakat ke cabang tertentu
+func allocate_talent(branch_id: String) -> bool:
+	if not can_allocate_talent(branch_id):
+		return false
+	var b: String = branch_id.to_upper().strip_edges()
+	talent_points -= 1
+	allocated_talents[b] = get_talent_level(b) + 1
+	return true
+
+
+## Menghitung pengali serangan dari alokasi bakat
+## OFFENSE: +2% ATK per tingkat; LEADERSHIP: +1% ATK per tingkat
+func get_talent_atk_multiplier() -> float:
+	var off_lvl: float = float(get_offense_talent_level())
+	var ldr_lvl: float = float(get_leadership_talent_level())
+	return (1.0 + off_lvl * 0.02) * (1.0 + ldr_lvl * 0.01)
+
+
+## Menghitung pengali pertahanan dari alokasi bakat
+## DEFENSE: +2% DEF per tingkat; LEADERSHIP: +1% DEF per tingkat
+func get_talent_def_multiplier() -> float:
+	var def_lvl: float = float(get_defense_talent_level())
+	var ldr_lvl: float = float(get_leadership_talent_level())
+	return (1.0 + def_lvl * 0.02) * (1.0 + ldr_lvl * 0.01)
 
 
 func mark_dead() -> void:
@@ -429,6 +564,9 @@ func clone() -> HeroModel:
 	h.morale = morale
 	h.is_alive = is_alive
 	h.chemistry_map = chemistry_map.duplicate(true)
+	h.unlocked_skills = unlocked_skills.duplicate()
+	h.talent_points = talent_points
+	h.allocated_talents = allocated_talents.duplicate(true)
 	if primary_equipment != null and primary_equipment.has_method("clone"):
 		h.primary_equipment = primary_equipment.clone()
 	if secondary_equipment != null and secondary_equipment.has_method("clone"):

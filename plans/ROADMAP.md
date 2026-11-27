@@ -80,14 +80,14 @@ High-level roadmap pengembangan proyek `fortress_game`.
     - Phase 3 resmi DITUTUP (*CLOSED*).
 
 ## Phase 4 — Hero System
-- **Status**: IN PROGRESS (SUB-PHASE 4A, 4B, 4C & 4D COMPLETED / VERIFIED; 4E NEXT / LOCKED)
+- **Status**: IN PROGRESS (SUB-PHASE 4A, 4B, 4C, 4D & 4E COMPLETED / VERIFIED; 4F NEXT / LOCKED)
 - **Tujuan**: Struktur dan sistem hero/karakter mendalam (talent tree, active/passive skills, recruitment/tavern, ascension). Spesifikasi teknis: [docs/design/PHASE_4_HERO_SYSTEM_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_4_HERO_SYSTEM_PLAN.md).
   - **Phase 4A — Hero Domain & Lifecycle Foundation**: COMPLETED / VERIFIED
   - **Phase 4B — Hero Progression & EXP**: COMPLETED / VERIFIED
   - **Phase 4C — Hero Recruitment & Roster Management**: COMPLETED / VERIFIED / CLOSED
   - **Phase 4D — Hero Training / Fatigue / Morale**: COMPLETED / VERIFIED
-  - **Phase 4E — Hero Skills & Talent Foundation**: NEXT / LOCKED
-  - **Phase 4F — Hero Chemistry & Party Management**: PLANNED
+  - **Phase 4E — Hero Skills & Talent Foundation**: COMPLETED / VERIFIED
+  - **Phase 4F — Hero Chemistry & Party Management**: NEXT / LOCKED
   - **Phase 4G — Hero Management UX**: PLANNED
   - **Phase 4H — Hero System Integration & Verification**: PLANNED
 

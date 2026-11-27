@@ -557,12 +557,37 @@ Setiap sub-fase Phase 4 wajib menyertakan automated headless test suite:
   - Inventaris atau jenis perlengkapan baru (Dilarang).
   - Pixel art dan visual mobile final (Milik Phase 9).
 
+### 7. Batas Eksplisit Sub-Phase 4E (Hero Skills & Talent Foundation) — COMPLETED / VERIFIED
+- **STATUS: COMPLETED / VERIFIED (62/62 Tests PASS, Full Regression 386/386 Tests PASS, Scene Smoke Playtest ALL PASS)**
+- **IN SCOPE FOR 4E (IMPLEMENTED):**
+  - Model data murni `HeroSkill` (`scripts/domain/model/hero_skill.gd`) turunan `RefCounted` dengan validasi invarian ketat.
+  - Katalog skill kanonikal 4 peran (`HeroRole.KNIGHT`, `ARCHER`, `MAGE`, `PRIEST`) dengan tipe `PASSIVE_STAT` dan `AURA`.
+  - Validasi pembukaan skill hero: kesesuaian peran, pemenuhan level minimum, pencegahan skill duplikat, dan penolakan skill non-kanonikal.
+  - Perolehan Poin Bakat (*Talent Points*) berbasis tingkat ganjil (*Odd-Level Rule*): $+1$ poin setiap mencapai level ganjil (3, 5, 7, 9, dst.) saat naik level melalui `HeroModel.add_exp()`; tidak ada perolehan retroaktif saat hero dibuat di level 1; mendukung kenaikan multi-tingkat seketika.
+  - Pohon bakat modular dengan 3 cabang kanonikal: `OFFENSE`, `DEFENSE`, `LEADERSHIP`, dibatasi maksimal tingkat 3 per cabang.
+  - Pengali stat bakat deterministik:
+    - `OFFENSE`: $+2\%$ ATK per tingkat (Lv1: 1.02, Lv2: 1.04, Lv3: 1.06).
+    - `DEFENSE`: $+2\%$ DEF per tingkat (Lv1: 1.02, Lv2: 1.04, Lv3: 1.06).
+    - `LEADERSHIP`: $+1\%$ ATK dan $+1\%$ DEF per tingkat (Lv1: 1.01, Lv2: 1.02, Lv3: 1.03).
+    - Pengali gabungan: $\text{AtkMultiplier} = (1.0 + \text{off\_lvl} \times 0.02) \times (1.0 + \text{ldr\_lvl} \times 0.01)$, $\text{DefMultiplier} = (1.0 + \text{def\_lvl} \times 0.02) \times (1.0 + \text{ldr\_lvl} \times 0.01)$.
+  - Integrasi stat efektif pahlawan: `get_effective_atk()` dan `get_effective_def()` mengalikan pengali bakat dengan backward compatibility penuh (default multiplier 1.0 saat bakat 0).
+  - Proteksi Battle Lock: Aksi pembukaan skill (`unlock_hero_skill`) dan alokasi bakat (`allocate_hero_talent`) dilarang keras saat state `BATTLE`.
+  - Snapshot Telemetri: Serialisasi `unlocked_skills`, `talent_points`, `allocated_talents`, `talent_atk_multiplier`, dan `talent_def_multiplier` ke dalam `GameStateSnapshot.heroes_data`.
+  - Pelestarian deep-copy clone: `HeroModel.clone()` menduplikasi `unlocked_skills`, `talent_points`, dan `allocated_talents`.
+  - Test suite mandiri `tests/test_phase4e_hero_skills_talents.gd` (62/62 PASS).
+- **OUT OF SCOPE FOR 4E (DILARANG PADA 4E):**
+  - Model party dan chemistry baru (Milik 4F).
+  - Hero Management UI & Skill/Talent UI (Milik 4G).
+  - Eksekusi skill tempur aktif real-time, projectile, cooldown, mana, animasi tempur (Milik Phase 6 & Phase 9).
+  - Inventaris atau jenis perlengkapan baru (Dilarang).
+  - Pixel art dan visual mobile final (Milik Phase 9).
+
 ---
 
 ## X. Acceptance Criteria Phase 4
 
 Phase 4 dinyatakan selesai hanya jika seluruh kriteria berikut terpenuhi:
-- [ ] Model `HeroModel` telah diperluas mencakup peran kanonikal, bakat, keahlian, dan regu tanpa merusak API Phase 3.
+- [x] Model `HeroModel` telah diperluas mencakup peran kanonikal, bakat, keahlian, dan regu tanpa merusak API Phase 3.
 - [x] Sistem rekrutmen Mercenary Guild berfungsi deterministik dan terintegrasi dengan kas emas benteng.
 - [x] Sistem progresi level, kenaikan bintang (*Ascension*), dan pembatasan level berbasis bintang berjalan akurat.
 - [x] Fasilitas latihan (*Training*) berfungsi dengan batas anti-exploit per gelombang dan penambahan kelelahan yang adil.

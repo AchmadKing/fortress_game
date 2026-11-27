@@ -1,8 +1,8 @@
 # Current Development Phase
 
-## Phase 4 — Hero System (IN PROGRESS / SUB-PHASE 4D COMPLETED & VERIFIED)
+## Phase 4 — Hero System (IN PROGRESS / SUB-PHASE 4E COMPLETED & VERIFIED)
 
-Project saat ini berada pada tahap **Phase 4 — Hero System (Sub-Phase 4A: COMPLETED / VERIFIED; Sub-Phase 4B: COMPLETED / VERIFIED; Sub-Phase 4C: COMPLETED / VERIFIED / CLOSED; Sub-Phase 4D: COMPLETED / VERIFIED; Sub-Phase 4E: NEXT / LOCKED)**.
+Project saat ini berada pada tahap **Phase 4 — Hero System (Sub-Phase 4A: COMPLETED / VERIFIED; Sub-Phase 4B: COMPLETED / VERIFIED; Sub-Phase 4C: COMPLETED / VERIFIED / CLOSED; Sub-Phase 4D: COMPLETED / VERIFIED; Sub-Phase 4E: COMPLETED / VERIFIED; Sub-Phase 4F: NEXT / LOCKED)**.
 Phase 3 (Gameplay Prototype) telah resmi ditutup (**COMPLETED / CLOSED**) pada commit `e6c0c97`.
 
 Roadmap teknis dan spesifikasi arsitektur komprehensif Phase 4 tersedia di [docs/design/PHASE_4_HERO_SYSTEM_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_4_HERO_SYSTEM_PLAN.md).
@@ -58,9 +58,24 @@ Roadmap teknis dan spesifikasi arsitektur komprehensif Phase 4 tersedia di [docs
     - Snapshot Telemetri: Serialisasi `trained_this_wave`, `fatigue`, `morale`, `effective_atk`, dan `effective_def` ke `GameStateSnapshot.heroes_data`.
     - Test Suite Phase 4D: **54/54 PASSED, 0 FAILED** ([tests/test_phase4d_hero_training_fatigue_morale.gd](file:///d:/fortress_game/tests/test_phase4d_hero_training_fatigue_morale.gd)).
     - Full Regression: **324 tests PASSED (134 baseline Phase 1-3 + 38 Phase 4A + 47 Phase 4B + 51 Phase 4C + 54 Phase 4D)** + Scene Smoke Playtest ALL PASS.
-  - Sub-Phase 4E — Hero Skills & Talent Foundation: **NEXT / LOCKED** (Terkunci hingga tinjauan developer)
-  - Sub-Phase 4E — Hero Skills & Talent Foundation: **PLANNED**
-  - Sub-Phase 4F — Hero Chemistry & Party Management: **PLANNED**
+  - **Sub-Phase 4E — Hero Skills & Talent Foundation**: **COMPLETED / VERIFIED**
+    - Model data murni `HeroSkill` (`scripts/domain/model/hero_skill.gd`) turunan `RefCounted` dengan validasi invarian identitas, nama, peran, syarat level, tipe skill, dan pengali kekuatan.
+    - Katalog skill kanonikal 4 peran (`KNIGHT`, `ARCHER`, `MAGE`, `PRIEST`) bertipe `PASSIVE_STAT` dan `AURA`.
+    - Validasi kelayakan pembukaan skill (`can_unlock_skill`, `unlock_skill`): peran cocok, level memenuhi, tidak duplikat, hero hidup dan non-permadeath.
+    - Perolehan Poin Bakat (*Talent Points*) berbasis kenaikan tingkat ganjil (*Odd-Level Rule*): $+1$ poin saat mencapai level ganjil (3, 5, 7, 9, dst.) melalui `HeroModel.add_exp()`; tidak ada perolehan retroaktif saat hero dibuat di level 1; multi-level jump terakomodasi akurat.
+    - Tiga cabang bakat kanonikal per peran: `OFFENSE`, `DEFENSE`, `LEADERSHIP` dengan batas maksimal tingkat 3 per cabang.
+    - Multiplier bakat deterministik:
+      - `OFFENSE`: $+2\%$ ATK per level (1.02, 1.04, 1.06).
+      - `DEFENSE`: $+2\%$ DEF per level (1.02, 1.04, 1.06).
+      - `LEADERSHIP`: $+1\%$ ATK dan $+1\%$ DEF per level (1.01, 1.02, 1.03).
+      - Formula komposit: $\text{AtkMultiplier} = (1.0 + \text{off} \times 0.02) \times (1.0 + \text{ldr} \times 0.01)$, $\text{DefMultiplier} = (1.0 + \text{def} \times 0.02) \times (1.0 + \text{ldr} \times 0.01)$.
+    - Integrasi stat efektif pahlawan: `get_effective_atk()` dan `get_effective_def()` mengintegrasikan pengali bakat dengan backward compatibility mutlak (multiplier 1.0 jika alokasi 0).
+    - Proteksi Battle Lock di `GameCoordinator`: `unlock_hero_skill()` dan `allocate_hero_talent()` diblokir keras saat status `STATE_BATTLE`.
+    - Deep-copy clone: `HeroModel.clone()` menduplikasi `unlocked_skills`, `talent_points`, dan `allocated_talents`.
+    - Snapshot Telemetri: Serialisasi `unlocked_skills`, `talent_points`, `allocated_talents`, `talent_atk_multiplier`, dan `talent_def_multiplier` ke dalam `GameStateSnapshot.heroes_data`.
+    - Test Suite Phase 4E: **62/62 PASSED, 0 FAILED** ([tests/test_phase4e_hero_skills_talents.gd](file:///d:/fortress_game/tests/test_phase4e_hero_skills_talents.gd)).
+    - Full Regression: **386 tests PASSED (134 baseline Phase 1-3 + 38 Phase 4A + 47 Phase 4B + 51 Phase 4C + 54 Phase 4D + 62 Phase 4E)** + Scene Smoke Playtest ALL PASS.
+  - Sub-Phase 4F — Hero Chemistry & Party Management: **NEXT / LOCKED** (Terkunci hingga tinjauan developer)
   - Sub-Phase 4G — Hero Management UX: **PLANNED**
   - Sub-Phase 4H — Hero System Integration & Verification: **PLANNED**
 - **Phase 5 — Fortress & Management Systems**: **LOCKED**
