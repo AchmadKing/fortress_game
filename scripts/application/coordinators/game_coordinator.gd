@@ -25,6 +25,8 @@ const PartyModel = preload("res://scripts/domain/model/party_model.gd")
 const EconomyManager = preload("res://scripts/simulation/economy_manager.gd")
 const WaveGenerator = preload("res://scripts/simulation/wave_generator.gd")
 const CombatEngine = preload("res://scripts/simulation/combat_engine.gd")
+const WorkerModel = preload("res://scripts/domain/model/worker_model.gd")
+const BuildingModel = preload("res://scripts/domain/model/building_model.gd")
 
 const HERO_RECRUITMENT_COST_DEFAULT: int = 500
 
@@ -41,6 +43,12 @@ var _combat_engine: CombatEngine
 var _heroes: Array = []       # Array[HeroModel]
 var _parties: Array = []      # Array[PartyModel]
 var _warehouse: Array = []    # Array[EquipmentModel]
+
+# Phase 5 Fortress & Management Systems
+var _worker_model: WorkerModel
+var _buildings: Dictionary = {}
+var _active_repair: Dictionary = {}
+var _active_construction: Dictionary = {}
 
 # Phase 3B Temporary Soldier Deployment
 var _active_deployments: Array = []        # Array[DeploymentComposition]
@@ -136,8 +144,12 @@ func allocate_workers(repair: int, blacksmith: int, construction: int) -> bool:
 	if _state_machine.current_state != GameplayStateMachine.STATE_PREPARATION:
 		push_warning("allocate_workers hanya diizinkan pada fase PREPARATION")
 		return false
-	var ok: bool = _economy.set_worker_allocation(repair, blacksmith, construction, _population.civilians)
+	var total_pool: int = _population.workers if (_population != null and _population.workers > 0) else (_population.civilians if _population != null else 0)
+	var ok: bool = _economy.set_worker_allocation(repair, blacksmith, construction, total_pool)
 	if ok:
+		if _worker_model != null:
+			_worker_model.sync_total_workers(total_pool)
+			_worker_model.set_allocations(repair, blacksmith, construction)
 		_update_snapshot()
 		state_changed.emit(_current_state.clone())
 	return ok
@@ -1419,6 +1431,258 @@ func proceed_from_result() -> bool:
 		return true
 
 
+# ==============================================================================
+# PHASE 5: FORTRESS, POPULATION, WORKER, BUILDING, REPAIR & CONSTRUCTION
+# ==============================================================================
+
+## Konversi warga sipil menjadi tenaga kerja (Zero-Sum)
+func convert_civilian_to_worker(count: int = 1) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		push_warning("convert_civilian_to_worker dilarang pada fase BATTLE (Battle Lock)")
+		return false
+	if count < 1 or _population == null or _population.civilians < count:
+		return false
+	var ok: bool = _population.civilian_to_worker(count)
+	if ok:
+		if _worker_model != null:
+			_worker_model.sync_total_workers(_population.workers)
+		_update_snapshot()
+		state_changed.emit(_current_state.clone())
+	return ok
+
+
+## Konversi tenaga kerja kembali menjadi warga sipil (Zero-Sum)
+func convert_worker_to_civilian(count: int = 1) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		push_warning("convert_worker_to_civilian dilarang pada fase BATTLE (Battle Lock)")
+		return false
+	if count < 1 or _population == null or _population.workers < count:
+		return false
+	var ok: bool = _population.worker_to_civilian(count)
+	if ok:
+		if _worker_model != null:
+			_worker_model.sync_total_workers(_population.workers)
+			if _economy != null:
+				_economy.set_worker_allocation(_worker_model.repair_workers, _worker_model.blacksmith_workers, _worker_model.construction_workers, _population.workers)
+		_update_snapshot()
+		state_changed.emit(_current_state.clone())
+	return ok
+
+
+## Dapatkan instance WorkerModel
+func get_worker_model() -> WorkerModel:
+	return _worker_model
+
+
+## Dapatkan rincian alokasi tenaga kerja
+func get_worker_allocations() -> Dictionary:
+	return _worker_model.to_dictionary() if _worker_model != null else {}
+
+
+## Mutasi perpindahan tugas tenaga kerja
+func reassign_worker(from_job: String, to_job: String, count: int = 1) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		push_warning("reassign_worker dilarang pada fase BATTLE (Battle Lock)")
+		return false
+	if _worker_model == null:
+		return false
+	var ok: bool = _worker_model.reassign(from_job, to_job, count)
+	if ok:
+		if _economy != null:
+			var total_pool: int = _population.workers if (_population != null and _population.workers > 0) else (_population.civilians if _population != null else 0)
+			_economy.set_worker_allocation(_worker_model.repair_workers, _worker_model.blacksmith_workers, _worker_model.construction_workers, total_pool)
+		_update_snapshot()
+		state_changed.emit(_current_state.clone())
+	return ok
+
+
+## Dapatkan moral tenaga kerja
+func get_worker_morale() -> int:
+	return _worker_model.morale if _worker_model != null else 100
+
+
+## Dapatkan produktivitas tenaga kerja
+func get_worker_productivity() -> float:
+	return _worker_model.get_productivity() if _worker_model != null else 1.0
+
+
+## Ubah moral tenaga kerja
+func modify_worker_morale(delta: int) -> void:
+	if _worker_model != null:
+		_worker_model.modify_morale(delta)
+		_update_snapshot()
+		state_changed.emit(_current_state.clone())
+
+
+## Dapatkan fasilitas gedung berdasarkan ID
+func get_building(building_id: String) -> BuildingModel:
+	return _buildings.get(building_id, null)
+
+
+## Dapatkan seluruh fasilitas gedung
+func get_buildings() -> Array:
+	return _buildings.values()
+
+
+## Cek kelayakan peningkatan fasilitas
+func can_upgrade_building(building_id: String) -> bool:
+	var b: BuildingModel = get_building(building_id)
+	return b != null and b.can_upgrade()
+
+
+## Tingkatkan fasilitas gedung secara langsung
+func upgrade_building(building_id: String) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		push_warning("upgrade_building dilarang pada fase BATTLE (Battle Lock)")
+		return false
+	var b: BuildingModel = get_building(building_id)
+	if b == null or not b.can_upgrade():
+		return false
+	var ok: bool = b.upgrade()
+	if ok:
+		_update_snapshot()
+		state_changed.emit(_current_state.clone())
+	return ok
+
+
+## Validasi kelayakan perbaikan struktur fisik benteng (Fortress, Wall, Gate)
+func can_repair_structure(target: String, hp_amount: int) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		return false
+	if hp_amount <= 0 or _fortress == null or _economy == null:
+		return false
+	var t: String = target.to_upper().strip_edges()
+	if not (t in ["FORTRESS", "WALL", "GATE"]):
+		return false
+	var rep_workers: int = _worker_model.repair_workers if _worker_model != null else _economy.repair_workers
+	if rep_workers <= 0:
+		return false
+	var needed: int = 0
+	match t:
+		"FORTRESS":
+			needed = _fortress.max_hp - _fortress.current_hp
+		"WALL":
+			needed = _fortress.wall_max_hp - _fortress.wall_hp
+		"GATE":
+			needed = _fortress.gate_max_hp - _fortress.gate_hp
+	if needed <= 0:
+		return false
+	var actual_repair: int = mini(needed, hp_amount)
+	var cost: int = int(ceil(float(actual_repair) * 0.15))
+	if _economy.treasury_gold < cost:
+		return false
+	return true
+
+
+## Eksekusi perbaikan struktur fisik benteng (Fortress, Wall, Gate) secara atomik
+func repair_structure(target: String, hp_amount: int) -> bool:
+	if not can_repair_structure(target, hp_amount):
+		return false
+	var t: String = target.to_upper().strip_edges()
+	var needed: int = 0
+	match t:
+		"FORTRESS":
+			needed = _fortress.max_hp - _fortress.current_hp
+		"WALL":
+			needed = _fortress.wall_max_hp - _fortress.wall_hp
+		"GATE":
+			needed = _fortress.gate_max_hp - _fortress.gate_hp
+	var actual_repair: int = mini(needed, hp_amount)
+	var cost: int = int(ceil(float(actual_repair) * 0.15))
+	
+	_economy.treasury_gold -= cost
+	var repaired: int = 0
+	match t:
+		"FORTRESS":
+			repaired = _fortress.repair(actual_repair)
+		"WALL":
+			repaired = _fortress.repair_wall(actual_repair)
+		"GATE":
+			repaired = _fortress.repair_gate(actual_repair)
+	if repaired <= 0:
+		_economy.treasury_gold += cost
+		return false
+	
+	_active_repair = {
+		"target": t,
+		"repaired_hp": repaired,
+		"cost": cost
+	}
+	_update_snapshot()
+	state_changed.emit(_current_state.clone())
+	return true
+
+
+## Cek kelayakan memulai proyek konstruksi
+func can_start_construction(target_building_id: String, gold_cost: int, target_progress: int) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		return false
+	if gold_cost < 0 or target_progress <= 0:
+		return false
+	var b: BuildingModel = get_building(target_building_id)
+	if b == null or not b.can_upgrade():
+		return false
+	var constr_workers: int = _worker_model.construction_workers if _worker_model != null else _economy.construction_workers
+	if constr_workers <= 0:
+		return false
+	if _economy == null or _economy.treasury_gold < gold_cost:
+		return false
+	return true
+
+
+## Memulai proyek konstruksi bangunan
+func start_construction(target_building_id: String, gold_cost: int = 50, target_progress: int = 100) -> bool:
+	if not can_start_construction(target_building_id, gold_cost, target_progress):
+		return false
+	_economy.treasury_gold -= gold_cost
+	_active_construction = {
+		"target_building_id": target_building_id,
+		"gold_cost": gold_cost,
+		"current_progress": 0,
+		"target_progress": target_progress,
+		"is_completed": false
+	}
+	_update_snapshot()
+	state_changed.emit(_current_state.clone())
+	return true
+
+
+## Menambah progres proyek konstruksi aktif secara deterministik
+func advance_construction(progress_delta: int) -> bool:
+	if _active_construction.is_empty() or bool(_active_construction.get("is_completed", false)):
+		return false
+	if progress_delta <= 0:
+		return false
+	var curr: int = int(_active_construction.get("current_progress", 0)) + progress_delta
+	var target: int = int(_active_construction.get("target_progress", 100))
+	_active_construction["current_progress"] = mini(curr, target)
+	if curr >= target:
+		_active_construction["is_completed"] = true
+		var bid: String = str(_active_construction.get("target_building_id", ""))
+		var b: BuildingModel = get_building(bid)
+		if b != null and b.can_upgrade():
+			b.upgrade()
+	_update_snapshot()
+	state_changed.emit(_current_state.clone())
+	return true
+
+
+## Membatalkan proyek konstruksi aktif dan melakukan refund kas emas
+func cancel_construction() -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		push_warning("cancel_construction dilarang pada fase BATTLE (Battle Lock)")
+		return false
+	if _active_construction.is_empty():
+		return false
+	if not bool(_active_construction.get("is_completed", false)):
+		var refund: int = int(_active_construction.get("gold_cost", 0))
+		_economy.treasury_gold += refund
+	_active_construction.clear()
+	_update_snapshot()
+	state_changed.emit(_current_state.clone())
+	return true
+
+
 ## Reset / restart sesi permainan dari kondisi Game Over
 func restart_session() -> void:
 	start_new_session("session_restart_" + str(Time.get_ticks_msec()))
@@ -1464,6 +1728,21 @@ func _init_default_domain_models() -> void:
 
 	_available_soldiers = _population.get_total_soldiers()
 
+	_buildings = {
+		"fortress_main": BuildingModel.new("fortress_main", BuildingModel.TYPE_FORTRESS, "Benteng Utama", 1, true, 5),
+		"wall_outer": BuildingModel.new("wall_outer", BuildingModel.TYPE_WALL, "Tembok Pertahanan", 1, true, 5),
+		"gate_main": BuildingModel.new("gate_main", BuildingModel.TYPE_GATE, "Gerbang Utama", 1, true, 5),
+		"barracks": BuildingModel.new("barracks", BuildingModel.TYPE_BARRACKS, "Barak Militer", 1, true, 5),
+		"blacksmith": BuildingModel.new("blacksmith", BuildingModel.TYPE_BLACKSMITH, "Pandai Besi", 1, true, 5),
+		"warehouse": BuildingModel.new("warehouse", BuildingModel.TYPE_WAREHOUSE, "Gudang Senjata", 1, true, 5),
+		"training_facility": BuildingModel.new("training_facility", BuildingModel.TYPE_TRAINING_FACILITY, "Fasilitas Latihan", 1, true, 5),
+		"mercenary_guild": BuildingModel.new("mercenary_guild", BuildingModel.TYPE_MERCENARY_GUILD, "Mercenary Guild", 1, true, 5),
+		"construction_area": BuildingModel.new("construction_area", BuildingModel.TYPE_CONSTRUCTION_AREA, "Area Pembangunan", 1, true, 5),
+	}
+	_worker_model = WorkerModel.new(_population.workers, 100)
+	_active_repair = {}
+	_active_construction = {}
+
 	_update_snapshot()
 
 
@@ -1480,18 +1759,28 @@ func _update_snapshot() -> void:
 			"max_hp": _fortress.max_hp,
 			"armor": _fortress.armor,
 			"upgrade_tier": _fortress.upgrade_tier,
-			"is_destroyed": _fortress.is_destroyed()
+			"is_destroyed": _fortress.is_destroyed(),
+			"wall_hp": _fortress.wall_hp,
+			"wall_max_hp": _fortress.wall_max_hp,
+			"gate_hp": _fortress.gate_hp,
+			"gate_max_hp": _fortress.gate_max_hp,
+			"is_wall_breached": _fortress.is_wall_breached(),
+			"is_gate_breached": _fortress.is_gate_breached()
 		}
 
 	if _population != null:
 		_current_state.population_data = {
 			"civilians": _population.civilians,
+			"workers": _population.workers,
 			"housing_capacity": _population.housing_capacity,
 			"morale": _population.morale,
 			"mercenaries": _population.mercenaries,
 			"soldiers": _population.soldiers.duplicate(true),
 			"total_soldiers": _population.get_total_soldiers(),
-			"total_population": _population.get_total_population()
+			"total_population": _population.get_total_population(),
+			"civilian_count": _population.get_civilian_count(),
+			"worker_count": _population.get_worker_count(),
+			"soldier_count": _population.get_soldier_count()
 		}
 
 	if _economy != null:
@@ -1574,3 +1863,13 @@ func _update_snapshot() -> void:
 	_current_state.current_wave_data = _current_wave_data.duplicate(true)
 	_current_state.last_battle_result = _last_battle_result.duplicate(true)
 	_current_state.last_commander_command = _last_command.to_dictionary() if _last_command != null else {}
+
+	_current_state.worker_data = _worker_model.to_dictionary() if _worker_model != null else {}
+
+	_current_state.buildings_data = []
+	for b in _buildings.values():
+		if b is BuildingModel:
+			_current_state.buildings_data.append((b as BuildingModel).to_dictionary())
+
+	_current_state.active_repair_data = _active_repair.duplicate(true)
+	_current_state.active_construction_data = _active_construction.duplicate(true)

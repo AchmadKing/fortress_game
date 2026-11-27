@@ -53,6 +53,16 @@ var _hero_container: VBoxContainer
 var _lbl_hero_detail: Label
 var _hero_detail_container: VBoxContainer
 
+# Phase 5 Fortress & Management UI References
+var _lbl_wall_hp: Label
+var _lbl_gate_hp: Label
+var _lbl_population_summary: Label
+var _lbl_worker_morale_prod: Label
+var _buildings_container: VBoxContainer
+var _lbl_construction_status: Label
+var _btn_start_battle: Button
+var _btn_action: Button
+
 var _lbl_warehouse: Label
 var _blacksmith_container: VBoxContainer
 
@@ -191,6 +201,32 @@ func _build_ui() -> void:
 	_lbl_fortress_armor.text = "Armor: 40 | Status: INTACT"
 	left_vbox.add_child(_lbl_fortress_armor)
 
+	_lbl_wall_hp = Label.new()
+	_lbl_wall_hp.text = "Wall: 500 / 500 | Status: INTACT"
+	left_vbox.add_child(_lbl_wall_hp)
+
+	_lbl_gate_hp = Label.new()
+	_lbl_gate_hp.text = "Gate: 300 / 300 | Status: INTACT"
+	left_vbox.add_child(_lbl_gate_hp)
+
+	var rep_hbox := HBoxContainer.new()
+	left_vbox.add_child(rep_hbox)
+
+	var btn_rep_fort := Button.new()
+	btn_rep_fort.text = "+Rep Benteng (50)"
+	btn_rep_fort.pressed.connect(func(): _action_repair_structure("FORTRESS", 50))
+	rep_hbox.add_child(btn_rep_fort)
+
+	var btn_rep_wall := Button.new()
+	btn_rep_wall.text = "+Rep Tembok (50)"
+	btn_rep_wall.pressed.connect(func(): _action_repair_structure("WALL", 50))
+	rep_hbox.add_child(btn_rep_wall)
+
+	var btn_rep_gate := Button.new()
+	btn_rep_gate.text = "+Rep Gerbang (50)"
+	btn_rep_gate.pressed.connect(func(): _action_repair_structure("GATE", 50))
+	rep_hbox.add_child(btn_rep_gate)
+
 	left_vbox.add_child(HSeparator.new())
 
 	var lbl_sec2 := Label.new()
@@ -205,9 +241,30 @@ func _build_ui() -> void:
 	_lbl_civilians.text = "Civilians: 12 / 30 | Morale: 100"
 	left_vbox.add_child(_lbl_civilians)
 
+	_lbl_population_summary = Label.new()
+	_lbl_population_summary.text = "Populasi: Sipil 12 | Pekerja 0 | Serdadu 6 | Total: 18 / 30"
+	left_vbox.add_child(_lbl_population_summary)
+
 	_lbl_workers = Label.new()
 	_lbl_workers.text = "Workers:\n- Repair: 0\n- Smith: 0\n- Constr: 0\n- Idle: 12"
 	left_vbox.add_child(_lbl_workers)
+
+	_lbl_worker_morale_prod = Label.new()
+	_lbl_worker_morale_prod.text = "Moral Pekerja: 100/100 | Produktivitas: 100%"
+	left_vbox.add_child(_lbl_worker_morale_prod)
+
+	var pop_conv_hbox := HBoxContainer.new()
+	left_vbox.add_child(pop_conv_hbox)
+
+	var btn_civ_to_w := Button.new()
+	btn_civ_to_w.text = "+1 Pekerja (Sipil->Pekerja)"
+	btn_civ_to_w.pressed.connect(func(): _action_convert_civilian_to_worker(1))
+	pop_conv_hbox.add_child(btn_civ_to_w)
+
+	var btn_w_to_civ := Button.new()
+	btn_w_to_civ.text = "-1 Pekerja (Pekerja->Sipil)"
+	btn_w_to_civ.pressed.connect(func(): _action_convert_worker_to_civilian(1))
+	pop_conv_hbox.add_child(btn_w_to_civ)
 
 	# Tombol Alokasi Pekerja Cepat
 	var lbl_alloc := Label.new()
@@ -257,6 +314,37 @@ func _build_ui() -> void:
 	_lbl_soldiers = Label.new()
 	_lbl_soldiers.text = "Deployed Soldiers: -"
 	left_vbox.add_child(_lbl_soldiers)
+
+	left_vbox.add_child(HSeparator.new())
+
+	var lbl_bld_title := Label.new()
+	lbl_bld_title.text = "=== FASILITAS & KONSTRUKSI (PHASE 5) ==="
+	left_vbox.add_child(lbl_bld_title)
+
+	_lbl_construction_status = Label.new()
+	_lbl_construction_status.text = "Proyek: Tidak ada proyek aktif"
+	left_vbox.add_child(_lbl_construction_status)
+
+	var constr_btn_hbox := HBoxContainer.new()
+	left_vbox.add_child(constr_btn_hbox)
+
+	var btn_start_c := Button.new()
+	btn_start_c.text = "Mulai Proyek (50 Gold)"
+	btn_start_c.pressed.connect(func(): _action_start_construction("barracks", 50, 100))
+	constr_btn_hbox.add_child(btn_start_c)
+
+	var btn_adv_c := Button.new()
+	btn_adv_c.text = "+Progres (+25)"
+	btn_adv_c.pressed.connect(func(): _action_advance_construction(25))
+	constr_btn_hbox.add_child(btn_adv_c)
+
+	var btn_canc_c := Button.new()
+	btn_canc_c.text = "Batal Proyek"
+	btn_canc_c.pressed.connect(func(): _action_cancel_construction())
+	constr_btn_hbox.add_child(btn_canc_c)
+
+	_buildings_container = VBoxContainer.new()
+	left_vbox.add_child(_buildings_container)
 
 	content_hbox.add_child(VSeparator.new())
 
@@ -361,6 +449,26 @@ func _build_ui() -> void:
 	_blacksmith_container = VBoxContainer.new()
 	right_vbox.add_child(_blacksmith_container)
 
+	# 3. Bottom Action Bar (Wireframe Reference)
+	var bottom_panel := PanelContainer.new()
+	var bottom_hbox := HBoxContainer.new()
+	bottom_panel.add_child(bottom_hbox)
+	main_vbox.add_child(bottom_panel)
+
+	_btn_start_battle = Button.new()
+	_btn_start_battle.text = "Start Battle (Terkunci pada Phase 5)"
+	_btn_start_battle.disabled = true
+	bottom_hbox.add_child(_btn_start_battle)
+
+	var bottom_spacer := Control.new()
+	bottom_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bottom_hbox.add_child(bottom_spacer)
+
+	_btn_action = Button.new()
+	_btn_action.text = "Aksi / Bantuan Manajemen"
+	_btn_action.pressed.connect(func(): _set_feedback("[BANTUAN] Kelola benteng, alokasikan pekerja, perbaiki struktur pertahanan, atau bangun fasilitas."))
+	bottom_hbox.add_child(_btn_action)
+
 	_log("Prototype initialized. Ready.")
 
 
@@ -391,6 +499,16 @@ func _on_state_changed(snapshot: GameStateSnapshot) -> void:
 	_lbl_fortress_hp.text = "HP: %d / %d" % [cur_hp, max_hp]
 	_lbl_fortress_armor.text = "Armor: %d | Status: %s" % [armor, "DESTROYED" if is_dest else "INTACT"]
 
+	if _lbl_wall_hp != null:
+		var w_hp: int = int(f_data.get("wall_hp", 500))
+		var w_max: int = int(f_data.get("wall_max_hp", 500))
+		_lbl_wall_hp.text = "Wall: %d / %d | Status: %s" % [w_hp, w_max, "BREACHED" if w_hp <= 0 else "INTACT"]
+
+	if _lbl_gate_hp != null:
+		var g_hp: int = int(f_data.get("gate_hp", 300))
+		var g_max: int = int(f_data.get("gate_max_hp", 300))
+		_lbl_gate_hp.text = "Gate: %d / %d | Status: %s" % [g_hp, g_max, "BREACHED" if g_hp <= 0 else "INTACT"]
+
 	var e_data: Dictionary = snapshot.economy_data
 	var p_data: Dictionary = snapshot.population_data
 	_lbl_treasury.text = "Treasury: %d Gold" % int(e_data.get("treasury_gold", 0))
@@ -399,12 +517,31 @@ func _on_state_changed(snapshot: GameStateSnapshot) -> void:
 		int(p_data.get("housing_capacity", 30)),
 		int(p_data.get("morale", 100))
 	]
+
+	if _lbl_population_summary != null:
+		var civ_c: int = int(p_data.get("civilians", 0))
+		var wrk_c: int = int(p_data.get("workers", 0))
+		var sld_c: int = int(p_data.get("total_soldiers", 0))
+		var tot_c: int = int(p_data.get("total_population", civ_c + wrk_c + sld_c))
+		_lbl_population_summary.text = "Populasi: Sipil %d | Pekerja %d | Serdadu %d | Total: %d / %d" % [
+			civ_c, wrk_c, sld_c, tot_c, int(p_data.get("housing_capacity", 30))
+		]
+
 	_lbl_workers.text = "Workers:\n- Repair: %d\n- Blacksmith: %d\n- Construction: %d\n- Idle: %d" % [
 		int(e_data.get("repair_workers", 0)),
 		int(e_data.get("blacksmith_workers", 0)),
 		int(e_data.get("construction_workers", 0)),
 		int(e_data.get("idle_workers", 0))
 	]
+
+	if _lbl_worker_morale_prod != null:
+		var w_dict: Dictionary = snapshot.worker_data
+		var w_mor: int = int(w_dict.get("morale", 100))
+		var w_prod: float = float(w_dict.get("productivity", 1.0))
+		_lbl_worker_morale_prod.text = "Moral Pekerja: %d/100 | Produktivitas: %.0f%%" % [w_mor, w_prod * 100.0]
+
+	_render_buildings_panel(snapshot)
+	_render_construction_panel(snapshot)
 
 	var total_deployed: int = 0
 	if controller != null:
@@ -2011,3 +2148,131 @@ func _get_total_owned_stock(eq_type: String) -> int:
 	if coordinator != null:
 		return coordinator.get_total_owned_stock(eq_type)
 	return 0
+
+
+# ==============================================================================
+# PHASE 5: FORTRESS, WORKERS, BUILDINGS, REPAIR & CONSTRUCTION UI HELPERS
+# ==============================================================================
+
+func _render_buildings_panel(snapshot: GameStateSnapshot) -> void:
+	if _buildings_container == null:
+		return
+	for c in _buildings_container.get_children():
+		c.queue_free()
+
+	for b_dict in snapshot.buildings_data:
+		var b_id: String = str(b_dict.get("building_id", ""))
+		var b_name: String = str(b_dict.get("building_name", ""))
+		var b_lvl: int = int(b_dict.get("level", 1))
+		var b_max: int = int(b_dict.get("max_level", 5))
+		var can_up: bool = bool(b_dict.get("can_upgrade", false))
+
+		var row := HBoxContainer.new()
+		var lbl := Label.new()
+		lbl.text = "- %s (Lv %d/%d)" % [b_name, b_lvl, b_max]
+		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(lbl)
+
+		var btn_up := Button.new()
+		btn_up.text = "Tingkatkan"
+		btn_up.name = "BtnUp_" + b_id
+		btn_up.disabled = (not can_up) or (snapshot.game_phase == "BATTLE")
+		btn_up.pressed.connect(func(): _action_upgrade_building(b_id))
+		row.add_child(btn_up)
+
+		_buildings_container.add_child(row)
+
+
+func _render_construction_panel(snapshot: GameStateSnapshot) -> void:
+	if _lbl_construction_status == null:
+		return
+	var c_data: Dictionary = snapshot.active_construction_data
+	if c_data.is_empty():
+		_lbl_construction_status.text = "Proyek: Tidak ada proyek aktif"
+	else:
+		var bid: String = str(c_data.get("target_building_id", ""))
+		var prog: int = int(c_data.get("current_progress", 0))
+		var target: int = int(c_data.get("target_progress", 100))
+		var is_comp: bool = bool(c_data.get("is_completed", false))
+		var status_str: String = "SELESAI" if is_comp else ("%d / %d" % [prog, target])
+		_lbl_construction_status.text = "Proyek: %s [%s]" % [bid, status_str]
+
+
+func _action_repair_structure(target: String, amount: int = 50) -> void:
+	if controller == null:
+		return
+	var ok: bool = controller.repair_structure(target, amount)
+	if ok:
+		_set_feedback("[REPARASI] Berhasil memperbaiki struktur %s (+%d HP)." % [target, amount])
+	else:
+		_set_feedback("[DITOLAK] Gagal memperbaiki %s. Pastikan pekerja perbaikan tersedia, emas kas cukup, dan tidak sedang bertempur." % target)
+
+
+func _action_convert_civilian_to_worker(count: int = 1) -> void:
+	if controller == null:
+		return
+	var ok: bool = controller.convert_civilian_to_worker(count)
+	if ok:
+		_set_feedback("[POPULASI] Berhasil mengonversi %d warga sipil menjadi pekerja." % count)
+	else:
+		_set_feedback("[DITOLAK] Gagal mengonversi sipil ke pekerja. Warga sipil tidak mencukupi atau sedang bertempur.")
+
+
+func _action_convert_worker_to_civilian(count: int = 1) -> void:
+	if controller == null:
+		return
+	var ok: bool = controller.convert_worker_to_civilian(count)
+	if ok:
+		_set_feedback("[POPULASI] Berhasil mengonversi %d pekerja kembali menjadi warga sipil." % count)
+	else:
+		_set_feedback("[DITOLAK] Gagal mengonversi pekerja ke sipil. Pekerja tidak mencukupi atau sedang bertempur.")
+
+
+func _action_upgrade_building(b_id: String) -> void:
+	if controller == null:
+		return
+	var ok: bool = controller.upgrade_building(b_id)
+	if ok:
+		_set_feedback("[BANGUNAN] Fasilitas %s berhasil ditingkatkan tingkatnya." % b_id)
+	else:
+		_set_feedback("[DITOLAK] Gagal meningkatkan fasilitas %s. Level sudah maksimal atau sedang dalam pertempuran." % b_id)
+
+
+func _action_start_construction(b_id: String, gold_cost: int = 50, target_progress: int = 100) -> void:
+	if controller == null:
+		return
+	var ok: bool = controller.start_construction(b_id, gold_cost, target_progress)
+	if ok:
+		_set_feedback("[KONSTRUKSI] Proyek konstruksi %s berhasil dimulai (%d Gold)." % [b_id, gold_cost])
+	else:
+		_set_feedback("[DITOLAK] Gagal memulai konstruksi %s. Pastikan pekerja konstruksi tersedia, kas cukup, dan tidak sedang bertempur." % b_id)
+
+
+func _action_advance_construction(progress_delta: int = 25) -> void:
+	if controller == null:
+		return
+	var ok: bool = controller.advance_construction(progress_delta)
+	if ok:
+		_set_feedback("[KONSTRUKSI] Progres konstruksi bertambah +%d poin." % progress_delta)
+	else:
+		_set_feedback("[DITOLAK] Gagal menambah progres konstruksi. Tidak ada proyek aktif atau proyek sudah selesai.")
+
+
+func _action_cancel_construction() -> void:
+	if controller == null:
+		return
+	var ok: bool = controller.cancel_construction()
+	if ok:
+		_set_feedback("[KONSTRUKSI] Proyek konstruksi dibatalkan. Biaya telah dikembalikan ke kas.")
+	else:
+		_set_feedback("[DITOLAK] Gagal membatalkan konstruksi.")
+
+
+func _action_reassign_worker(from_job: String, to_job: String, count: int = 1) -> void:
+	if controller == null:
+		return
+	var ok: bool = controller.reassign_worker(from_job, to_job, count)
+	if ok:
+		_set_feedback("[PEKERJA] Berhasil memindahkan %d pekerja dari %s ke %s." % [count, from_job, to_job])
+	else:
+		_set_feedback("[DITOLAK] Gagal memindahkan pekerja. Jumlah pekerja tidak mencukupi atau sedang bertempur.")

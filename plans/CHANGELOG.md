@@ -4,6 +4,67 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.6.0] - Phase 5: Fortress & Management Systems (Completed & Closed)
+
+### Added
+- **Low-Fi Wireframe Archival & Indexing** (`docs/design/wireframes/fortress-main-screen/`):
+  - Pengarsipan bundle low-fi wireframe antarmuka benteng (`Main.dc.html`, `support.js`, dependensi React).
+  - Dokumentasi README panduan struktur wireframe dan `docs/design/WIREFRAME_INDEX.md`.
+- **Fortress Defense Foundation** (`scripts/domain/model/fortress_model.gd`):
+  - Perluasan integritas benteng dengan sub-komponen Tembok Pertahanan (`wall_max_hp = 500`, `wall_hp = 500`) dan Gerbang Utama (`gate_max_hp = 300`, `gate_hp = 300`).
+  - Metode domain: `damage_wall()`, `repair_wall()`, `damage_gate()`, `repair_gate()`, `is_wall_breached()`, `is_gate_breached()`.
+  - Validasi invarian struktural: penolakan damage/reparasi negatif, batas HP $0 \le \text{hp} \le \text{max}$, dan isolasi kloning.
+- **Population Accounting & Zero-Sum Conservation** (`scripts/domain/model/population_model.gd`):
+  - Pengelolaan populasi tenaga kerja (`workers`) di samping warga sipil (`civilians`) dan tentara (`soldiers`).
+  - Metode konversi dua arah: `civilian_to_worker()` dan `worker_to_civilian()`.
+  - Penegakan ketat invarian konservasi populasi: $\text{Total Population} = \text{Civilians} + \text{Workers} + \text{Soldiers}$.
+  - Penolakan over-allocation, konversi melebihi stok, dan kuantitas negatif.
+  - Penanganan korban perang: serdadu gugur mengurangi total populasi secara permanen tanpa mengganggu warga sipil dan tenaga kerja.
+- **Worker Management & Productivity Foundation** (`scripts/domain/model/worker_model.gd`):
+  - Model domain baru `WorkerModel` turunan `RefCounted` untuk mengelola tenaga kerja agregat benteng.
+  - Alokasi 4 tugas kanonikal: `IDLE`, `BLACKSMITH`, `REPAIR`, `CONSTRUCTION`.
+  - Invarian ketat konservasi pekerja: $\text{Total Workers} = \text{Blacksmith} + \text{Repair} + \text{Construction} + \text{Idle}$.
+  - Realokasi dinamis antar-pekerjaan: `reassign(from_job, to_job, count)` dengan validasi ketersediaan dan penolakan job ilegal.
+  - Sinkronisasi tenaga kerja aman: `sync_total_workers()` mengalirkan pekerja baru ke `IDLE` dan menyusutkan alokasi secara proporsional jika jumlah pekerja berkurang.
+  - Pengelolaan moral tenaga kerja ($0–100$) dan derivasi produktivitas deterministik: $\text{Productivity} = 0.50 + (\text{morale} / 100.0) \times 0.75$ (rentang $0.50$ s/d $1.25$).
+  - Serialisasi dictionary dan isolasi kloning mendalam (*deep-copy*).
+- **Building & Facility Foundation** (`scripts/domain/model/building_model.gd`):
+  - Model domain baru `BuildingModel` turunan `RefCounted` untuk merepresentasikan modul dan fasilitas benteng.
+  - 9 Fasilitas Kanonikal: `FORTRESS`, `WALL`, `GATE`, `BARRACKS`, `BLACKSMITH`, `WAREHOUSE`, `TRAINING_FACILITY`, `MERCENARY_GUILD`, `CONSTRUCTION_AREA`.
+  - Tingkat fasilitas ($1–5$), batas maksimal level, validasi tipe sah, metode `upgrade()`, serialisasi dictionary, dan isolasi kloning.
+- **Structure Repair System Foundation** (`scripts/application/coordinators/game_coordinator.gd`):
+  - Orkestrasi perbaikan struktur fisik (`FORTRESS`, `WALL`, `GATE`) via `can_repair_structure()` dan `repair_structure()`.
+  - Prasyarat sah: alokasi pekerja perbaikan > 0 (`repair_workers > 0`), emas kas mencukupi, tidak melebihi HP maksimal, dan proteksi Battle Lock.
+  - Biaya perbaikan kanonikal: $0.15 \text{ Gold per HP}$ yang dipulihkan ($\lfloor \text{amount} \times 0.15 \rfloor$).
+  - Transaksi atomik: pemotongan kas emas dan pemulihan HP terjadi serentak dengan rollback kas jika gagal.
+- **Construction System Foundation** (`scripts/application/coordinators/game_coordinator.gd`):
+  - Pengelolaan proyek konstruksi fasilitas via `can_start_construction()`, `start_construction()`, `advance_construction()`, dan `cancel_construction()`.
+  - Prasyarat: pekerja konstruksi > 0 (`construction_workers > 0`), kas emas mencukupi, dan proteksi Battle Lock.
+  - Transaksi penyelesaian proyek otomatis meningkatkan tingkat gedung target (+1 level).
+  - Pembatalan proyek mengembalikan biaya emas kas secara utuh (100% refund).
+- **Presentation Integration & Wireframe Layout** (`scripts/presentation/views/prototype_debug_view.gd`, `scripts/presentation/controllers/game_controller.gd`):
+  - Penerapan tata letak wireframe: Header, Sidebar, Area Tengah Benteng, Right Tabs, dan Bottom Action Bar.
+  - Panel Pertahanan & Reparasi: penampil Wall HP dan Gate HP beserta tombol perbaikan cepat.
+  - Panel Populasi & Tenaga Kerja: penampil rincian populasi dan tombol konversi sipil $\leftrightarrow$ pekerja.
+  - Panel Fasilitas Benteng: daftar 9 fasilitas dengan level dan tombol upgrade.
+  - Panel Status Konstruksi: pelacak progres proyek aktif.
+  - Non-aktifkan tombol `Start Battle`: dinonaktifkan secara eksplisit (`disabled = true`) untuk menjaga kepemilikan Wave/Combat pada Phase 6.
+  - Metode delegasi presentasi pada `GameController`.
+- **State Snapshot Telemetri** (`scripts/domain/state/game_state_snapshot.gd`):
+  - Serialisasi data pertahanan (`wall_hp`, `gate_hp`), populasi (`workers`), tenaga kerja (`worker_data`), fasilitas (`buildings_data`), dan proyek konstruksi/reparasi.
+  - Deep-copy clone menjamin isolasi memori 100% pada seluruh atribut baru.
+- **Dedicated Phase 5 Automated Test Suite** (`tests/test_phase5_fortress_management.gd`):
+  - 82 pengujian otomatis terdistribusi ke dalam 8 grup (Group A s/d Group H).
+  - Termasuk simulasi stres deterministik 100 siklus manajemen tanpa pelanggaran invarian populasi, pekerja, pertahanan, maupun gudang bersama.
+
+### Verified
+- **Phase 5 Dedicated Test Suite**: 82/82 PASSED (100%).
+- **Full Automated Regression Suite**: 677/677 PASSED across all 17 test suites (Phase 1 through Phase 5) with 0 regressions.
+- **Prototype Scene Smoke Playtest**: ALL PASS (0 errors) on Godot SceneTree.
+- **Phase 5 (Fortress & Management Systems)**: RESMI DITUTUP (**COMPLETED / CLOSED**). Phase 6 berstatus **LOCKED**.
+
+---
+
 ## [0.5.9] - Phase 4H: Hero System Integration & Verification (Completed & Closed)
 
 ### Added

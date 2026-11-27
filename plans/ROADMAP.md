@@ -92,11 +92,21 @@ High-level roadmap pengembangan proyek `fortress_game`.
   - **Phase 4H — Hero System Integration & Verification**: COMPLETED / VERIFIED / CLOSED
 
 ## Phase 5 — Fortress & Management Systems
-- **Status**: LOCKED (Menunggu explicit approval developer)
-- **Tujuan**: Sistem pertahanan benteng, modul/fasilitas benteng, dan manajemen pendukung.
+- **Status**: COMPLETED / CLOSED
+- **Tujuan**: Membangun fondasi sistem manajemen benteng inti sebelum pertempuran Phase 6. Spesifikasi teknis: [docs/design/PHASE_5_FORTRESS_MANAGEMENT_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_5_FORTRESS_MANAGEMENT_PLAN.md).
+  - Pengarsipan dan indeks wireframe low-fi layar utama benteng (`docs/design/wireframes/fortress-main-screen/`).
+  - Pertahanan benteng: integritas struktural, Tembok Pertahanan (Wall HP), dan Gerbang Utama (Gate HP).
+  - Manajemen populasi zero-sum: konservasi mutlak $\text{Total} = \text{Civilians} + \text{Workers} + \text{Soldiers}$.
+  - Model tenaga kerja `WorkerModel`: alokasi 4 tugas kanonikal (`IDLE`, `BLACKSMITH`, `REPAIR`, `CONSTRUCTION`), pelestarian invarian, moral, dan derivasi produktivitas ($0.50$ s/d $1.25$).
+  - Fasilitas & gedung `BuildingModel`: 9 fasilitas kanonikal (`FORTRESS`, `WALL`, `GATE`, `BARRACKS`, `BLACKSMITH`, `WAREHOUSE`, `TRAINING_FACILITY`, `MERCENARY_GUILD`, `CONSTRUCTION_AREA`), level $1–5$.
+  - Sistem reparasi struktur atomik: pemotongan emas kas ($0.15 \text{ Gold/HP}$) dan pemulihan HP struktur seketika dengan rollback.
+  - Sistem konstruksi gedung: proyek pembangunan bertahap dengan pekerja konstruksi, auto-upgrade saat rampung, dan refund 100% saat dibatalkan.
+  - Prototipe antarmuka manajemen berbasis tata letak wireframe pada `PrototypeDebugView` dengan tombol `Start Battle` dinonaktifkan (milik Phase 6).
+  - Integrasi serialisasi telemetri `GameStateSnapshot` dan isolasi memori kloning mendalam.
+  - Verifikasi: 82/82 tests PASS (inklusif 100-cycle management stress test), 677/677 Full Regression PASS across 17 suites, Scene Smoke Playtest ALL PASS.
 
 ## Phase 6 — Tactical Battle & Battlefield Systems
-- **Status**: LOCKED
+- **Status**: LOCKED (Menunggu explicit approval developer)
 - **Tujuan**: Sistem pertarungan taktis mendalam, efek numerik 6 perintah komandan, visual battlefield, pathfinding serdadu & AI musuh.
 
 ## Phase 7 — Economy & Progression

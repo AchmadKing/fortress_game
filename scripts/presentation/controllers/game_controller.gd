@@ -332,6 +332,111 @@ func set_party_leader(hero_id: String, party_id: String) -> bool:
 	return coordinator.set_party_leader(hero_id, party_id)
 
 
+# ==============================================================================
+# PHASE 5: FORTRESS & MANAGEMENT SYSTEMS DELEGATION
+# ==============================================================================
+
+func convert_civilian_to_worker(count: int = 1) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.convert_civilian_to_worker(count)
+
+
+func convert_worker_to_civilian(count: int = 1) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.convert_worker_to_civilian(count)
+
+
+func reassign_worker(from_job: String, to_job: String, count: int = 1) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.reassign_worker(from_job, to_job, count)
+
+
+func get_worker_allocations() -> Dictionary:
+	if coordinator == null:
+		return {}
+	return coordinator.get_worker_allocations()
+
+
+func get_worker_morale() -> int:
+	if coordinator == null:
+		return 100
+	return coordinator.get_worker_morale()
+
+
+func get_worker_productivity() -> float:
+	if coordinator == null:
+		return 1.0
+	return coordinator.get_worker_productivity()
+
+
+func modify_worker_morale(delta: int) -> void:
+	if coordinator != null:
+		coordinator.modify_worker_morale(delta)
+
+
+func get_building(building_id: String) -> RefCounted:
+	if coordinator == null:
+		return null
+	return coordinator.get_building(building_id)
+
+
+func get_buildings() -> Array:
+	if coordinator == null:
+		return []
+	return coordinator.get_buildings()
+
+
+func can_upgrade_building(building_id: String) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.can_upgrade_building(building_id)
+
+
+func upgrade_building(building_id: String) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.upgrade_building(building_id)
+
+
+func can_repair_structure(target: String, hp_amount: int) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.can_repair_structure(target, hp_amount)
+
+
+func repair_structure(target: String, hp_amount: int) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.repair_structure(target, hp_amount)
+
+
+func can_start_construction(target_building_id: String, gold_cost: int, target_progress: int) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.can_start_construction(target_building_id, gold_cost, target_progress)
+
+
+func start_construction(target_building_id: String, gold_cost: int = 50, target_progress: int = 100) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.start_construction(target_building_id, gold_cost, target_progress)
+
+
+func advance_construction(progress_delta: int) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.advance_construction(progress_delta)
+
+
+func cancel_construction() -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.cancel_construction()
+
+
 func inspect_wave() -> bool:
 	if coordinator == null:
 		return false

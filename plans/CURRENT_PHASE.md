@@ -1,13 +1,13 @@
 # Current Development Phase
 
-## Phase 4 — Hero System (COMPLETED / CLOSED)
+## Phase 5 — Fortress & Management Systems (COMPLETED / CLOSED)
 
-Project saat ini telah menyelesaikan secara tuntas dan menutup **Phase 4 — Hero System (Sub-Phase 4A: COMPLETED / VERIFIED; Sub-Phase 4B: COMPLETED / VERIFIED; Sub-Phase 4C: COMPLETED / VERIFIED / CLOSED; Sub-Phase 4D: COMPLETED / VERIFIED; Sub-Phase 4E: COMPLETED / VERIFIED; Sub-Phase 4F: COMPLETED / VERIFIED / CLOSED; Sub-Phase 4G: COMPLETED / VERIFIED; Sub-Phase 4H: COMPLETED / VERIFIED / CLOSED)**.
-Phase 4 resmi ditutup (**COMPLETED / CLOSED**).
-Phase 5 (Fortress & Management Systems) berstatus **LOCKED** dan menunggu persetujuan eksplisit (*explicit approval*) developer sebelum dimulai.
-Phase 3 (Gameplay Prototype) telah resmi ditutup (**COMPLETED / CLOSED**) pada commit `e6c0c97`.
+Project saat ini telah menyelesaikan secara tuntas dan menutup **Phase 5 — Fortress & Management Systems**.
+Phase 5 resmi ditutup (**COMPLETED / CLOSED**).
+Phase 6 (Tactical Battle & Battlefield Systems) berstatus **LOCKED** dan menunggu persetujuan eksplisit (*explicit approval*) developer sebelum dimulai.
+Phase 4 (Hero System) telah resmi ditutup (**COMPLETED / CLOSED**).
 
-Roadmap teknis dan spesifikasi arsitektur komprehensif Phase 4 tersedia di [docs/design/PHASE_4_HERO_SYSTEM_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_4_HERO_SYSTEM_PLAN.md).
+Roadmap teknis dan spesifikasi arsitektur komprehensif Phase 5 tersedia di [docs/design/PHASE_5_FORTRESS_MANAGEMENT_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_5_FORTRESS_MANAGEMENT_PLAN.md).
 
 ---
 
@@ -17,7 +17,53 @@ Roadmap teknis dan spesifikasi arsitektur komprehensif Phase 4 tersedia di [docs
 - **Phase 1 — Core Game Architecture**: **COMPLETED / APPROVED** (Commit `4b7436e`)
 - **Phase 2 — Mathematical / Systems Prototype**: **COMPLETED** (Commit `dd74512`)
 - **Phase 3 — Gameplay Prototype**: **COMPLETED** (Commits `2452397`, `4f01bfe`, `1d3d51d`, `463f91c`, `ba3c0c5`, `e6c0c97`)
-- **Phase 4 — Hero System**: **IN PROGRESS**
+- **Phase 4 — Hero System**: **COMPLETED / CLOSED** (Sub-Phases 4A through 4H COMPLETED / VERIFIED)
+- **Phase 5 — Fortress & Management Systems**: **COMPLETED / CLOSED**
+  - **Low-Fi Wireframe Archival**: Diarsipkan di `docs/design/wireframes/fortress-main-screen/` dan terindeks di `docs/design/WIREFRAME_INDEX.md` (Commit `6642896`).
+  - **Fortress Defense Foundation**:
+    - Ekstensi `FortressModel` mengelola integritas Tembok (`wall_hp` / `wall_max_hp`, awal 500) dan Gerbang (`gate_hp` / `gate_max_hp`, awal 300).
+    - Metode domain `damage_wall()`, `repair_wall()`, `damage_gate()`, `repair_gate()`, `is_wall_breached()`, `is_gate_breached()`.
+    - Penegakan invarian fisik ketat ($0 \le \text{hp} \le \text{max}$) dan penolakan nilai negatif.
+  - **Population Accounting & Conservation**:
+    - Ekstensi `PopulationModel` mengelola tenaga kerja benteng (`workers`).
+    - Konversi zero-sum mutlak: `civilian_to_worker()` dan `worker_to_civilian()`.
+    - Persamaan konservasi mutlak: $\text{Total Population} = \text{Civilians} + \text{Workers} + \text{Soldiers}$.
+    - Penolakan over-allocation, over-conversion, dan nilai negatif.
+    - Korban perang memotong populasi secara permanen tanpa mengganggu alokasi warga sipil dan pekerja yang tidak terlibat.
+  - **Worker Workforce & Productivity Foundation**:
+    - Model domain baru `WorkerModel` (`scripts/domain/model/worker_model.gd`, `class_name WorkerModel extends RefCounted`).
+    - Alokasi 4 tugas kanonikal: `IDLE`, `BLACKSMITH`, `REPAIR`, `CONSTRUCTION`.
+    - Konservasi tenaga kerja mutlak: $\text{Total Workers} = \text{Blacksmith} + \text{Repair} + \text{Construction} + \text{Idle}$.
+    - Mutasi pekerjaan antar-job `reassign()` dengan validasi ketersediaan dan penolakan pekerjaan tidak sah.
+    - Sinkronisasi dinamis `sync_total_workers()`: penambahan pekerja diarahkan ke `IDLE`, pengurangan menyusutkan alokasi secara proporsional dan aman.
+    - Moral tenaga kerja ($0–100$) dan derivasi produktivitas deterministik: $\text{Productivity} = 0.50 + (\text{morale} / 100.0) \times 0.75$ (rentang $0.50$ s/d $1.25$).
+  - **Building & Facility Foundation**:
+    - Model domain baru `BuildingModel` (`scripts/domain/model/building_model.gd`, `class_name BuildingModel extends RefCounted`).
+    - 9 Fasilitas Kanonikal: `FORTRESS`, `WALL`, `GATE`, `BARRACKS`, `BLACKSMITH`, `WAREHOUSE`, `TRAINING_FACILITY`, `MERCENARY_GUILD`, `CONSTRUCTION_AREA`.
+    - Tingkat fasilitas ($1–5$), batas maksimal, status terbangun, dan validasi invarian.
+  - **Structure Repair System**:
+    - Perbaikan atomik struktur benteng (`FORTRESS`, `WALL`, `GATE`) via `GameCoordinator.repair_structure()`.
+    - Prasyarat: `repair_workers > 0`, kas emas mencukupi, tidak melebihi HP maksimal, dan dilindungi Battle Lock.
+    - Biaya kanonikal: $0.15 \text{ Gold per HP}$ yang diperbaiki ($\lfloor \text{amount} \times 0.15 \rfloor$).
+    - Transaksi atomik: pemotongan kas emas dan penambahan HP terjadi serentak dengan rollback penuh jika gagal.
+  - **Construction System**:
+    - Manajemen proyek pembangunan fasilitas via `GameCoordinator.start_construction()`, `advance_construction()`, dan `cancel_construction()`.
+    - Prasyarat: `construction_workers > 0`, kas emas mencukupi, dan dilindungi Battle Lock.
+    - Penyelesaian proyek secara otomatis menaikkan level gedung target (+1 tingkat).
+    - Pembatalan proyek mengembalikan biaya emas kas secara utuh (*100% refund*).
+  - **Management UI & Wireframe Mapping**:
+    - Antarmuka fungsional pada `PrototypeDebugView` berbasis tata letak wireframe: Header, Sidebar, Area Tengah Benteng (Wall HP, Gate HP, tombol reparasi, konversi populasi, daftar fasilitas, status konstruksi), Panel Tab Kanan, dan Action Bar Bawah.
+    - Tombol `Start Battle` dinonaktifkan secara eksplisit pada Phase 5 (`disabled = true`) untuk menjaga kepemilikan siklus tempur tetap berada di Phase 6.
+    - Proteksi Battle Lock ditegakkan pada seluruh kontrol mutasi.
+  - **Snapshot Integration & Memory Isolation**:
+    - `GameStateSnapshot` diperluas dengan `worker_data`, `buildings_data`, `active_repair_data`, dan `active_construction_data`.
+    - Kloning mendalam (*deep-copy*) membuktikan isolasi memori 100% pada seluruh model Phase 5.
+  - **Testing & Verification**:
+    - Dedicated test suite `tests/test_phase5_fortress_management.gd`: **82/82 PASSED (100%)**, 0 FAILED.
+    - Stress test deterministik 100 siklus manajemen (`test_h1`): **PASS** tanpa pelanggaran invarian populasi, invarian pekerja, invarian pertahanan, maupun konservasi gudang.
+    - Full Automated Regression Suite: **677/677 PASSED (100%)** lintas 17 suite test dengan 0 regresi.
+    - Prototype Scene Smoke Playtest: **ALL PASS, 0 ERRORS** pada Godot SceneTree.
+- **Phase 6 — Tactical Battle & Battlefield Systems**: **LOCKED** (Menunggu explicit approval developer)
   - Dokumen Roadmap & Spesifikasi Arsitektur: **ESTABLISHED** ([docs/design/PHASE_4_HERO_SYSTEM_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_4_HERO_SYSTEM_PLAN.md))
   - **Sub-Phase 4A — Hero Domain & Lifecycle Foundation**: **COMPLETED / VERIFIED (CORRECTION GATE PASSED)**
     - Peran Kanonikal Domain: `KNIGHT`, `MAGE`, `ARCHER`, `PRIEST` via `HeroRole` (`scripts/domain/model/hero_role.gd`).

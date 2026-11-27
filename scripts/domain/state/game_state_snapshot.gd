@@ -4,8 +4,10 @@ extends RefCounted
 ## GameStateSnapshot
 ## Murni merepresentasikan snapshot data state game (domain layer).
 ## Tidak memiliki dependensi ke Node, SceneTree, UI, rendering, atau file I/O.
-## Diperluas di Phase 3 untuk menampung snapshot model benteng, populasi, pahlawan,
-## gudang senjata, bendahara, gelombang, status pertempuran, dan state machine.
+## Diperluas di Phase 3 untuk menampung model benteng, populasi, pahlawan, gudang senjata, bendahara.
+## Diperluas di Phase 4 untuk menampung data regu (parties_data), chemistry, talent, dan skill.
+## Diperluas di Phase 5 untuk menampung data tenaga kerja (worker_data), fasilitas (buildings_data),
+## serta status perbaikan dan konstruksi aktif.
 
 # Phase 1 Core Fields
 var tick: int = 0
@@ -35,6 +37,12 @@ var available_soldiers_count: int = 0
 var total_living_soldiers_count: int = 0
 var deployed_soldiers_count: int = 0
 
+# Phase 5 Fortress & Management Systems Fields
+var worker_data: Dictionary = {}
+var buildings_data: Array = []
+var active_repair_data: Dictionary = {}
+var active_construction_data: Dictionary = {}
+
 
 func _init(p_tick: int = 0, p_session_id: String = "", p_state_name: String = "INITIAL", p_metadata: Dictionary = {}) -> void:
 	tick = p_tick
@@ -59,6 +67,10 @@ func _init(p_tick: int = 0, p_session_id: String = "", p_state_name: String = "I
 	available_soldiers_count = 0
 	total_living_soldiers_count = 0
 	deployed_soldiers_count = 0
+	worker_data = {}
+	buildings_data = []
+	active_repair_data = {}
+	active_construction_data = {}
 
 
 func clone() -> GameStateSnapshot:
@@ -81,6 +93,10 @@ func clone() -> GameStateSnapshot:
 	copy.available_soldiers_count = available_soldiers_count
 	copy.total_living_soldiers_count = total_living_soldiers_count
 	copy.deployed_soldiers_count = deployed_soldiers_count
+	copy.worker_data = worker_data.duplicate(true)
+	copy.buildings_data = buildings_data.duplicate(true)
+	copy.active_repair_data = active_repair_data.duplicate(true)
+	copy.active_construction_data = active_construction_data.duplicate(true)
 	return copy
 
 
@@ -107,7 +123,11 @@ func to_dictionary() -> Dictionary:
 		"active_deployments_data": active_deployments_data.duplicate(true),
 		"available_soldiers_count": available_soldiers_count,
 		"total_living_soldiers_count": total_living_soldiers_count,
-		"deployed_soldiers_count": deployed_soldiers_count
+		"deployed_soldiers_count": deployed_soldiers_count,
+		"worker_data": worker_data.duplicate(true),
+		"buildings_data": buildings_data.duplicate(true),
+		"active_repair_data": active_repair_data.duplicate(true),
+		"active_construction_data": active_construction_data.duplicate(true)
 	}
 
 
@@ -150,5 +170,15 @@ static func from_dictionary(data: Dictionary) -> GameStateSnapshot:
 		snapshot.active_deployments_data = (data["active_deployments_data"] as Array).duplicate(true)
 	snapshot.available_soldiers_count = int(data.get("available_soldiers_count", 0))
 	snapshot.total_living_soldiers_count = int(data.get("total_living_soldiers_count", 0))
+	snapshot.deployed_soldiers_count = int(data.get("deployed_soldiers_count", 0))
+	
+	if data.has("worker_data") and data["worker_data"] is Dictionary:
+		snapshot.worker_data = (data["worker_data"] as Dictionary).duplicate(true)
+	if data.has("buildings_data") and data["buildings_data"] is Array:
+		snapshot.buildings_data = (data["buildings_data"] as Array).duplicate(true)
+	if data.has("active_repair_data") and data["active_repair_data"] is Dictionary:
+		snapshot.active_repair_data = (data["active_repair_data"] as Dictionary).duplicate(true)
+	if data.has("active_construction_data") and data["active_construction_data"] is Dictionary:
+		snapshot.active_construction_data = (data["active_construction_data"] as Dictionary).duplicate(true)
 	
 	return snapshot

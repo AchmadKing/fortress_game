@@ -3,9 +3,10 @@ extends RefCounted
 
 ## PopulationModel
 ## Model demografi dan alokasi populasi (domain layer).
-## Memastikan konversi sipil -> militer dan kematian permanen tanpa exploit infinite manpower.
+## Memastikan konversi sipil <-> pekerja <-> serdadu zero-sum dan kematian permanen tanpa exploit infinite manpower.
 
 var civilians: int = 15
+var workers: int = 0
 var housing_capacity: int = 30
 var morale: int = 100 # 0 - 150
 var mercenaries: int = 0
@@ -20,8 +21,9 @@ var soldiers: Dictionary = {
 }
 
 
-func _init(p_civilians: int = 15, p_capacity: int = 30, p_morale: int = 100) -> void:
+func _init(p_civilians: int = 15, p_capacity: int = 30, p_morale: int = 100, p_workers: int = 0) -> void:
 	civilians = maxi(0, p_civilians)
+	workers = maxi(0, p_workers)
 	housing_capacity = maxi(10, p_capacity)
 	morale = clampi(p_morale, 0, 150)
 	soldiers = {
@@ -41,14 +43,27 @@ func get_total_soldiers() -> int:
 	return total
 
 
+func get_civilian_count() -> int:
+	return civilians
+
+
+func get_worker_count() -> int:
+	return workers
+
+
+func get_soldier_count() -> int:
+	return get_total_soldiers()
+
+
 func get_total_population() -> int:
-	# Total populasi warga benteng = Warga Sipil + Seluruh Serdadu Reguler
+	# Total populasi warga benteng = Warga Sipil + Tenaga Kerja + Seluruh Serdadu Reguler
 	# Mercenary TIDAK masuk ke populasi warga benteng
-	return civilians + get_total_soldiers()
+	return civilians + workers + get_total_soldiers()
 
 
 func recruit_soldier(role: String, count: int = 1) -> bool:
-	assert(count >= 1, "count harus >= 1")
+	if count < 1:
+		return false
 	if not soldiers.has(role):
 		return false
 	if civilians < count:
@@ -56,6 +71,26 @@ func recruit_soldier(role: String, count: int = 1) -> bool:
 		
 	civilians -= count
 	soldiers[role] = int(soldiers[role]) + count
+	return true
+
+
+func civilian_to_worker(count: int = 1) -> bool:
+	if count < 1:
+		return false
+	if civilians < count:
+		return false
+	civilians -= count
+	workers += count
+	return true
+
+
+func worker_to_civilian(count: int = 1) -> bool:
+	if count < 1:
+		return false
+	if workers < count:
+		return false
+	workers -= count
+	civilians += count
 	return true
 
 
@@ -72,7 +107,8 @@ func apply_casualties(losses: Dictionary) -> int:
 
 
 func hire_mercenaries(count: int) -> void:
-	assert(count >= 0, "count tidak boleh negatif")
+	if count < 0:
+		return
 	mercenaries += count
 
 
@@ -96,8 +132,21 @@ func grow_population(growth_rate: float = 0.08) -> int:
 	return added
 
 
+func validate_invariants() -> bool:
+	if civilians < 0 or workers < 0 or housing_capacity <= 0:
+		return false
+	if morale < 0 or morale > 150:
+		return false
+	if mercenaries < 0:
+		return false
+	for role in soldiers:
+		if int(soldiers[role]) < 0:
+			return false
+	return true
+
+
 func clone() -> PopulationModel:
-	var p := PopulationModel.new(civilians, housing_capacity, morale)
+	var p := PopulationModel.new(civilians, housing_capacity, morale, workers)
 	p.soldiers = soldiers.duplicate(true)
 	p.mercenaries = mercenaries
 	return p
