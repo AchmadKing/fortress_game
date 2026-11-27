@@ -27,6 +27,9 @@ const WaveGenerator = preload("res://scripts/simulation/wave_generator.gd")
 const CombatEngine = preload("res://scripts/simulation/combat_engine.gd")
 const WorkerModel = preload("res://scripts/domain/model/worker_model.gd")
 const BuildingModel = preload("res://scripts/domain/model/building_model.gd")
+const BattlefieldZone = preload("res://scripts/domain/model/battlefield_zone.gd")
+const EnemyArchetype = preload("res://scripts/domain/model/enemy_archetype.gd")
+const EnemyGroup = preload("res://scripts/domain/model/enemy_group.gd")
 
 const HERO_RECRUITMENT_COST_DEFAULT: int = 500
 
@@ -62,6 +65,16 @@ var _last_command: CommanderCommand = null
 var _command_sequence_counter: int = 0
 var _command_history: Array = []
 var _active_commander_intents: Dictionary = {}
+
+# Phase 6E Battlefield Simulation & Damage Routing
+var _battlefield_active: bool = false
+var _battle_enemy_groups: Array = []
+var _battle_zone_pressure: Dictionary = {}
+var _accumulated_pressure: Dictionary = {}
+var _battle_casualties: Dictionary = {}
+var _battle_heroes_killed: Array = []
+var _battle_is_finished: bool = false
+var _battle_victory: bool = false
 var _battle_speed: float = 1.0
 var _battle_paused: bool = false
 var _battle_tick: int = 0
@@ -1339,7 +1352,7 @@ func cancel_wave_preview() -> bool:
 
 
 ## Memulai pertempuran (transisi WAVE_PREVIEW -> BATTLE)
-func start_battle() -> bool:
+func start_battle(enable_tactical_sim: bool = false) -> bool:
 	if _state_machine.current_state != GameplayStateMachine.STATE_WAVE_PREVIEW:
 		return false
 	if not _state_machine.transition_to(GameplayStateMachine.STATE_BATTLE):
@@ -1348,6 +1361,18 @@ func start_battle() -> bool:
 	_time_accumulator = 0.0
 	_battle_paused = false
 	_current_state.battle_phase_name = "RANGED_VOLLEY"
+
+	if enable_tactical_sim:
+		init_battlefield()
+	else:
+		_battlefield_active = false
+		_battle_enemy_groups = []
+		_battle_zone_pressure = {}
+		_accumulated_pressure = {}
+		_battle_casualties = {}
+		_battle_heroes_killed = []
+		_battle_is_finished = false
+		_battle_victory = false
 
 	# Transisi status pahlawan aktif di Party 1 ke BATTLE_ACTIVE
 	var active_party := get_active_battle_party()
@@ -1685,14 +1710,76 @@ func can_step_simulation() -> bool:
 	return true
 
 
-## Menjalankan 1 tick simulasi taktis deterministik (Phase 6B).
+## Menjalankan 1 tick simulasi taktis deterministik (Phase 6B & 6E).
 func step_simulation() -> bool:
 	if not can_step_simulation():
 		return false
 	_battle_tick += 1
 	_current_state.battle_tick = _battle_tick
-	if _combat_engine != null:
+
+	if _combat_engine != null and _battlefield_active:
+		# Inisialisasi kelompok musuh jika belum ada tapi berada dalam wave aktif
+		if _battle_enemy_groups.is_empty() and not _current_wave_data.is_empty():
+			_battle_enemy_groups = EnemyArchetype.map_wave_to_enemy_groups(_current_wave_data)
+
+		var p1 := get_party(PartyModel.PARTY_1_ID)
+		var p_zone: String = p1.current_zone if p1 != null else BattlefieldZone.ZONE_GATE
+
+		var battle_ctx: Dictionary = {
+			"enemy_groups": _battle_enemy_groups,
+			"deployments": _active_deployments,
+			"party_heroes": get_active_battle_heroes(),
+			"fortress": _fortress,
+			"commander_intents": _active_commander_intents,
+			"accumulated_pressure": _accumulated_pressure,
+			"battle_seed": _session_seed + _current_wave_num + _battle_tick,
+			"party_zone": p_zone
+		}
+
+		var step_res: Dictionary = _combat_engine.step_simulation_tick(_battle_tick - 1, battle_ctx)
+		_battle_zone_pressure = step_res.get("zone_pressure", {})
+		_accumulated_pressure = step_res.get("accumulated_pressure", {})
+
+		# Proses korban jiwa serdadu
+		var step_cas: Dictionary = step_res.get("casualties", {})
+		for r in step_cas:
+			var deaths: int = int(step_cas[r])
+			if deaths > 0:
+				_battle_casualties[r] = int(_battle_casualties.get(r, 0)) + deaths
+				if _population != null:
+					_population.apply_casualties({r: deaths})
+					_available_soldiers = _population.get_total_soldiers()
+
+		# Proses event kematian pahlawan (Permadeath & gear return exactly once)
+		for ev in step_res.get("events", []):
+			if ev.get("type") == "HERO_DEATH":
+				var h_id: String = str(ev.get("hero_id"))
+				if not (h_id in _battle_heroes_killed):
+					_battle_heroes_killed.append(h_id)
+					var h_obj := get_hero(h_id)
+					if h_obj != null:
+						var items: Array = h_obj.clear_equipment()
+						for item in items:
+							if item is EquipmentModel:
+								_return_equipment_to_warehouse(item as EquipmentModel)
+						h_obj.lifecycle_state = HeroLifecycleState.PERMADEATH
+						if p1 != null:
+							p1.remove_member(h_id)
+						h_obj.clear_party_assignment()
+
+		_battle_is_finished = bool(step_res.get("is_finished", false))
+		_battle_victory = bool(step_res.get("victory", false))
+		if bool(step_res.get("game_over", false)) or (_fortress != null and _fortress.is_destroyed()):
+			if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+				_state_machine.transition_to(GameplayStateMachine.STATE_RESULT)
+			if _state_machine.current_state == GameplayStateMachine.STATE_RESULT:
+				_state_machine.transition_to(GameplayStateMachine.STATE_GAME_OVER)
+			_last_battle_result["game_over"] = true
+			_last_battle_result["victory"] = false
+	elif _combat_engine != null:
+		# Mode clock-only untuk backward compatibility Phase 6B
 		_combat_engine.step_simulation_tick(_battle_tick - 1)
+
 	_update_snapshot()
 	state_changed.emit(_current_state.clone())
 	return true
@@ -2312,5 +2399,83 @@ func _update_snapshot() -> void:
 				"following_target": c.following_target
 			}
 	_current_state.active_commander_intents = _active_commander_intents.duplicate(true)
+
+	# Phase 6E: Battlefield damage routing & casualty telemetry
+	var eg_data: Array = []
+	for g in _battle_enemy_groups:
+		if g is EnemyGroup:
+			eg_data.append((g as EnemyGroup).to_dictionary())
+	_current_state.enemy_groups_data = eg_data
+	_current_state.battle_zone_pressure = _battle_zone_pressure.duplicate(true)
+	_current_state.accumulated_pressure = _accumulated_pressure.duplicate(true)
+	_current_state.battle_casualties = _battle_casualties.duplicate(true)
+	_current_state.wall_hp = _fortress.wall_hp if _fortress != null else 500
+	_current_state.gate_hp = _fortress.gate_hp if _fortress != null else 300
+	_current_state.fortress_hp = _fortress.current_hp if _fortress != null else 1000
+	_current_state.battle_heroes_killed = _battle_heroes_killed.duplicate(true)
+	_current_state.battle_is_finished = _battle_is_finished
+	_current_state.battle_victory = _battle_victory
+
+
+# ==============================================================================
+# PHASE 6E: TACTICAL BATTLE & CASUALTY RESOLUTION API
+# ==============================================================================
+
+## Menginisialisasi grup musuh di medan pertempuran (Phase 6E).
+func init_battlefield(wave_data: Dictionary = {}) -> void:
+	_battlefield_active = true
+	if not wave_data.is_empty():
+		_current_wave_data = wave_data.duplicate(true)
+	elif _current_wave_data.is_empty():
+		_current_wave_data = _simulation_runner.prepare_wave(_current_wave_num, _session_seed + _current_wave_num)
+
+	_battle_enemy_groups = EnemyArchetype.map_wave_to_enemy_groups(_current_wave_data)
+	_battle_zone_pressure = {}
+	_accumulated_pressure = {}
+	_battle_casualties = {}
+	_battle_heroes_killed = []
+	_battle_is_finished = false
+	_battle_victory = false
+	_update_snapshot()
+	state_changed.emit(_current_state.clone())
+
+
+## Mengambil daftar EnemyGroup aktif di medan perang (Phase 6E).
+func get_battle_enemy_groups() -> Array:
+	return _battle_enemy_groups.duplicate()
+
+
+## Mengambil nilai tekanan musuh di zona tertentu atau seluruh zona (Phase 6E).
+func get_battle_zone_pressure(zone: String = "") -> Variant:
+	if zone.is_empty():
+		return _battle_zone_pressure.duplicate(true)
+	return int(_battle_zone_pressure.get(zone.to_upper().strip_edges(), 0))
+
+
+## Mengambil nilai akumulasi tekanan pertahanan di zona tertentu atau seluruh zona (Phase 6E).
+func get_accumulated_pressure(zone: String = "") -> Variant:
+	if zone.is_empty():
+		return _accumulated_pressure.duplicate(true)
+	return int(_accumulated_pressure.get(zone.to_upper().strip_edges(), 0))
+
+
+## Mengambil kamus korban jiwa serdadu selama pertempuran aktif (Phase 6E).
+func get_battle_casualties() -> Dictionary:
+	return _battle_casualties.duplicate(true)
+
+
+## Memeriksa apakah pertempuran taktis saat ini telah usai (Phase 6E).
+func is_battle_finished() -> bool:
+	return _battle_is_finished
+
+
+## Memeriksa apakah pertempuran taktis berakhir dengan kemenangan (Phase 6E).
+func is_battle_victory() -> bool:
+	return _battle_victory
+
+
+## Mengambil daftar ID pahlawan yang gugur dalam pertempuran aktif (Phase 6E).
+func get_battle_heroes_killed() -> Array:
+	return _battle_heroes_killed.duplicate()
 
 

@@ -53,6 +53,18 @@ var battle_aura_data: Dictionary = {}
 var command_history: Array = []
 var active_commander_intents: Dictionary = {}
 
+# Phase 6E Fortress Damage Routing & Casualty Resolution Fields
+var enemy_groups_data: Array = []
+var battle_zone_pressure: Dictionary = {}
+var accumulated_pressure: Dictionary = {}
+var battle_casualties: Dictionary = {}
+var wall_hp: int = 500
+var gate_hp: int = 300
+var fortress_hp: int = 1000
+var battle_heroes_killed: Array = []
+var battle_is_finished: bool = false
+var battle_victory: bool = false
+
 
 func _init(p_tick: int = 0, p_session_id: String = "", p_state_name: String = "INITIAL", p_metadata: Dictionary = {}) -> void:
 	tick = p_tick
@@ -113,6 +125,16 @@ func clone() -> GameStateSnapshot:
 	copy.battle_aura_data = battle_aura_data.duplicate(true)
 	copy.command_history = command_history.duplicate(true)
 	copy.active_commander_intents = active_commander_intents.duplicate(true)
+	copy.enemy_groups_data = enemy_groups_data.duplicate(true)
+	copy.battle_zone_pressure = battle_zone_pressure.duplicate(true)
+	copy.accumulated_pressure = accumulated_pressure.duplicate(true)
+	copy.battle_casualties = battle_casualties.duplicate(true)
+	copy.wall_hp = wall_hp
+	copy.gate_hp = gate_hp
+	copy.fortress_hp = fortress_hp
+	copy.battle_heroes_killed = battle_heroes_killed.duplicate(true)
+	copy.battle_is_finished = battle_is_finished
+	copy.battle_victory = battle_victory
 	return copy
 
 
@@ -149,7 +171,17 @@ func to_dictionary() -> Dictionary:
 		"battle_party_data": battle_party_data.duplicate(true),
 		"battle_aura_data": battle_aura_data.duplicate(true),
 		"command_history": command_history.duplicate(true),
-		"active_commander_intents": active_commander_intents.duplicate(true)
+		"active_commander_intents": active_commander_intents.duplicate(true),
+		"enemy_groups_data": enemy_groups_data.duplicate(true),
+		"battle_zone_pressure": battle_zone_pressure.duplicate(true),
+		"accumulated_pressure": accumulated_pressure.duplicate(true),
+		"battle_casualties": battle_casualties.duplicate(true),
+		"wall_hp": wall_hp,
+		"gate_hp": gate_hp,
+		"fortress_hp": fortress_hp,
+		"battle_heroes_killed": battle_heroes_killed.duplicate(true),
+		"battle_is_finished": battle_is_finished,
+		"battle_victory": battle_victory
 	}
 
 
@@ -214,5 +246,21 @@ static func from_dictionary(data: Dictionary) -> GameStateSnapshot:
 		snapshot.command_history = (data["command_history"] as Array).duplicate(true)
 	if data.has("active_commander_intents") and data["active_commander_intents"] is Dictionary:
 		snapshot.active_commander_intents = (data["active_commander_intents"] as Dictionary).duplicate(true)
+	
+	if data.has("enemy_groups_data") and data["enemy_groups_data"] is Array:
+		snapshot.enemy_groups_data = (data["enemy_groups_data"] as Array).duplicate(true)
+	if data.has("battle_zone_pressure") and data["battle_zone_pressure"] is Dictionary:
+		snapshot.battle_zone_pressure = (data["battle_zone_pressure"] as Dictionary).duplicate(true)
+	if data.has("accumulated_pressure") and data["accumulated_pressure"] is Dictionary:
+		snapshot.accumulated_pressure = (data["accumulated_pressure"] as Dictionary).duplicate(true)
+	if data.has("battle_casualties") and data["battle_casualties"] is Dictionary:
+		snapshot.battle_casualties = (data["battle_casualties"] as Dictionary).duplicate(true)
+	snapshot.wall_hp = int(data.get("wall_hp", 500))
+	snapshot.gate_hp = int(data.get("gate_hp", 300))
+	snapshot.fortress_hp = int(data.get("fortress_hp", 1000))
+	if data.has("battle_heroes_killed") and data["battle_heroes_killed"] is Array:
+		snapshot.battle_heroes_killed = (data["battle_heroes_killed"] as Array).duplicate(true)
+	snapshot.battle_is_finished = bool(data.get("battle_is_finished", false))
+	snapshot.battle_victory = bool(data.get("battle_victory", false))
 	
 	return snapshot

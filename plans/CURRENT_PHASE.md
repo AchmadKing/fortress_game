@@ -7,8 +7,8 @@
 - **Phase 6B — Simulation Tick Loop & Pacing Controls**: **COMPLETED / VERIFIED**
 - **Phase 6C — Unit Formations, Party 1 & Aura Mechanics**: **COMPLETED / VERIFIED**
 - **Phase 6D — Commander Commands Execution**: **COMPLETED / VERIFIED**
-- **Phase 6E — Fortress Damage Routing & Casualty Resolution**: **NEXT / LOCKED** (Menunggu persetujuan eksplisit developer)
-- **Phase 6F — Tactical Battle UI & Verification Gate**: **LOCKED**
+- **Phase 6E — Fortress Damage Routing & Casualty Resolution**: **COMPLETED / VERIFIED**
+- **Phase 6F — Tactical Battle UI & Verification Gate**: **NEXT / LOCKED** (Menunggu persetujuan eksplisit developer)
 - **Phase 7+**: **LOCKED**
 
 Dokumen perencanaan teknis dan arsitektur komprehensif Phase 6 tersedia di [plans/PHASE_6_TACTICAL_BATTLE_PLAN.md](file:///d:/fortress_game/plans/PHASE_6_TACTICAL_BATTLE_PLAN.md).
@@ -70,7 +70,23 @@ Dokumen perencanaan teknis dan arsitektur komprehensif Phase 6 tersedia di [plan
     - Unit Tests Phase 6D: 50/50 PASS (`tests/test_phase6d_commander_commands.gd`), termasuk determinisme eksekusi dan simulasi stres 1.000 perintah/tick.
     - Full Regression Suite: 827/827 PASS across 21 test suites.
     - Prototype Scene Smoke Playtest: ALL PASS.
-  - **Phase 6E — Fortress Damage Routing & Casualty Resolution**: **NEXT / LOCKED**
+  - **Phase 6E — Fortress Damage Routing & Casualty Resolution**: **COMPLETED / VERIFIED**
+    - Perhitungan Tekanan Musuh per Zona: komputasi deterministik berbasis kuantitas, statistik serangan arketipe musuh (`base_atk`), dan pelipat trait khusus (Siege/Structure +50%, Boss +25%).
+    - Perutean Defensif Berbasis Zona: musuh maju secara bertahap `OUTER_FIELD` -> `APPROACH` / `FLANK` -> `GATE` / `WALL` -> `FORTRESS`. Perpindahan langsung (teleportasi) ke `FORTRESS` ditolak keras.
+    - Perutean Kerusakan Struktural Benteng: musuh di zona `GATE` merusak `gate_hp`, musuh di zona `WALL` merusak `wall_hp`. Selama gerbang atau tembok belum roboh (unbreached), struktur menyerap kerusakan dan melindungi benteng (`current_hp`).
+    - Kerusakan Tembus & Mitigasi Zirah: ketika gerbang roboh (`gate_hp <= 0`) atau tembok jebol (`wall_hp <= 0`), tekanan musuh merembes masuk ke `FORTRESS` dan langsung merusak `current_hp` benteng setelah dimitigasi oleh zirah benteng (`armor`).
+    - Kerusakan Balasan Pertahanan (Fortification Counter-Damage): tembakan dan pertahanan benteng memberikan recoil balasan kepada kelompok musuh penyerang gerbang, tembok, dan benteng.
+    - Resolusi Korban Serdadu Agregat: korban jiwa serdadu dipicu ketika akumulasi tekanan zona mencapai ambang batas (`CASUALTY_PRESSURE_THRESHOLD = 50`), dipengaruhi oleh formasi taktis (`FRONTLINE` menyerap kerusakan dengan +20% pertahanan, `BACKLINE` mendapatkan proteksi ambang batas 1.4x (70), `SUPPORT` memperkuat pertahanan zona) dan aura pahlawan. Total populasi terbukti berkurang secara atomik dan zero-sum.
+    - Bahaya Pahlawan & Permadeath: pahlawan Party 1 yang bertarung di zona benturan mengakumulasi kelelahan (`fatigue`) dan dapat gugur (permadeath) jika terpapar tekanan ekstrem. Pahlawan Party 2 dan Reserve terisolasi penuh dengan 0 bahaya pertempuran.
+    - Pengembalian Perlengkapan Pahlawan Permadeath Tepat 1x: seluruh perlengkapan pahlawan yang gugur dikembalikan secara utuh ke gudang bersama tepat satu kali tanpa duplikasi pada tick simulasi berikutnya.
+    - Resolusi Perlengkapan Serdadu Gugur: serdadu selamat mempertahankan durabilitas perlengkapan 100%; perlengkapan serdadu gugur diresolusi via split deterministik 35% hancur permanen dan 65% rusak (durabilitas 60%) masuk ke stok Damaged gudang.
+    - Fondasi Hasil Pertempuran: status kemenangan tercapai jika seluruh musuh tereliminasi dan benteng masih hidup; status kekalahan tercapai jika HP benteng $\le 0$ dan memicu transisi ke terminal `GAME_OVER`.
+    - Integrasi Snapshot Read-Model: bidang telemetri `enemy_groups_data`, `battle_zone_pressure`, `accumulated_pressure`, `battle_casualties`, `wall_hp`, `gate_hp`, `fortress_hp`, `battle_heroes_killed`, `battle_is_finished`, dan `battle_victory` terserialisasi penuh pada `GameStateSnapshot`.
+    - Unit Tests Phase 6E: 75/75 PASS (`tests/test_phase6e_fortress_damage_casualty.gd`).
+    - Tactical Battle 1,000-Tick Stress Simulation: PASS tanpa kebocoran memori, tanpa angka negatif, dan tanpa desinkronisasi.
+    - Full Regression Suite: 902/902 PASS across 22 test suites.
+    - Prototype Scene Smoke Playtest: ALL PASS.
+  - **Phase 6F — Tactical Battle UI & Verification Gate**: **NEXT / LOCKED**
 - **Phase 7 — Economy & Progression**: **LOCKED**
 - **Phase 8 — Content Implementation**: **LOCKED**
 - **Phase 9 — Visual / UI / Pixel Art Integration**: **LOCKED**
@@ -81,6 +97,6 @@ Dokumen perencanaan teknis dan arsitektur komprehensif Phase 6 tersedia di [plan
 ### Aturan & Batasan Saat Ini
 
 > [!IMPORTANT]
-> **PHASE 6D TELAH SELESAI DAN TERVERIFIKASI (COMPLETED & VERIFIED).**
-> **PHASE 6E MASIH TERKUNCI (LOCKED)**: DILARANG memulai implementasi perutean kerusakan benteng dan resolusi korban (Damage Routing & Casualty Resolution) sebelum developer memberikan izin/arahan eksplisit (*explicit developer approval*).
+> **PHASE 6E TELAH SELESAI DAN TERVERIFIKASI (COMPLETED & VERIFIED).**
+> **PHASE 6F MASIH TERKUNCI (LOCKED)**: DILARANG memulai implementasi Tactical Battle UI sebelum developer memberikan izin/arahan eksplisit (*explicit developer approval*).
 > **PHASE 7+ TETAP LOCKED**: Seluruh fase lanjut tetap terkunci.

@@ -20,6 +20,7 @@ var ticks_until_advance: int = 1
 var current_hp_pool: int = 10
 var max_hp_pool: int = 10
 var special_trait: String = ""
+var target_priority: String = ""
 var is_boss: bool = false
 
 
@@ -44,12 +45,14 @@ func _init(
 		base_def_per_unit = int(def.get("base_def", 0))
 		move_speed_ticks = int(def.get("move_speed_ticks", 1))
 		special_trait = str(def.get("special_trait", ""))
+		target_priority = str(def.get("target_priority", ""))
 	else:
 		base_hp_per_unit = 10
 		base_atk_per_unit = 1
 		base_def_per_unit = 0
 		move_speed_ticks = 1
 		special_trait = ""
+		target_priority = ""
 		
 	# Scaling atribut khusus jika merupakan bos
 	if is_boss:
@@ -122,6 +125,7 @@ func clone() -> EnemyGroup:
 	copy.max_hp_pool = max_hp_pool
 	copy.current_hp_pool = current_hp_pool
 	copy.special_trait = special_trait
+	copy.target_priority = target_priority
 	return copy
 
 
@@ -140,6 +144,7 @@ func to_dictionary() -> Dictionary:
 		"current_hp_pool": current_hp_pool,
 		"max_hp_pool": max_hp_pool,
 		"special_trait": special_trait,
+		"target_priority": target_priority,
 		"is_boss": is_boss
 	}
 
@@ -163,4 +168,5 @@ static func from_dictionary(dict: Dictionary) -> EnemyGroup:
 	eg.max_hp_pool = int(dict.get("max_hp_pool", eg.max_hp_pool))
 	eg.current_hp_pool = int(dict.get("current_hp_pool", eg.current_hp_pool))
 	eg.special_trait = str(dict.get("special_trait", eg.special_trait))
+	eg.target_priority = str(dict.get("target_priority", eg.target_priority))
 	return eg

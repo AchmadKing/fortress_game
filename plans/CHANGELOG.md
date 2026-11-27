@@ -4,6 +4,42 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.6.5] - Phase 6E: Fortress Damage Routing & Casualty Resolution
+
+### Added
+- **Zone Enemy Pressure & Tactical Defensive Routing** (`scripts/simulation/combat_engine.gd`, `scripts/domain/model/enemy_group.gd`, `scripts/domain/model/enemy_archetype.gd`):
+  - Perhitungan tekanan zona musuh deterministik `calculate_zone_enemy_pressure(enemy_groups, zone)` dengan pelipat trait arketipe: Siege/Structure (+50%), Boss (+25%).
+  - Alur pergerakan defensif berurutan bertahap: `OUTER_FIELD` -> `CENTER_APPROACH` / `FLANKS` -> `GATE` / `WALL` -> `FORTRESS`. Pencegahan keras teleportasi langsung ke `FORTRESS`.
+  - Properti `target_priority` pada `EnemyGroup` tersinkronisasi dari definisi kanonikal `EnemyArchetype`.
+- **Fortress Structural Damage Routing & Fortification Recoil** (`scripts/simulation/combat_engine.gd`, `scripts/application/coordinators/game_coordinator.gd`):
+  - Perutean kerusakan bergradasi: musuh di zona `GATE` merusak `gate_hp`, musuh di zona `WALL` merusak `wall_hp`.
+  - Proteksi struktur: selama gerbang dan tembok belum jebol, benteng utama terlindungi ($0$ kerusakan ke `current_hp`).
+  - Penetrasi & mitigasi zirah: saat gerbang atau tembok jebol (`hp <= 0`), sisa tekanan mengalir ke benteng utama dengan pengurangan zirah benteng (`armor`).
+  - Kerusakan balasan (counter-damage recoil): pertahanan gerbang, tembok, dan benteng memberikan tembakan balasan kepada musuh penyerang struktur.
+- **Aggregate Soldier Casualties & Formation Thresholds** (`scripts/simulation/combat_engine.gd`, `scripts/application/coordinators/game_coordinator.gd`):
+  - Akumulasi tekanan zona memicu korban serdadu agregat pada ambang batas kanonikal `CASUALTY_PRESSURE_THRESHOLD = 50`.
+  - Modifikasi formasi taktis: `FRONTLINE` (+20% def, menyerap tekanan), `BACKLINE` (ambang batas 1.4x / 70 untuk proteksi dari korban), `SUPPORT` (+10% def zona), dan aura pahlawan Party 1.
+  - Pengurangan korban pada populasi serdadu secara atomik dan zero-sum (`PopulationModel.apply_casualties()`).
+- **Hero Danger, Fatigue & Permadeath Equipment Return** (`scripts/simulation/combat_engine.gd`, `scripts/application/coordinators/game_coordinator.gd`):
+  - Pahlawan Party 1 aktif mengakumulasi kelelahan (`fatigue`) saat benturan terjadi di zonanya dan menghadapi risiko permadeath saat terpapar tekanan ekstrem.
+  - Pahlawan Party 2 dan Reserve terisolasi mutlak dengan $0$ bahaya tempur dan $0$ mutasi fatigue/state.
+  - Pengembalian perlengkapan pahlawan permadeath tepat 1 kali ke gudang bersama via `clear_equipment()` tanpa duplikasi pada tick selanjutnya.
+- **Soldier Equipment Casualty Resolution** (`scripts/simulation/combat_engine.gd`, `scripts/application/coordinators/game_coordinator.gd`):
+  - Perlengkapan serdadu selamat kembali 100% utuh dengan durabilitas penuh ke stok Usable gudang bersama.
+  - Perlengkapan serdadu gugur diresolusi via split deterministik: 35% musnah permanen dari kepemilikan (`Total Owned`), 65% rusak berat (durabilitas 60%) masuk ke stok Damaged gudang.
+- **Battle Result & Defeat Conditions** (`scripts/simulation/combat_engine.gd`, `scripts/application/coordinators/game_coordinator.gd`):
+  - Status kemenangan (`victory`) terpicu jika seluruh musuh gugur dan benteng masih berdiri.
+  - Status kekalahan (`defeat`) terpicu jika `fortress.current_hp <= 0`, memicu transisi sah via `GameplayStateMachine` menuju state terminal `GAME_OVER`.
+- **Snapshot Read-Model Telemetry** (`scripts/domain/state/game_state_snapshot.gd`, `scripts/application/coordinators/game_coordinator.gd`, `scripts/presentation/controllers/game_controller.gd`):
+  - Penambahan bidang telemetri Phase 6E: `enemy_groups_data`, `battle_zone_pressure`, `accumulated_pressure`, `battle_casualties`, `wall_hp`, `gate_hp`, `fortress_hp`, `battle_heroes_killed`, `battle_is_finished`, `battle_victory`.
+  - Kloning deep-copy dan serialisasi dictionary round-trip pada `GameStateSnapshot`.
+- **Automated Verification Suite** (`tests/test_phase6e_fortress_damage_casualty.gd`):
+  - 75 automated tests komprehensif mencakup Group A s/d W (Pressure Calculation, Topological Advance, Cadence, Formations, Soldier Casualties, Population Conservation, Wall/Gate Damage, Fortress Routing, Hero Danger & Party Isolation, Permadeath & Gear Return, Soldier Gear Split, Battle Result & Victory/Defeat, Commander Commands, Clock Progression, Snapshot Telemetry, Determinism, Boundary Safety, dan Tactical Battle 1.000-Tick Stress Simulation).
+  - Full Regression Suite: 902/902 PASS across 22 test suites.
+  - Prototype Scene Smoke Playtest: ALL PASS.
+
+---
+
 ## [0.6.4] - Phase 6D: Commander Commands Execution
 
 ### Added

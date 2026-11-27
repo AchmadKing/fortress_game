@@ -528,6 +528,52 @@ func get_retreat_target_zone(current_zone: String) -> String:
 	return coordinator.get_retreat_target_zone(current_zone)
 
 
+# ==============================================================================
+# PHASE 6E: TACTICAL BATTLE & CASUALTY CONVENIENCE METHODS
+# ==============================================================================
+
+func get_battle_enemy_groups() -> Array:
+	if coordinator == null:
+		return []
+	return coordinator.get_battle_enemy_groups()
+
+
+func get_battle_zone_pressure(zone: String = "") -> Variant:
+	if coordinator == null:
+		return {} if zone.is_empty() else 0
+	return coordinator.get_battle_zone_pressure(zone)
+
+
+func get_accumulated_pressure(zone: String = "") -> Variant:
+	if coordinator == null:
+		return {} if zone.is_empty() else 0
+	return coordinator.get_accumulated_pressure(zone)
+
+
+func get_battle_casualties() -> Dictionary:
+	if coordinator == null:
+		return {}
+	return coordinator.get_battle_casualties()
+
+
+func is_battle_finished() -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.is_battle_finished()
+
+
+func is_battle_victory() -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.is_battle_victory()
+
+
+func get_battle_heroes_killed() -> Array:
+	if coordinator == null:
+		return []
+	return coordinator.get_battle_heroes_killed()
+
+
 func toggle_pause() -> void:
 	if coordinator == null:
 		return

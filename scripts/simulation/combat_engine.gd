@@ -13,6 +13,11 @@ const PopulationModelScript = preload("res://scripts/domain/model/population_mod
 const FortressModelScript = preload("res://scripts/domain/model/fortress_model.gd")
 const HeroModelScript = preload("res://scripts/domain/model/hero_model.gd")
 const EquipmentModelScript = preload("res://scripts/domain/model/equipment_model.gd")
+const BattlefieldZoneScript = preload("res://scripts/domain/model/battlefield_zone.gd")
+const EnemyGroupScript = preload("res://scripts/domain/model/enemy_group.gd")
+const EnemyArchetypeScript = preload("res://scripts/domain/model/enemy_archetype.gd")
+const DeploymentCompositionScript = preload("res://scripts/domain/model/deployment_composition.gd")
+const CommanderCommandScript = preload("res://scripts/domain/command/commander_command.gd")
 
 # Phase 6B: Canonical Simulation Speed Constants
 const SPEED_1X: float = 1.0
@@ -20,19 +25,245 @@ const SPEED_2X: float = 2.0
 const SPEED_4X: float = 4.0
 const VALID_SPEEDS: Array[float] = [SPEED_1X, SPEED_2X, SPEED_4X]
 
+# Phase 6E: Canonical Casualty Pressure Threshold
+const CASUALTY_PRESSURE_THRESHOLD: int = 50
+
 
 static func is_valid_speed(speed: float) -> bool:
 	return is_equal_approx(speed, SPEED_1X) or is_equal_approx(speed, SPEED_2X) or is_equal_approx(speed, SPEED_4X)
 
 
-## Menjalankan 1 tick simulasi taktis headless deterministik (Phase 6B).
-## Mengembalikan tick baru tanpa mutasi fisik (clock-only advance).
-func step_simulation_tick(current_tick: int, _battle_context: Dictionary = {}) -> Dictionary:
+## Menjalankan 1 tick simulasi taktis headless deterministik (Phase 6B & 6E).
+## Jika battle_context kosong, berlaku sebagai clock-only advance murni.
+## Jika battle_context diberikan, menjalankan kalkulasi tekanan, pergerakan, kerusakan benteng, dan korban.
+func step_simulation_tick(current_tick: int, battle_context: Dictionary = {}) -> Dictionary:
 	assert(current_tick >= 0, "current_tick tidak boleh negatif")
 	var next_tick: int = current_tick + 1
+
+	if battle_context.is_empty():
+		return {
+			"tick": next_tick,
+			"events": []
+		}
+
+	var enemy_groups: Array = battle_context.get("enemy_groups", [])
+	var deployments: Array = battle_context.get("deployments", [])
+	var party_heroes: Array = battle_context.get("party_heroes", [])
+	var fortress: FortressModel = battle_context.get("fortress", null)
+	var commander_intents: Dictionary = battle_context.get("commander_intents", {})
+	var accumulated_pressure: Dictionary = battle_context.get("accumulated_pressure", {}).duplicate(true)
+	var battle_seed: int = int(battle_context.get("battle_seed", 42))
+	var party_zone: String = str(battle_context.get("party_zone", BattlefieldZoneScript.ZONE_GATE)).to_upper().strip_edges()
+
+	var events: Array[Dictionary] = []
+	var zone_pressure: Dictionary = {}
+	var casualties: Dictionary = {}
+
+	# 1. Pergerakan Musuh Berdasarkan Kecepatan Arketipe (Ticks Until Advance)
+	for g in enemy_groups:
+		if g is EnemyGroup:
+			var eg: EnemyGroup = g as EnemyGroup
+			if not eg.is_defeated():
+				eg.ticks_until_advance -= 1
+				if eg.ticks_until_advance <= 0:
+					eg.ticks_until_advance = maxi(1, eg.move_speed_ticks)
+					var curr_z: String = eg.current_zone
+					var target_z: String = curr_z
+
+					match curr_z:
+						BattlefieldZoneScript.ZONE_OUTER_FIELD:
+							if eg.target_priority == "GATE" or eg.enemy_type == EnemyArchetypeScript.ARCHETYPE_ORC_FRONTLINE or eg.enemy_type == EnemyArchetypeScript.ARCHETYPE_TROLL_TANK or eg.enemy_type == EnemyArchetypeScript.ARCHETYPE_SIEGE_MONSTER:
+								target_z = BattlefieldZoneScript.ZONE_CENTER_APPROACH
+							elif eg.special_trait.begins_with("FLYING"):
+								target_z = BattlefieldZoneScript.ZONE_CENTER_APPROACH
+							else:
+								var roll_idx: int = abs(eg.group_id.hash() + next_tick) % 3
+								match roll_idx:
+									0: target_z = BattlefieldZoneScript.ZONE_LEFT_FLANK
+									1: target_z = BattlefieldZoneScript.ZONE_CENTER_APPROACH
+									2: target_z = BattlefieldZoneScript.ZONE_RIGHT_FLANK
+						BattlefieldZoneScript.ZONE_CENTER_APPROACH:
+							target_z = BattlefieldZoneScript.ZONE_GATE
+						BattlefieldZoneScript.ZONE_LEFT_FLANK, BattlefieldZoneScript.ZONE_RIGHT_FLANK:
+							target_z = BattlefieldZoneScript.ZONE_WALL
+						BattlefieldZoneScript.ZONE_GATE:
+							if fortress != null and fortress.is_gate_breached():
+								target_z = BattlefieldZoneScript.ZONE_FORTRESS
+						BattlefieldZoneScript.ZONE_WALL:
+							if fortress != null and fortress.is_wall_breached():
+								target_z = BattlefieldZoneScript.ZONE_FORTRESS
+						BattlefieldZoneScript.ZONE_FORTRESS:
+							target_z = BattlefieldZoneScript.ZONE_FORTRESS
+
+					if target_z != curr_z:
+						eg.current_zone = target_z
+						events.append({
+							"type": "ENEMY_ADVANCE",
+							"group_id": eg.group_id,
+							"from": curr_z,
+							"to": target_z,
+							"tick": next_tick
+						})
+
+	# 2. Evaluasi Tekanan Musuh, Pertahanan Kawan, Kerusakan Struktur & Korban per Zona
+	for zone_id in BattlefieldZoneScript.VALID_ZONES:
+		var raw_enemy_press: int = calculate_zone_enemy_pressure(enemy_groups, zone_id)
+		zone_pressure[zone_id] = raw_enemy_press
+
+		# Cari apakah ada Party 1 di zona ini
+		var heroes_in_this_zone: Array = []
+		if party_zone == zone_id:
+			heroes_in_this_zone = party_heroes
+
+		var def_power: Dictionary = calculate_zone_defender_power(deployments, heroes_in_this_zone, zone_id, commander_intents)
+		var total_atk: float = float(def_power.get("total_atk", 0.0))
+		var total_def: float = float(def_power.get("total_def", 0.0))
+		var total_soldiers: int = int(def_power.get("total_soldiers", 0))
+
+		# A. Defender menyerang musuh di zona ini
+		if total_atk > 0.0:
+			var living_in_zone: Array[EnemyGroup] = []
+			for g in enemy_groups:
+				if g is EnemyGroup and (g as EnemyGroup).current_zone == zone_id and not (g as EnemyGroup).is_defeated():
+					living_in_zone.append(g as EnemyGroup)
+
+			if not living_in_zone.is_empty():
+				# Cek target prioritas FOCUS_TARGET dari perintah komandan
+				var focus_target: String = ""
+				for c_id in commander_intents:
+					var intent_data: Dictionary = commander_intents[c_id]
+					if intent_data.get("intent") in [CommanderCommandScript.TYPE_FOCUS_TARGET, "FOCUS"]:
+						focus_target = str(intent_data.get("focus_target", "")).to_upper().strip_edges()
+						break
+
+				var primary_target: EnemyGroup = null
+				if not focus_target.is_empty():
+					for eg in living_in_zone:
+						if eg.enemy_type == focus_target or eg.group_id == focus_target:
+							primary_target = eg
+							break
+
+				var dmg_pool: int = maxi(1, int(ceil(total_atk * 0.20)))
+				if primary_target != null:
+					var dealt: int = primary_target.apply_damage(dmg_pool)
+					if primary_target.is_defeated():
+						events.append({
+							"type": "ENEMY_DEFEATED",
+							"group_id": primary_target.group_id,
+							"zone": zone_id,
+							"tick": next_tick
+						})
+				else:
+					var share: int = maxi(1, dmg_pool / living_in_zone.size())
+					for eg in living_in_zone:
+						eg.apply_damage(share)
+						if eg.is_defeated():
+							events.append({
+								"type": "ENEMY_DEFEATED",
+								"group_id": eg.group_id,
+								"zone": zone_id,
+								"tick": next_tick
+							})
+
+		# B. Tekanan musuh terhadap struktur dan serdadu
+		if raw_enemy_press > 0:
+			var absorbed: int = mini(raw_enemy_press, int(floor(total_def * 0.40)))
+			var net_press: int = maxi(0, raw_enemy_press - absorbed)
+
+			# Kerusakan Struktur Benteng (GATE, WALL, FORTRESS)
+			if zone_id in [BattlefieldZoneScript.ZONE_GATE, BattlefieldZoneScript.ZONE_WALL, BattlefieldZoneScript.ZONE_FORTRESS]:
+				if fortress != null:
+					var struct_raw: int = maxi(1, int(ceil(float(net_press) * 0.35))) if net_press > 0 else 0
+					if struct_raw > 0:
+						var route_res: Dictionary = route_damage_to_fortress(fortress, zone_id, struct_raw)
+						if route_res["damage"] > 0:
+							events.append({
+								"type": "FORTRESS_DAMAGE",
+								"target": route_res["target"],
+								"damage": route_res["damage"],
+								"breached": route_res.get("breached", false),
+								"destroyed": route_res.get("destroyed", false),
+								"tick": next_tick
+							})
+							# Pertahanan pasif struktur benteng memberikan counter-damage ke musuh yang membentur
+							var fort_recoil: int = maxi(1, int(ceil(float(route_res["damage"]) * 0.75)))
+							for g in enemy_groups:
+								if g is EnemyGroup and (g as EnemyGroup).current_zone == zone_id and not (g as EnemyGroup).is_defeated():
+									(g as EnemyGroup).apply_damage(fort_recoil)
+									if (g as EnemyGroup).is_defeated():
+										events.append({
+											"type": "ENEMY_DEFEATED",
+											"group_id": (g as EnemyGroup).group_id,
+											"zone": zone_id,
+											"tick": next_tick
+										})
+
+			# Korban Jiwa Serdadu (Casualties)
+			if total_soldiers > 0 and net_press > 0:
+				var curr_acc: int = int(accumulated_pressure.get(zone_id, 0)) + net_press
+				accumulated_pressure[zone_id] = curr_acc
+
+				for comp in deployments:
+					if comp is DeploymentComposition and (comp as DeploymentComposition).current_zone == zone_id and (comp as DeploymentComposition).count > 0:
+						var dep: DeploymentComposition = comp as DeploymentComposition
+						var cas_res: Dictionary = resolve_soldier_casualties(dep, int(accumulated_pressure.get(zone_id, 0)))
+						if cas_res["casualties"] > 0:
+							var r_type: String = str(cas_res["role"])
+							var deaths_count: int = int(cas_res["casualties"])
+							casualties[r_type] = int(casualties.get(r_type, 0)) + deaths_count
+							accumulated_pressure[zone_id] = int(cas_res["remaining_pressure"])
+							dep.count = maxi(0, dep.count - deaths_count)
+							events.append({
+								"type": "SOLDIER_CASUALTY",
+								"role": r_type,
+								"count": deaths_count,
+								"zone": zone_id,
+								"tick": next_tick
+							})
+
+			# Bahaya Pahlawan (Hero Danger & Death)
+			if not heroes_in_this_zone.is_empty() and net_press > 0:
+				for h in heroes_in_this_zone:
+					if h is HeroModel and (h as HeroModel).is_alive:
+						var hero_obj: HeroModel = h as HeroModel
+						hero_obj.add_fatigue(1)
+						var died: bool = resolve_hero_danger(
+							hero_obj,
+							net_press,
+							100,
+							fortress != null and fortress.is_destroyed(),
+							next_tick,
+							battle_seed
+						)
+						if died:
+							events.append({
+								"type": "HERO_DEATH",
+								"hero_id": hero_obj.hero_id,
+								"zone": zone_id,
+								"tick": next_tick
+							})
+
+	# 3. Status Penyelesaian Pertempuran (Victory / Defeat)
+	var all_enemies_defeated: bool = true
+	for g in enemy_groups:
+		if g is EnemyGroup and not (g as EnemyGroup).is_defeated():
+			all_enemies_defeated = false
+			break
+
+	var fortress_destroyed: bool = fortress != null and fortress.is_destroyed()
+	var is_finished: bool = all_enemies_defeated or fortress_destroyed
+	var is_victory: bool = all_enemies_defeated and not fortress_destroyed
+	var is_game_over: bool = fortress_destroyed
+
 	return {
 		"tick": next_tick,
-		"events": []
+		"events": events,
+		"zone_pressure": zone_pressure,
+		"accumulated_pressure": accumulated_pressure,
+		"casualties": casualties,
+		"is_finished": is_finished,
+		"victory": is_victory,
+		"game_over": is_game_over
 	}
 
 
@@ -115,6 +346,280 @@ func calculate_party_auras(battle_heroes: Array, target_zone: String = "") -> Di
 	}
 
 
+# ==============================================================================
+# PHASE 6E: ZONE PRESSURE, DEFENSIVE ROUTING & CASUALTY RESOLUTION HELPERS
+# ==============================================================================
+
+## Menghitung total tekanan musuh di suatu zona tertentu (Phase 6E).
+func calculate_zone_enemy_pressure(enemy_groups: Array, zone: String) -> int:
+	var total_pressure: int = 0
+	var z_upper: String = zone.to_upper().strip_edges()
+	for g in enemy_groups:
+		if g is EnemyGroup:
+			var eg: EnemyGroup = g as EnemyGroup
+			if eg.current_zone == z_upper and not eg.is_defeated():
+				var unit_atk: int = eg.base_atk_per_unit
+				var trait_mult: float = 1.0
+				if eg.special_trait.begins_with("SIEGE") or eg.special_trait.find("STRUCTURE") != -1 or eg.enemy_type == EnemyArchetypeScript.ARCHETYPE_SIEGE_MONSTER:
+					trait_mult = 1.5
+				elif eg.special_trait.begins_with("BOSS") or eg.is_boss:
+					trait_mult = 1.25
+				total_pressure += int(ceil(float(eg.quantity * unit_atk) * trait_mult))
+	return maxi(0, total_pressure)
+
+
+## Menghitung kekuatan bertahan dan menyerang pasukan kawan di suatu zona (Phase 6E).
+## Mempertimbangkan kuantitas, formasi (Phase 6C), aura pahlawan (Phase 6C), dan perintah komandan (Phase 6D).
+func calculate_zone_defender_power(
+	deployments: Array,
+	party_heroes: Array,
+	zone: String,
+	commander_intents: Dictionary = {}
+) -> Dictionary:
+	var z_upper: String = zone.to_upper().strip_edges()
+	var total_atk: float = 0.0
+	var total_def: float = 0.0
+	var total_soldiers: int = 0
+	var frontline_present: bool = false
+
+	# 1. Kekuatan Serdadu Agregat
+	for comp in deployments:
+		if comp is DeploymentComposition:
+			var c: DeploymentComposition = comp as DeploymentComposition
+			if c.current_zone == z_upper and c.count > 0:
+				total_soldiers += c.count
+				var base_atk: float = 12.0
+				var base_def: float = 10.0
+				match c.resolved_role:
+					"SWORDSMAN":
+						base_atk = 14.0
+						base_def = 8.0
+					"SHIELD_INFANTRY":
+						base_atk = 8.0
+						base_def = 18.0
+					"SPEARMAN":
+						base_atk = 12.0
+						base_def = 10.0
+					"ARCHER":
+						base_atk = 16.0
+						base_def = 6.0
+					"HEAVY_INFANTRY":
+						base_atk = 16.0
+						base_def = 20.0
+
+				var formation_atk_mod: float = 1.0
+				var formation_def_mod: float = 1.0
+				match c.formation:
+					"FRONTLINE":
+						frontline_present = true
+						formation_def_mod = 1.20
+						formation_atk_mod = 1.10
+					"BACKLINE":
+						formation_atk_mod = 1.20
+						formation_def_mod = 0.85
+					"SUPPORT":
+						formation_def_mod = 1.10
+
+				# Perintah Komandan pada unit
+				var intent: String = ""
+				if commander_intents.has(c.composition_id):
+					intent = str(commander_intents[c.composition_id].get("intent", ""))
+				match intent:
+					CommanderCommandScript.TYPE_HOLD_POSITION, "HOLD":
+						formation_def_mod += 0.15
+					CommanderCommandScript.TYPE_PROTECT:
+						formation_def_mod += 0.20
+					CommanderCommandScript.TYPE_FOCUS_TARGET, "FOCUS":
+						formation_atk_mod += 0.25
+
+				total_atk += float(c.count) * base_atk * formation_atk_mod
+				total_def += float(c.count) * base_def * formation_def_mod
+
+	# 2. Pahlawan Party 1 (jika berada di zona yang sama)
+	var party_hero_atk: float = 0.0
+	var party_hero_def: float = 0.0
+	var party_ids: Array = []
+	for h in party_heroes:
+		if h is HeroModel and (h as HeroModel).is_alive:
+			party_ids.append((h as HeroModel).hero_id)
+
+	for h in party_heroes:
+		if h is HeroModel and (h as HeroModel).is_alive:
+			var hero: HeroModel = h as HeroModel
+			party_hero_atk += float(hero.get_effective_atk(party_ids))
+			party_hero_def += float(hero.get_effective_def())
+
+	# 3. Aura Pahlawan Party 1 (Phase 6C)
+	var auras: Dictionary = calculate_party_auras(party_heroes, z_upper)
+	var atk_mult: float = float(auras.get("atk_multiplier", 1.0))
+	var def_mult: float = float(auras.get("def_multiplier", 1.0))
+
+	# Jika hero Party 1 sedang berada di zona ini, tambahkan stat mereka
+	total_atk = (total_atk + party_hero_atk) * atk_mult
+	total_def = (total_def + party_hero_def) * def_mult
+
+	return {
+		"zone": z_upper,
+		"total_atk": total_atk,
+		"total_def": total_def,
+		"total_soldiers": total_soldiers,
+		"frontline_present": frontline_present
+	}
+
+
+## Merutekan kerusakan musuh secara bertingkat dan deterministik ke struktur benteng (Phase 6E).
+## Zona musuh menentukan target:
+## - GATE -> Gate HP (jika hancur -> tembus ke Fortress HP)
+## - WALL -> Wall HP (jika hancur -> tembus ke Fortress HP)
+## - FORTRESS -> Fortress HP langsung
+## - Zona luar (FIELD, APPROACH, FLANK) -> TIDAK menghasilkan damage langsung ke struktur benteng.
+func route_damage_to_fortress(fortress: FortressModel, enemy_zone: String, raw_damage: int) -> Dictionary:
+	if fortress == null or raw_damage <= 0:
+		return {"target": "NONE", "damage": 0, "breached": false, "destroyed": false}
+
+	var z: String = enemy_zone.to_upper().strip_edges()
+	match z:
+		BattlefieldZoneScript.ZONE_GATE:
+			if fortress.gate_hp > 0:
+				var dmg: int = fortress.damage_gate(raw_damage)
+				var breached: bool = fortress.is_gate_breached()
+				return {
+					"target": "GATE",
+					"damage": dmg,
+					"breached": breached,
+					"destroyed": fortress.is_destroyed()
+				}
+			else:
+				# Gerbang sudah jebol: damage tembus ke HP benteng utama!
+				var dmg: int = fortress.take_damage(raw_damage)
+				return {
+					"target": "FORTRESS",
+					"damage": dmg,
+					"breached": true,
+					"destroyed": fortress.is_destroyed()
+				}
+
+		BattlefieldZoneScript.ZONE_WALL:
+			if fortress.wall_hp > 0:
+				var dmg: int = fortress.damage_wall(raw_damage)
+				var breached: bool = fortress.is_wall_breached()
+				return {
+					"target": "WALL",
+					"damage": dmg,
+					"breached": breached,
+					"destroyed": fortress.is_destroyed()
+				}
+			else:
+				# Tembok sudah runtuh: damage tembus ke HP benteng utama!
+				var dmg: int = fortress.take_damage(raw_damage)
+				return {
+					"target": "FORTRESS",
+					"damage": dmg,
+					"breached": true,
+					"destroyed": fortress.is_destroyed()
+				}
+
+		BattlefieldZoneScript.ZONE_FORTRESS:
+			var dmg: int = fortress.take_damage(raw_damage)
+			return {
+				"target": "FORTRESS",
+				"damage": dmg,
+				"breached": true,
+				"destroyed": fortress.is_destroyed()
+			}
+
+		_:
+			# Musuh di OUTER_FIELD, APPROACH, atau FLANK belum menyentuh struktur pertahanan
+			return {
+				"target": "NONE",
+				"damage": 0,
+				"breached": false,
+				"destroyed": fortress.is_destroyed()
+			}
+
+
+## Resolusi korban serdadu agregat berdasarkan akumulasi tekanan (Phase 6E).
+func resolve_soldier_casualties(
+	deployment: DeploymentComposition,
+	accumulated_pressure: int,
+	threshold: int = CASUALTY_PRESSURE_THRESHOLD
+) -> Dictionary:
+	if deployment == null or deployment.count <= 0 or accumulated_pressure < threshold:
+		return {
+			"casualties": 0,
+			"remaining_pressure": accumulated_pressure,
+			"role": deployment.resolved_role if deployment != null else ""
+		}
+
+	var effective_threshold: int = threshold
+	if deployment.formation == "BACKLINE":
+		effective_threshold = int(float(threshold) * 1.40) # Lebih aman
+	elif deployment.formation == "SUPPORT":
+		effective_threshold = int(float(threshold) * 1.25)
+
+	var possible_deaths: int = int(floor(float(accumulated_pressure) / float(effective_threshold)))
+	var actual_deaths: int = clampi(possible_deaths, 0, deployment.count)
+	var pressure_consumed: int = actual_deaths * effective_threshold
+
+	return {
+		"casualties": actual_deaths,
+		"remaining_pressure": maxi(0, accumulated_pressure - pressure_consumed),
+		"role": deployment.resolved_role
+	}
+
+
+## Evaluasi bahaya dan kelangsungan hidup pahlawan Party 1 pada tick pertempuran (Phase 6E).
+func resolve_hero_danger(
+	hero: HeroModel,
+	incoming_pressure: int,
+	threat_budget: int = 100,
+	fortress_destroyed: bool = false,
+	tick: int = 0,
+	seed_val: int = 42
+) -> bool:
+	if hero == null or not hero.is_alive or hero.lifecycle_state == HeroLifecycleState.PERMADEATH:
+		return false
+
+	if incoming_pressure <= 0 and not fortress_destroyed:
+		return false
+
+	var base_danger: float = 0.0
+	if fortress_destroyed:
+		base_danger = 0.40 + 0.30 * clampf(float(incoming_pressure) / float(maxi(1, threat_budget)), 0.0, 1.0)
+	else:
+		if incoming_pressure > hero.get_effective_def() * 2:
+			base_danger = 0.05 + 0.25 * clampf(float(incoming_pressure) / float(maxi(1, threat_budget)), 0.0, 1.0)
+
+	if base_danger <= 0.0:
+		return false
+
+	var fatigue_factor: float = 1.0 + (float(hero.fatigue) / 100.0) * 0.50
+	var def_factor: float = 80.0 / (80.0 + float(hero.get_effective_def()))
+	var death_prob: float = clampf(base_danger * fatigue_factor * def_factor, 0.0, 0.75)
+
+	var roll: float = _seeded_float(seed_val, hero.hero_id, tick * 23 + 7)
+	if roll < death_prob:
+		hero.mark_dead()
+		return true
+	return false
+
+
+## Resolusi aus dan kehancuran perlengkapan serdadu akibat korban jiwa deterministik (Phase 6E).
+func resolve_soldier_equipment_loss(role: String, casualty_count: int, seed_val: int, step_num: int = 0) -> Dictionary:
+	var destroyed_count: int = 0
+	var damaged_count: int = 0
+	for i in range(casualty_count):
+		var roll: float = _seeded_float(seed_val, role, (step_num + i) * 17)
+		if roll < 0.35:
+			destroyed_count += 1
+		else:
+			damaged_count += 1
+	return {
+		"destroyed": destroyed_count,
+		"damaged": damaged_count
+	}
+
+
 
 func simulate_battle(population: PopulationModel, heroes: Array, warehouse_equipment: Array, fortress: FortressModel, wave: Dictionary, seed_val: int = 42) -> Dictionary:
 	assert(population != null, "population tidak boleh null")
@@ -139,8 +644,8 @@ func simulate_battle(population: PopulationModel, heroes: Array, warehouse_equip
 	var flyers_killed: int = mini(int(enemies.get("FLYER", 0)), int(floor(flyer_damage_capacity / 12.0 * 1.50)))
 	var minions_killed_ranged: int = mini(int(enemies.get("MINION", 0)), int(floor(minion_damage_capacity / 2.0 * 1.30)))
 	
-	enemies["FLYER"] = int(enemies["FLYER"]) - flyers_killed
-	enemies["MINION"] = int(enemies["MINION"]) - minions_killed_ranged
+	enemies["FLYER"] = int(enemies.get("FLYER", 0)) - flyers_killed
+	enemies["MINION"] = int(enemies.get("MINION", 0)) - minions_killed_ranged
 	
 	# === FASE 2: FRONTLINE CLASH ===
 	# Shield Infantry menahan benturan, Spearman menyerang Brute (+40% bonus)
@@ -154,7 +659,7 @@ func simulate_battle(population: PopulationModel, heroes: Array, warehouse_equip
 	var spear_power: float = float(spear_calc["power"])
 	
 	var brutes_killed: int = mini(int(enemies.get("BRUTE", 0)), int(floor(spear_power * 1.40 / 16.0)))
-	enemies["BRUTE"] = int(enemies["BRUTE"]) - brutes_killed
+	enemies["BRUTE"] = int(enemies.get("BRUTE", 0)) - brutes_killed
 	
 	# === FASE 3: MELEE & HERO ENGAGEMENT ===
 	# Swordsman, Heavy Infantry, dan Hero melawan Raiders & sisa musuh
@@ -187,8 +692,8 @@ func simulate_battle(population: PopulationModel, heroes: Array, warehouse_equip
 	var raiders_killed: int = mini(int(enemies.get("RAIDER", 0)), int(floor(melee_total_power * 0.60 / 6.0)))
 	var minions_killed_melee: int = mini(int(enemies.get("MINION", 0)), int(floor(melee_total_power * 0.40 / 2.0)))
 	
-	enemies["RAIDER"] = int(enemies["RAIDER"]) - raiders_killed
-	enemies["MINION"] = int(enemies["MINION"]) - minions_killed_melee
+	enemies["RAIDER"] = int(enemies.get("RAIDER", 0)) - raiders_killed
+	enemies["MINION"] = int(enemies.get("MINION", 0)) - minions_killed_melee
 	
 	# === FASE 4: WALL BREACH & SIEGE ASSAULT ===
 	# Sisa musuh yang belum tereliminasi menyerang benteng secara langsung
@@ -273,6 +778,7 @@ func simulate_battle(population: PopulationModel, heroes: Array, warehouse_equip
 		"fortress_damage_taken": actual_damage_taken,
 		"total_dead_soldiers": total_dead_soldiers,
 		"casualties_by_role": casualties,
+		"casualties": casualties,
 		"breach_threat": breach_threat,
 		"loot_gold": loot_gold,
 		"exp_per_hero": exp_gained_per_hero,

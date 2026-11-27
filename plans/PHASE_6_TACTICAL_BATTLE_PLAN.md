@@ -697,9 +697,10 @@ Untuk mencegah *scope creep* dan mematuhi prinsip kehati-hatian, Phase 6 dipecah
 - **Sub-Phase 6D: Commander Commands Execution** — [x] **COMPLETED / VERIFIED**
   - Pengaktifan pipeline operasional 7 perintah taktis komandan (ADVANCE, MOVE, HOLD_POSITION, RETREAT, PROTECT, FOCUS_TARGET, FOLLOW).
   - Test suite `tests/test_phase6d_commander_commands.gd` (50/50 PASS, 1.000-command stress simulation PASS).
-- **Sub-Phase 6E: Fortress Damage Routing & Casualty Resolution** — [ ] **NEXT / LOCKED**
+- **Sub-Phase 6E: Fortress Damage Routing & Casualty Resolution** — [x] **COMPLETED / VERIFIED**
   - Integrasi kerusakan terarah ke Wall/Gate/Fortress dan resolusi korban serdadu/perlengkapan Phase 3D.
-- **Sub-Phase 6F: Tactical Battle UI & Verification Gate**
+  - Test suite `tests/test_phase6e_fortress_damage_casualty.gd` (75/75 PASS, 1.000-tick stress simulation PASS).
+- **Sub-Phase 6F: Tactical Battle UI & Verification Gate** — [ ] **NEXT / LOCKED**
   - Integrasi tampilan medan perang pada `PrototypeDebugView`, full test suite (85+ tests), 50-wave stress test, full regression (18 suites), dan Scene Smoke Playtest.
 
 ---
@@ -713,9 +714,9 @@ Phase 6 dinyatakan selesai dan siap ditutup hanya jika memenuhi seluruh kriteria
 4. [x] Serdadu agregat bertarung berdasarkan kuantitas, gear, dan moral tanpa instansiasi node per prajurit (Phase 6C VERIFIED).
 5. [x] 6 perintah komandan dapat dikirimkan dan memengaruhi pergerakan/efektivitas regu secara nyata (Phase 6D VERIFIED).
 6. [x] Pertempuran dapat dijeda (*pause*) dan diatur kecepatannya (1x, 2x, 4x) (Phase 6B VERIFIED).
-7. [ ] Kerusakan struktur benteng terdistribusi bertingkat (Gate/Wall lalu Fortress).
-8. [ ] Aturan korban prajurit ($35\%$ hancur, $65\%$ rusak) dan kembalinya gear pahlawan permadeath bekerja presisi.
-9. [ ] Invarian konservasi gudang bersama dan populasi zero-sum terbukti $100\%$ valid di setiap siklus.
+7. [x] Kerusakan struktur benteng terdistribusi bertingkat (Gate/Wall lalu Fortress) (Phase 6E VERIFIED).
+8. [x] Aturan korban prajurit ($35\%$ hancur, $65\%$ rusak) dan kembalinya gear pahlawan permadeath bekerja presisi (Phase 6E VERIFIED).
+9. [x] Invarian konservasi gudang bersama dan populasi zero-sum terbukti $100\%$ valid di setiap siklus (Phase 6E VERIFIED).
 10. [ ] Suite pengujian Phase 6 (minimal 85 tests) lulus $100\%$.
 11. [ ] Full Automated Regression Suite (18 suites, estimasi ~762 tests) lulus $100\%$ dengan 0 regresi.
 12. [ ] Prototype Scene Smoke Playtest lulus tanpa error pada Godot SceneTree.
