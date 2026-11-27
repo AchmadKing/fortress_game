@@ -123,11 +123,11 @@ DILARANG KERAS membiarkan `HeroModel`, `GameCoordinator`, `CombatEngine`, dan `U
 - **Kategori Perlengkapan Masa Depan (*Future Data Extensions Only*):**
   - Konsep perlengkapan seperti `STAFF`, `MACE`, `LIGHT_ARMOR`, `CLOTH` adalah rencana data masa depan.
   - **Sub-Phase 4A DILARANG** membuat sistem inventaris baru atau menginstansiasi item jenis baru tersebut.
-  - Pada Phase 4 MVP, peran pahlawan menggunakan perlengkapan Phase 3 existing yang kompatibel:
-    - `KNIGHT`: `SWORD` / `SPEAR` (Primary), `SHIELD` (Secondary), `HEAVY_ARMOR` (Armor).
-    - `ARCHER`: `BOW` (Primary), `NONE` (Secondary), `NONE` / `HEAVY_ARMOR` (Armor).
-    - `MAGE`: `SPEAR` / `BOW` / `SWORD` (Primary) sebagai senjata dasar hingga perlengkapan magis ditambahkan resmi.
-    - `PRIEST`: `SWORD` / `SPEAR` (Primary), `SHIELD` (Secondary), `NONE` / `HEAVY_ARMOR` (Armor).
+  - Pada Phase 4, peran pahlawan menggunakan aturan kompatibilitas perlengkapan kanonikal:
+    - `KNIGHT`: `SWORD` (Primary), `SHIELD` (Secondary), `HEAVY_ARMOR` (Armor).
+    - `ARCHER`: `BOW` (Primary), `NONE` (Secondary), `LIGHT_ARMOR` (Armor, future); `HEAVY_ARMOR` dilarang.
+    - `MAGE`: Perlengkapan masa depan (`STAFF`, `WAND` Primary, `ROBE` Armor; seluruh perlengkapan Phase 3 tidak kompatibel).
+    - `PRIEST`: Perlengkapan masa depan (`STAFF` Primary, `HOLY_EQUIPMENT` Secondary, `ROBE` Armor; seluruh perlengkapan Phase 3 tidak kompatibel).
 - **Aturan Gudang & Durabilitas:**
   - Perlengkapan pahlawan tetap mengambil fisik dari gudang bersama benteng (`_warehouse`).
   - Perlengkapan pahlawan **TIDAK TERPENGARUH** oleh formula keausan serdadu maupun resolusi korban serdadu (35% hancur / 65% rusak). Perlengkapan pahlawan tetap utuh selama pahlawan hidup.
@@ -463,15 +463,15 @@ Setiap sub-fase Phase 4 wajib menyertakan automated headless test suite:
 8. **Stop & Report:** Berhenti dan tunggu tinjauan/persetujuan developer sebelum membuka sub-fase berikutnya.
 
 ### 3. Batas Eksplisit Sub-Phase 4A (Hero Domain & Lifecycle Foundation) — IMPLEMENTED
-- **STATUS: COMPLETED / VERIFIED (Commit pending, 33/33 Tests PASS, Full Regression 167/167 Tests PASS)**
+- **STATUS: COMPLETED / VERIFIED (Correction Gate passed, 38/38 Tests PASS, Full Regression 172/172 Tests PASS)**
 - **IN SCOPE FOR 4A (IMPLEMENTED):**
   - Definisi peran kanonikal (`HeroRole`: `KNIGHT`, `MAGE`, `ARCHER`, `PRIEST`).
   - Representasi state siklus hidup pahlawan (`HeroLifecycleState`: `RECRUITABLE`, `ROSTER_ACTIVE`, `IN_PARTY`, `IN_TRAINING`, `BATTLE_ACTIVE`, `PERMADEATH`).
   - Validasi transisi legal dan penegakan `PERMADEATH` sebagai state terminal mutlak.
-  - Validasi domain hero (memastikan ID sah, nama tidak kosong, peran valid, bintang $\le$ potensi).
-  - Validasi kompatibilitas peran terhadap perlengkapan Phase 3 existing (`is_equipment_compatible`).
+  - Validasi domain hero (memastikan ID sah, nama tidak kosong, peran valid, bintang $\le$ potensi $\le 5$ tanpa silent normalization).
+  - Validasi kompatibilitas peran kanonikal terhadap perlengkapan Phase 3 existing dan kontrak data future equipment (`is_equipment_compatible`).
   - Ekstensi aman pada `HeroModel` tanpa mematahkan API atau field existing.
-  - Test suite mandiri `tests/test_phase4a_hero_domain_lifecycle.gd` (33/33 PASS).
+  - Test suite mandiri `tests/test_phase4a_hero_domain_lifecycle.gd` (38/38 PASS).
   - Sinkronisasi dokumentasi teknis.
 - **OUT OF SCOPE FOR 4A (DILARANG PADA 4A):**
   - Rekrutmen dan bursa Mercenary Guild (Milik 4C).

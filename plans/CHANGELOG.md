@@ -4,29 +4,36 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
-## [0.5.1] - Phase 4A: Hero Domain & Lifecycle Foundation (Implemented)
+## [0.5.1] - Phase 4A: Hero Domain & Lifecycle Foundation (Implemented & Corrected)
 
 ### Added
 - **Canonical Hero Roles Domain Representation** (`scripts/domain/model/hero_role.gd`):
   - Model domain ringan (`RefCounted`) mendefinisikan 4 peran kanonikal: `KNIGHT`, `MAGE`, `ARCHER`, `PRIEST`.
   - Otoritas tunggal validasi peran melalui `HeroRole.is_valid_role()`.
-  - Matriks kompatibilitas perlengkapan Phase 3 per peran (`HeroRole.is_equipment_compatible()`).
+  - Matriks kompatibilitas perlengkapan kanonikal:
+    - `KNIGHT`: `SWORD` (Primary), `SHIELD` (Secondary), `HEAVY_ARMOR` (Armor).
+    - `ARCHER`: `BOW` (Primary), `LIGHT_ARMOR` (Armor, future); `HEAVY_ARMOR` dilarang.
+    - `MAGE`: Perlengkapan masa depan (`STAFF`, `WAND` Primary, `ROBE` Armor); seluruh perlengkapan Phase 3 tidak kompatibel.
+    - `PRIEST`: Perlengkapan masa depan (`STAFF` Primary, `HOLY_EQUIPMENT` Secondary, `ROBE` Armor; seluruh perlengkapan Phase 3 tidak kompatibel).
 - **Hero Lifecycle State Domain Representation** (`scripts/domain/model/hero_lifecycle_state.gd`):
   - Model domain ringan (`RefCounted`) mendefinisikan 6 state siklus hidup: `RECRUITABLE`, `ROSTER_ACTIVE`, `IN_PARTY`, `IN_TRAINING`, `BATTLE_ACTIVE`, `PERMADEATH`.
   - Aturan transisi legal (`can_transition()`) dan penegakan `PERMADEATH` sebagai state terminal mutlak (pahlawan gugur tidak dapat aktif kembali).
-- **HeroModel Extension** (`scripts/domain/model/hero_model.gd`):
+- **HeroModel Extension & Correction** (`scripts/domain/model/hero_model.gd`):
   - Menambahkan atribut kanonikal `role` (default: `KNIGHT`) dan `lifecycle_state` (default: `ROSTER_ACTIVE`).
+  - Menghilangkan *silent normalization* / *silent clamping* pada constructor `_init()`: nilai bintang, peran, dan state invalid tidak diubah diam-diam menjadi valid melainkan dipertahankan mentah dan diverifikasi secara otoritatif via `validate_invariants()`.
   - Menambahkan metode validasi domain: `validate_identity()`, `validate_stars()`, `transition_lifecycle_state()`, `set_role()`, `is_role_valid()`, `is_lifecycle_state_valid()`, `is_equipment_compatible()`, dan `validate_invariants()`.
   - Mempertahankan 100% kompatibilitas backward terhadap seluruh API, slot perlengkapan, EXP, fatigue, chemistry, dan penanganan kematian Phase 1–3.
 - **Application & Telemetry Integration** (`scripts/application/coordinators/game_coordinator.gd`):
   - Inisialisasi peran kanonikal starter: Alder (`KNIGHT`, `ROSTER_ACTIVE`) dan Lyra (`ARCHER`, `ROSTER_ACTIVE`).
   - Serialisasi metadata `role` dan `lifecycle_state` ke dalam snapshot `heroes_data` pada `_update_snapshot()`.
 - **Phase 4A Automated Test Suite** (`tests/test_phase4a_hero_domain_lifecycle.gd`):
-  - 33 pengujian otomatis komprehensif (100% PASS):
+  - 38 pengujian otomatis komprehensif (100% PASS):
     - Role tests (6 test): KNIGHT, MAGE, ARCHER, PRIEST valid, penolakan peran tidak dikenal/kosong.
     - Lifecycle tests (6 test): validitas seluruh 6 state siklus hidup.
     - Transition tests (10 test): seluruh transisi legal dari perekrutan, penugasan regu, latihan, pertempuran, hingga kematian permanen dan penolakan transisi ilegal.
     - Invariant tests (7 test): penolakan ID/nama kosong, validasi bintang $\le$ potensi $\le 5$, terminalitas permadeath, persistensi equipment.
+    - Canonical role equipment compatibility tests (4 test): pengujian kepatuhan izin/larangan perlengkapan Knight, Mage, Archer, dan Priest.
+    - Constructor no-silent-normalization test (1 test): verifikasi bahwa input invalid tidak di-clamp otomatis.
     - Supplementary tests (4 test): kompatibilitas perlengkapan, safe defaults backward compatibility, case-insensitivity, deep clone.
 
 ### Verified
@@ -39,11 +46,11 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
   - Phase 3D Prototype UX & Polish: 10/10 PASSED
   - Phase 3D Follow-up Corrections: 23/23 PASSED
   - Phase 3E Final Verification: 15/15 PASSED
-  - Phase 4A Hero Domain & Lifecycle: 33/33 PASSED
+  - Phase 4A Hero Domain & Lifecycle: 38/38 PASSED
   - Prototype Scene Smoke Playtest: ALL PASS, 0 ERRORS
-  - **Total: 167 unit/integration tests + 1 Scene Smoke Playtest suite PASSED 100%**.
+  - **Total: 172 unit/integration tests + 1 Scene Smoke Playtest suite PASSED 100%**.
 - **Phase 4 Status**:
-  - Sub-Phase 4A: IMPLEMENTED / COMPLETED.
+  - Sub-Phase 4A: IMPLEMENTED / VERIFIED (Correction Gate passed).
   - Sub-Phase 4B: PLANNED (terkunci hingga tinjauan developer).
 
 ---

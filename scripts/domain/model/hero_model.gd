@@ -55,10 +55,10 @@ func _init(
 ) -> void:
 	hero_id = p_id
 	hero_name = p_name
-	current_star = clampi(p_cur_star, 1, 5)
-	potential_star = clampi(maxi(current_star, p_pot_star), 1, 5)
-	role = p_role.to_upper().strip_edges() if HeroRoleScript.is_valid_role(p_role) else ROLE_KNIGHT
-	lifecycle_state = p_state.to_upper().strip_edges() if HeroLifecycleStateScript.is_valid_state(p_state) else STATE_ROSTER_ACTIVE
+	current_star = p_cur_star
+	potential_star = p_pot_star
+	role = p_role.to_upper().strip_edges()
+	lifecycle_state = p_state.to_upper().strip_edges()
 	level = 1
 	current_exp = 0
 	fatigue = 0

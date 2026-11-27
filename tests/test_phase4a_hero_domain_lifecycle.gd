@@ -2,7 +2,7 @@ extends SceneTree
 
 ## TestPhase4AHeroDomainLifecycle
 ## Test suite otomatis untuk memvalidasi implementasi Phase 4A:
-## Hero Domain & Lifecycle Foundation.
+## Hero Domain & Lifecycle Foundation (termasuk Correction Gate).
 ## Memvalidasi seluruh kriteria peran kanonikal, state siklus hidup,
 ## aturan transisi legal, invarian domain hero, dan kompatibilitas perlengkapan.
 
@@ -58,11 +58,16 @@ func _init() -> void:
 		{"name": "test_dead_hero_cannot_become_active_again", "fn": Callable(self, "_test_dead_hero_cannot_become_active_again")},
 		{"name": "test_existing_hero_equipment_behavior_remains_valid", "fn": Callable(self, "_test_existing_hero_equipment_behavior_remains_valid")},
 
-		# Supplementary Domain Tests (30-33)
+		# Supplementary & Correction Gate Tests (30-38)
 		{"name": "test_role_equipment_compatibility_rules", "fn": Callable(self, "_test_role_equipment_compatibility_rules")},
 		{"name": "test_hero_safe_defaults_for_backward_compatibility", "fn": Callable(self, "_test_hero_safe_defaults_for_backward_compatibility")},
 		{"name": "test_case_insensitivity_and_whitespace_handling", "fn": Callable(self, "_test_case_insensitivity_and_whitespace_handling")},
-		{"name": "test_hero_clone_preserves_role_and_lifecycle", "fn": Callable(self, "_test_hero_clone_preserves_role_and_lifecycle")}
+		{"name": "test_hero_clone_preserves_role_and_lifecycle", "fn": Callable(self, "_test_hero_clone_preserves_role_and_lifecycle")},
+		{"name": "test_knight_canonical_equipment_compatibility", "fn": Callable(self, "_test_knight_canonical_equipment_compatibility")},
+		{"name": "test_mage_canonical_equipment_compatibility", "fn": Callable(self, "_test_mage_canonical_equipment_compatibility")},
+		{"name": "test_archer_canonical_equipment_compatibility", "fn": Callable(self, "_test_archer_canonical_equipment_compatibility")},
+		{"name": "test_priest_canonical_equipment_compatibility", "fn": Callable(self, "_test_priest_canonical_equipment_compatibility")},
+		{"name": "test_constructor_no_silent_normalization", "fn": Callable(self, "_test_constructor_no_silent_normalization")}
 	]
 
 	for t in test_list:
@@ -312,6 +317,11 @@ func _test_invalid_star_greater_than_potential_rejected() -> bool:
 	if HeroModel.validate_stars(4, 2): return false
 	if HeroModel.validate_stars(3, 1): return false
 	if HeroModel.validate_stars(5, 4): return false
+	# Direct constructor input must not silently clamp potential to current
+	var hero_init := HeroModel.new("h_bad_init", "Hero", 4, 2)
+	if hero_init.current_star != 4 or hero_init.potential_star != 2: return false
+	if hero_init.validate_invariants(): return false
+	# Mutation to invalid stars must also be rejected
 	var hero := HeroModel.new("h_bad_stars", "Hero", 1, 4)
 	hero.current_star = 4
 	hero.potential_star = 2
@@ -323,10 +333,15 @@ func _test_invalid_star_greater_than_five_rejected() -> bool:
 	if HeroModel.validate_stars(1, 6): return false
 	if HeroModel.validate_stars(0, 3): return false
 	if HeroModel.validate_stars(-1, 5): return false
-	var hero := HeroModel.new("h_over_five", "Hero", 1, 4)
-	hero.current_star = 6
-	hero.potential_star = 6
-	return not hero.validate_invariants()
+	# Direct constructor with star > 5 must not silently clamp to 5
+	var hero_init := HeroModel.new("h_over_five", "Hero", 6, 6)
+	if hero_init.current_star != 6 or hero_init.potential_star != 6: return false
+	if hero_init.validate_invariants(): return false
+	# Direct constructor with star < 1 must not silently clamp to 1
+	var hero_under_one := HeroModel.new("h_under_one", "Hero", 0, 3)
+	if hero_under_one.current_star != 0: return false
+	if hero_under_one.validate_invariants(): return false
+	return true
 
 
 func _test_dead_hero_cannot_become_active_again() -> bool:
@@ -369,35 +384,47 @@ func _test_existing_hero_equipment_behavior_remains_valid() -> bool:
 
 
 # ==============================================================================
-# SUPPLEMENTARY DOMAIN TESTS (30-33)
+# SUPPLEMENTARY & CORRECTION GATE TESTS (30-38)
 # ==============================================================================
 
 func _test_role_equipment_compatibility_rules() -> bool:
-	# KNIGHT
+	# KNIGHT: SWORD (pri), SHIELD (sec), HEAVY_ARMOR (arm)
 	var knight := HeroModel.new("h_k", "Knight", 1, 3, "KNIGHT")
 	if not knight.is_equipment_compatible("PRIMARY", "SWORD"): return false
-	if not knight.is_equipment_compatible("PRIMARY", "SPEAR"): return false
+	if knight.is_equipment_compatible("PRIMARY", "SPEAR"): return false
 	if knight.is_equipment_compatible("PRIMARY", "BOW"): return false
 	if not knight.is_equipment_compatible("SECONDARY", "SHIELD"): return false
 	if not knight.is_equipment_compatible("ARMOR", "HEAVY_ARMOR"): return false
 
-	# ARCHER
+	# ARCHER: BOW (pri), LIGHT_ARMOR (arm)
 	var archer := HeroModel.new("h_a", "Archer", 1, 3, "ARCHER")
 	if not archer.is_equipment_compatible("PRIMARY", "BOW"): return false
 	if archer.is_equipment_compatible("PRIMARY", "SWORD"): return false
 	if archer.is_equipment_compatible("SECONDARY", "SHIELD"): return false
-	if not archer.is_equipment_compatible("ARMOR", "HEAVY_ARMOR"): return false
+	if archer.is_equipment_compatible("ARMOR", "HEAVY_ARMOR"): return false
+	if not archer.is_equipment_compatible("ARMOR", "LIGHT_ARMOR"): return false
 
-	# MAGE
+	# MAGE: STAFF, WAND (pri), ROBE (arm) - All Phase 3 gear incompatible
 	var mage := HeroModel.new("h_m", "Mage", 1, 3, "MAGE")
-	if not mage.is_equipment_compatible("PRIMARY", "SPEAR"): return false
+	if mage.is_equipment_compatible("PRIMARY", "SWORD"): return false
+	if mage.is_equipment_compatible("PRIMARY", "SPEAR"): return false
+	if mage.is_equipment_compatible("PRIMARY", "BOW"): return false
 	if mage.is_equipment_compatible("SECONDARY", "SHIELD"): return false
 	if mage.is_equipment_compatible("ARMOR", "HEAVY_ARMOR"): return false
+	if not mage.is_equipment_compatible("PRIMARY", "STAFF"): return false
+	if not mage.is_equipment_compatible("PRIMARY", "WAND"): return false
+	if not mage.is_equipment_compatible("ARMOR", "ROBE"): return false
 
-	# PRIEST
+	# PRIEST: STAFF (pri), HOLY_EQUIPMENT (sec), ROBE (arm) - All Phase 3 gear incompatible
 	var priest := HeroModel.new("h_p", "Priest", 1, 3, "PRIEST")
-	if not priest.is_equipment_compatible("PRIMARY", "SWORD"): return false
-	if not priest.is_equipment_compatible("SECONDARY", "SHIELD"): return false
+	if priest.is_equipment_compatible("PRIMARY", "SWORD"): return false
+	if priest.is_equipment_compatible("PRIMARY", "SPEAR"): return false
+	if priest.is_equipment_compatible("PRIMARY", "BOW"): return false
+	if priest.is_equipment_compatible("SECONDARY", "SHIELD"): return false
+	if priest.is_equipment_compatible("ARMOR", "HEAVY_ARMOR"): return false
+	if not priest.is_equipment_compatible("PRIMARY", "STAFF"): return false
+	if not priest.is_equipment_compatible("SECONDARY", "HOLY_EQUIPMENT"): return false
+	if not priest.is_equipment_compatible("ARMOR", "ROBE"): return false
 
 	return true
 
@@ -431,4 +458,101 @@ func _test_hero_clone_preserves_role_and_lifecycle() -> bool:
 	if cloned.lifecycle_state != "IN_PARTY": return false
 	if cloned.level != 3: return false
 	if cloned.fatigue != 25: return false
+	return true
+
+
+# ==============================================================================
+# SPECIFIC CANONICAL ROLE COMPATIBILITY TESTS (SECTION 5)
+# ==============================================================================
+
+func _test_knight_canonical_equipment_compatibility() -> bool:
+	var knight := HeroModel.new("h_k", "Knight", 1, 3, "KNIGHT")
+	# SWORD compatible
+	if not knight.is_equipment_compatible("PRIMARY", "SWORD"): return false
+	# SHIELD compatible
+	if not knight.is_equipment_compatible("SECONDARY", "SHIELD"): return false
+	# HEAVY_ARMOR compatible
+	if not knight.is_equipment_compatible("ARMOR", "HEAVY_ARMOR"): return false
+	# BOW incompatible
+	if knight.is_equipment_compatible("PRIMARY", "BOW"): return false
+	# SPEAR incompatible
+	if knight.is_equipment_compatible("PRIMARY", "SPEAR"): return false
+	return true
+
+
+func _test_mage_canonical_equipment_compatibility() -> bool:
+	var mage := HeroModel.new("h_m", "Mage", 1, 3, "MAGE")
+	# SWORD incompatible
+	if mage.is_equipment_compatible("PRIMARY", "SWORD"): return false
+	# SPEAR incompatible
+	if mage.is_equipment_compatible("PRIMARY", "SPEAR"): return false
+	# BOW incompatible
+	if mage.is_equipment_compatible("PRIMARY", "BOW"): return false
+	# SHIELD incompatible
+	if mage.is_equipment_compatible("SECONDARY", "SHIELD"): return false
+	# HEAVY_ARMOR incompatible
+	if mage.is_equipment_compatible("ARMOR", "HEAVY_ARMOR"): return false
+	return true
+
+
+func _test_archer_canonical_equipment_compatibility() -> bool:
+	var archer := HeroModel.new("h_a", "Archer", 1, 3, "ARCHER")
+	# BOW compatible
+	if not archer.is_equipment_compatible("PRIMARY", "BOW"): return false
+	# SWORD incompatible
+	if archer.is_equipment_compatible("PRIMARY", "SWORD"): return false
+	# SHIELD incompatible
+	if archer.is_equipment_compatible("SECONDARY", "SHIELD"): return false
+	# HEAVY_ARMOR incompatible
+	if archer.is_equipment_compatible("ARMOR", "HEAVY_ARMOR"): return false
+	return true
+
+
+func _test_priest_canonical_equipment_compatibility() -> bool:
+	var priest := HeroModel.new("h_p", "Priest", 1, 3, "PRIEST")
+	# SWORD incompatible
+	if priest.is_equipment_compatible("PRIMARY", "SWORD"): return false
+	# SPEAR incompatible
+	if priest.is_equipment_compatible("PRIMARY", "SPEAR"): return false
+	# BOW incompatible
+	if priest.is_equipment_compatible("PRIMARY", "BOW"): return false
+	# SHIELD incompatible
+	if priest.is_equipment_compatible("SECONDARY", "SHIELD"): return false
+	# HEAVY_ARMOR incompatible
+	if priest.is_equipment_compatible("ARMOR", "HEAVY_ARMOR"): return false
+	return true
+
+
+func _test_constructor_no_silent_normalization() -> bool:
+	# 1. Invalid star current > potential: must retain raw values and fail validation
+	var h_stars := HeroModel.new("h_inv_star", "Hero", 4, 2)
+	if h_stars.current_star != 4 or h_stars.potential_star != 2: return false
+	if h_stars.validate_invariants(): return false
+
+	# 2. Invalid star > 5: must retain raw values and fail validation
+	var h_over5 := HeroModel.new("h_inv_over", "Hero", 6, 6)
+	if h_over5.current_star != 6 or h_over5.potential_star != 6: return false
+	if h_over5.validate_invariants(): return false
+
+	# 3. Invalid star < 1: must retain raw values and fail validation
+	var h_under1 := HeroModel.new("h_inv_under", "Hero", 0, 3)
+	if h_under1.current_star != 0: return false
+	if h_under1.validate_invariants(): return false
+
+	# 4. Invalid role: must retain raw string and fail role validation
+	var h_role := HeroModel.new("h_inv_role", "Hero", 1, 3, "WARRIOR")
+	if h_role.role != "WARRIOR": return false
+	if h_role.is_role_valid(): return false
+	if h_role.validate_invariants(): return false
+
+	# 5. Invalid lifecycle state: must retain raw string and fail state validation
+	var h_state := HeroModel.new("h_inv_state", "Hero", 1, 3, "KNIGHT", "INVALID_STATE")
+	if h_state.lifecycle_state != "INVALID_STATE": return false
+	if h_state.is_lifecycle_state_valid(): return false
+	if h_state.validate_invariants(): return false
+
+	# 6. Valid constructor parameters: must pass validation
+	var h_valid := HeroModel.new("h_ok", "Valid Hero", 2, 4, "KNIGHT", "ROSTER_ACTIVE")
+	if not h_valid.validate_invariants(): return false
+
 	return true

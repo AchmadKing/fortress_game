@@ -17,13 +17,14 @@ Roadmap teknis dan spesifikasi arsitektur komprehensif Phase 4 tersedia di [docs
 - **Phase 3 — Gameplay Prototype**: **COMPLETED** (Commits `2452397`, `4f01bfe`, `1d3d51d`, `463f91c`, `ba3c0c5`, `e6c0c97`)
 - **Phase 4 — Hero System**: **IN PROGRESS**
   - Dokumen Roadmap & Spesifikasi Arsitektur: **ESTABLISHED** ([docs/design/PHASE_4_HERO_SYSTEM_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_4_HERO_SYSTEM_PLAN.md))
-  - **Sub-Phase 4A — Hero Domain & Lifecycle Foundation**: **IMPLEMENTED / COMPLETED**
+  - **Sub-Phase 4A — Hero Domain & Lifecycle Foundation**: **IMPLEMENTED / VERIFIED (CORRECTION GATE PASSED)**
     - Peran Kanonikal Domain: `KNIGHT`, `MAGE`, `ARCHER`, `PRIEST` via `HeroRole` (`scripts/domain/model/hero_role.gd`).
+    - Matriks Kompatibilitas Perlengkapan Kanonikal: Knight (`SWORD`, `SHIELD`, `HEAVY_ARMOR`), Archer (`BOW`, `LIGHT_ARMOR`, no `HEAVY_ARMOR`), Mage & Priest (future gear only; seluruh Phase 3 gear non-kompatibel).
     - State Siklus Hidup Pahlawan: `RECRUITABLE`, `ROSTER_ACTIVE`, `IN_PARTY`, `IN_TRAINING`, `BATTLE_ACTIVE`, `PERMADEATH` via `HeroLifecycleState` (`scripts/domain/model/hero_lifecycle_state.gd`).
     - Validasi transisi legal dan penegakan `PERMADEATH` sebagai state terminal mutlak.
-    - Ekstensi non-breaking pada `HeroModel` (`scripts/domain/model/hero_model.gd`): default aman untuk pahlawan existing, pemeliharaan seluruh API Phase 1–3C, validasi invarian identitas/bintang/state.
-    - Test Suite Phase 4A: **33/33 PASSED, 0 FAILED** ([tests/test_phase4a_hero_domain_lifecycle.gd](file:///d:/fortress_game/tests/test_phase4a_hero_domain_lifecycle.gd)).
-    - Full Regression: **167 tests PASSED (134 baseline Phase 1-3 + 33 Phase 4A)** + Scene Smoke Playtest ALL PASS.
+    - Eliminasi silent normalization pada `HeroModel._init()`: input bintang, peran, dan state invalid tidak di-clamp diam-diam melainkan tertangkap oleh `validate_invariants()`.
+    - Test Suite Phase 4A: **38/38 PASSED, 0 FAILED** ([tests/test_phase4a_hero_domain_lifecycle.gd](file:///d:/fortress_game/tests/test_phase4a_hero_domain_lifecycle.gd)).
+    - Full Regression: **172 tests PASSED (134 baseline Phase 1-3 + 38 Phase 4A)** + Scene Smoke Playtest ALL PASS.
   - Sub-Phase 4B — Hero Progression & EXP: **PLANNED** (Locked until review)
   - Sub-Phase 4C — Hero Recruitment & Roster Management: **PLANNED**
   - Sub-Phase 4D — Hero Training / Fatigue / Morale: **PLANNED**

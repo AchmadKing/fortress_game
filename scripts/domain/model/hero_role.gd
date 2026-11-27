@@ -4,7 +4,7 @@ extends RefCounted
 ## HeroRole
 ## Representasi kanonikal peran pahlawan (domain layer).
 ## Mendefinisikan peran sah (KNIGHT, MAGE, ARCHER, PRIEST), validasi peran,
-## dan aturan kompatibilitas perlengkapan Phase 3.
+## dan aturan kompatibilitas perlengkapan Phase 3 & data kontrak future equipment.
 
 const KNIGHT: String = "KNIGHT"
 const MAGE: String = "MAGE"
@@ -40,13 +40,13 @@ static func get_allowed_primary_equipment(role_name: String) -> Array[String]:
 	var r: String = role_name.to_upper().strip_edges()
 	match r:
 		KNIGHT:
-			return ["SWORD", "SPEAR"]
+			return ["SWORD"]
 		ARCHER:
 			return ["BOW"]
 		MAGE:
-			return ["SPEAR", "BOW", "SWORD"]
+			return ["STAFF", "WAND"]
 		PRIEST:
-			return ["SWORD", "SPEAR"]
+			return ["STAFF"]
 		_:
 			return []
 
@@ -62,7 +62,7 @@ static func get_allowed_secondary_equipment(role_name: String) -> Array[String]:
 		MAGE:
 			return ["NONE"]
 		PRIEST:
-			return ["SHIELD", "NONE"]
+			return ["HOLY_EQUIPMENT", "NONE"]
 		_:
 			return ["NONE"]
 
@@ -74,11 +74,11 @@ static func get_allowed_armor_equipment(role_name: String) -> Array[String]:
 		KNIGHT:
 			return ["HEAVY_ARMOR", "NONE"]
 		ARCHER:
-			return ["HEAVY_ARMOR", "NONE"]
+			return ["LIGHT_ARMOR", "NONE"]
 		MAGE:
-			return ["NONE"]
+			return ["ROBE", "NONE"]
 		PRIEST:
-			return ["HEAVY_ARMOR", "NONE"]
+			return ["ROBE", "NONE"]
 		_:
 			return ["NONE"]
 
