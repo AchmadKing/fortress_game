@@ -4,11 +4,12 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
-## [0.5.2] - Phase 4B: Hero Progression & EXP (Implemented & Verified)
+## [0.5.2] - Phase 4B: Hero Progression & EXP (Completed & Verified)
 
 ### Added
 - **Canonical EXP Requirement Formula** (`scripts/domain/model/hero_model.gd`):
   - Formula kebutuhan EXP kanonikal: $\text{ReqEXP}(L) = \lfloor 120.0 \times L^{1.55} \rfloor$.
+  - Nilai eksak kanonikal diverifikasi penuh: $Lv1 \rightarrow Lv2 = 120$, $Lv2 \rightarrow Lv3 = 351$, $Lv3 \rightarrow Lv4 = 658$, $Lv4 \rightarrow Lv5 = 1028$.
   - Akumulasi carry-over EXP dan dukungan kenaikan multi-level seketika saat menerima EXP dalam jumlah besar.
   - Penanganan nilai EXP non-positif (nilai negatif dan nol diabaikan tanpa efek samping).
 - **Star-Based Level Cap System** (`scripts/domain/model/hero_model.gd`):

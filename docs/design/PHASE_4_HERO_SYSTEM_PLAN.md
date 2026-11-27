@@ -254,8 +254,8 @@ stateDiagram-v2
 $$\text{ReqEXP}(L) = \lfloor 120.0 \times L^{1.55} \rfloor$$
 - Lv 1 $\rightarrow$ 2: $120$ EXP
 - Lv 2 $\rightarrow$ 3: $351$ EXP
-- Lv 3 $\rightarrow$ 4: $655$ EXP
-- Lv 4 $\rightarrow$ 5: $1,021$ EXP
+- Lv 3 $\rightarrow$ 4: $658$ EXP
+- Lv 4 $\rightarrow$ 5: $1,028$ EXP
 
 ### 2. Perolehan EXP Tempur
 Dibagikan secara merata kepada seluruh pahlawan yang bertarung dan bertahan hidup:

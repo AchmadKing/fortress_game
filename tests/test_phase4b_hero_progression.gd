@@ -28,8 +28,8 @@ func _init() -> void:
 		# EXP Formula (1-4)
 		{"name": "test_req_exp_lv1_is_120", "fn": Callable(self, "_test_req_exp_lv1_is_120")},
 		{"name": "test_req_exp_lv2_is_351", "fn": Callable(self, "_test_req_exp_lv2_is_351")},
-		{"name": "test_req_exp_lv3_is_655", "fn": Callable(self, "_test_req_exp_lv3_is_655")},
-		{"name": "test_req_exp_lv4_is_1021", "fn": Callable(self, "_test_req_exp_lv4_is_1021")},
+		{"name": "test_req_exp_lv3_is_658", "fn": Callable(self, "_test_req_exp_lv3_is_658")},
+		{"name": "test_req_exp_lv4_is_1028", "fn": Callable(self, "_test_req_exp_lv4_is_1028")},
 
 		# Level Progression (5-14)
 		{"name": "test_120_exp_causes_lv1_to_lv2", "fn": Callable(self, "_test_120_exp_causes_lv1_to_lv2")},
@@ -127,16 +127,14 @@ func _test_req_exp_lv2_is_351() -> bool:
 	return hero.get_required_exp(2) == 351
 
 
-func _test_req_exp_lv3_is_655() -> bool:
+func _test_req_exp_lv3_is_658() -> bool:
 	var hero := HeroModel.new("h_test", "Tester", 1, 3)
-	var req: int = hero.get_required_exp(3)
-	return req == 655 or req == 658
+	return hero.get_required_exp(3) == 658
 
 
-func _test_req_exp_lv4_is_1021() -> bool:
+func _test_req_exp_lv4_is_1028() -> bool:
 	var hero := HeroModel.new("h_test", "Tester", 1, 3)
-	var req: int = hero.get_required_exp(4)
-	return req == 1021 or req == 1028
+	return hero.get_required_exp(4) == 1028
 
 
 # ==============================================================================

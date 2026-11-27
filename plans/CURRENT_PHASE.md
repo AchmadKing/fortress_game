@@ -1,8 +1,8 @@
 # Current Development Phase
 
-## Phase 4 — Hero System (IN PROGRESS / SUB-PHASE 4B IMPLEMENTED)
+## Phase 4 — Hero System (IN PROGRESS / SUB-PHASE 4B COMPLETED)
 
-Project saat ini berada pada tahap **Phase 4 — Hero System (Sub-Phase 4A: IMPLEMENTED / VERIFIED; Sub-Phase 4B: IMPLEMENTED / VERIFIED; Sub-Phase 4C: PLANNED / LOCKED)**.
+Project saat ini berada pada tahap **Phase 4 — Hero System (Sub-Phase 4A: COMPLETED / VERIFIED; Sub-Phase 4B: COMPLETED / VERIFIED; Sub-Phase 4C: NEXT / AUTHORIZED TARGET)**.
 Phase 3 (Gameplay Prototype) telah resmi ditutup (**COMPLETED / CLOSED**) pada commit `e6c0c97`.
 
 Roadmap teknis dan spesifikasi arsitektur komprehensif Phase 4 tersedia di [docs/design/PHASE_4_HERO_SYSTEM_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_4_HERO_SYSTEM_PLAN.md).
@@ -17,7 +17,7 @@ Roadmap teknis dan spesifikasi arsitektur komprehensif Phase 4 tersedia di [docs
 - **Phase 3 — Gameplay Prototype**: **COMPLETED** (Commits `2452397`, `4f01bfe`, `1d3d51d`, `463f91c`, `ba3c0c5`, `e6c0c97`)
 - **Phase 4 — Hero System**: **IN PROGRESS**
   - Dokumen Roadmap & Spesifikasi Arsitektur: **ESTABLISHED** ([docs/design/PHASE_4_HERO_SYSTEM_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_4_HERO_SYSTEM_PLAN.md))
-  - **Sub-Phase 4A — Hero Domain & Lifecycle Foundation**: **IMPLEMENTED / VERIFIED (CORRECTION GATE PASSED)**
+  - **Sub-Phase 4A — Hero Domain & Lifecycle Foundation**: **COMPLETED / VERIFIED (CORRECTION GATE PASSED)**
     - Peran Kanonikal Domain: `KNIGHT`, `MAGE`, `ARCHER`, `PRIEST` via `HeroRole` (`scripts/domain/model/hero_role.gd`).
     - Matriks Kompatibilitas Perlengkapan Kanonikal: Knight (`SWORD`, `SHIELD`, `HEAVY_ARMOR`), Archer (`BOW`, `LIGHT_ARMOR`, no `HEAVY_ARMOR`), Mage & Priest (future gear only; seluruh Phase 3 gear non-kompatibel).
     - State Siklus Hidup Pahlawan: `RECRUITABLE`, `ROSTER_ACTIVE`, `IN_PARTY`, `IN_TRAINING`, `BATTLE_ACTIVE`, `PERMADEATH` via `HeroLifecycleState` (`scripts/domain/model/hero_lifecycle_state.gd`).
@@ -25,19 +25,19 @@ Roadmap teknis dan spesifikasi arsitektur komprehensif Phase 4 tersedia di [docs
     - Eliminasi silent normalization pada `HeroModel._init()`: input bintang, peran, dan state invalid tidak di-clamp diam-diam melainkan tertangkap oleh `validate_invariants()`.
     - Test Suite Phase 4A: **38/38 PASSED, 0 FAILED** ([tests/test_phase4a_hero_domain_lifecycle.gd](file:///d:/fortress_game/tests/test_phase4a_hero_domain_lifecycle.gd)).
     - Full Regression: **172 tests PASSED (134 baseline Phase 1-3 + 38 Phase 4A)** + Scene Smoke Playtest ALL PASS.
-  - **Sub-Phase 4B — Hero Progression & EXP**: **IMPLEMENTED / VERIFIED**
-    - Formula EXP Kanonikal: $\text{ReqEXP}(L) = \lfloor 120.0 \times L^{1.55} \rfloor$.
+  - **Sub-Phase 4B — Hero Progression & EXP**: **COMPLETED / VERIFIED**
+    - Formula EXP Kanonikal: $\text{ReqEXP}(L) = \lfloor 120.0 \times L^{1.55} \rfloor$ dengan nilai eksak $Lv1=120, Lv2=351, Lv3=658, Lv4=1028$.
     - Progresi level hero dengan akumulasi carry-over EXP dan dukungan kenaikan multi-level seketika.
     - Level Cap berbasis bintang saat ini: $\text{current\_star} \times 10$ ($1\star=10, 2\star=20, 3\star=30, 4\star=40, 5\star=50$). Hero di level cap tidak bertambah levelnya saat menerima EXP lebih lanjut.
     - Kelayakan & Validasi Ascension: $1 \le \text{current\_star} < \text{potential\_star} \le 5$, hero hidup, tidak permadeath, dan $\text{level} \ge \text{current\_star} \times 10$.
-    - Biaya Ascension: $\text{current\_star} \times 150 \text{ Gold}$.
+    - Biaya Ascension: $\text{current\_star} \times 150 \text{ Gold}$ ($1\star\rightarrow2\star=150, 2\star\rightarrow3\star=300, 3\star\rightarrow4\star=450, 4\star\rightarrow5\star=600$).
     - Transaksi Atomik Kas Emas & Mutasi Bintang di `GameCoordinator.ascend_hero()`: dilindungi Battle Lock, kas benteng mencukupi, mutasi tepat $+1$ bintang, rollback jika gagal.
     - Formula Battle EXP Kanonikal di `CombatEngine`: $\lfloor 60.0 \times (1.0 + \text{Wave} / 15.0) \rfloor$.
     - Distribusi Battle EXP deterministik: pembagian rata kepada seluruh hero hidup yang bertarung, sisa (*remainder*) dialokasikan deterministik berdasarkan urutan alfabetik `hero_id`. Total terdistribusi tidak pernah melebihi nilai EXP yang diberikan.
     - Telemetri Snapshot: Atribut `potential_star`, `level_cap`, `can_ascend`, dan `ascension_cost` diserialisasikan ke `GameStateSnapshot.heroes_data`.
     - Test Suite Phase 4B: **47/47 PASSED, 0 FAILED** ([tests/test_phase4b_hero_progression.gd](file:///d:/fortress_game/tests/test_phase4b_hero_progression.gd)).
     - Full Regression: **219 tests PASSED (134 baseline Phase 1-3 + 38 Phase 4A + 47 Phase 4B)** + Scene Smoke Playtest ALL PASS.
-  - Sub-Phase 4C — Hero Recruitment & Roster Management: **PLANNED / LOCKED** (Terkunci hingga tinjauan developer)
+  - Sub-Phase 4C — Hero Recruitment & Roster Management: **NEXT / AUTHORIZED TARGET**
   - Sub-Phase 4D — Hero Training / Fatigue / Morale: **PLANNED**
   - Sub-Phase 4E — Hero Skills & Talent Foundation: **PLANNED**
   - Sub-Phase 4F — Hero Chemistry & Party Management: **PLANNED**
