@@ -70,6 +70,7 @@ func _init() -> void:
 		{"name": "test_f1_battle_lock_strictly_preserved", "fn": Callable(self, "_test_f1_battle_lock_strictly_preserved")},
 		{"name": "test_f2_phase6a_enemy_groups_unchanged_by_clock_only_simulation", "fn": Callable(self, "_test_f2_phase6a_enemy_groups_unchanged_by_clock_only_simulation")},
 		{"name": "test_f3_controller_delegation_and_timer_sync", "fn": Callable(self, "_test_f3_controller_delegation_and_timer_sync")},
+		{"name": "test_f4_simulation_ticks_do_not_auto_resolve_battle", "fn": Callable(self, "_test_f4_simulation_ticks_do_not_auto_resolve_battle")},
 
 		# Group G: Deterministic 10,000-Tick Stress Simulation
 		{"name": "test_g1_deterministic_10000_tick_stress_simulation", "fn": Callable(self, "_test_g1_deterministic_10000_tick_stress_simulation")}
@@ -685,6 +686,51 @@ func _test_f3_controller_delegation_and_timer_sync() -> bool:
 	var ok_speed: bool = ctrl.set_speed(CombatEngine.SPEED_2X)
 	if not ok_speed or ctrl.get_battle_speed() != 2.0:
 		printerr("Controller set_speed failed")
+		ctrl.free()
+		return false
+
+	ctrl.free()
+	return true
+
+
+func _test_f4_simulation_ticks_do_not_auto_resolve_battle() -> bool:
+	var coord := _create_battle_ready_coordinator("test_f4")
+	var ctrl := GameController.new()
+	ctrl.setup(coord)
+
+	var initial_hp: int = coord._fortress.current_hp
+	var initial_pop: int = coord._population.get_total_population()
+	var initial_swords: int = coord.get_warehouse_usable_stock("SWORD")
+
+	# Jalankan 10 timeout berturut-turut pada controller (jauh melampaui step 3 legacy)
+	for i in range(1, 11):
+		ctrl._on_battle_timer_timeout()
+		if coord.get_battle_tick() != i:
+			printerr("Timeout %d failed to advance tick: %d != %d" % [i, coord.get_battle_tick(), i])
+			ctrl.free()
+			return false
+		# Buktikan state tetap BATTLE (tidak berpindah ke RESULT atau RECOVERY)
+		if coord._state_machine.current_state != GameplayStateMachine.STATE_BATTLE:
+			printerr("Timeout %d caused premature state transition to: %s" % [i, coord._state_machine.current_state])
+			ctrl.free()
+			return false
+		var snap: GameStateSnapshot = coord.get_current_state()
+		if not snap.last_battle_result.is_empty():
+			printerr("Timeout %d generated premature battle result!" % i)
+			ctrl.free()
+			return false
+
+	# Verifikasi domain state tidak rusak / terkorupsi oleh clock ticks
+	if coord._fortress.current_hp != initial_hp:
+		printerr("Fortress HP mutated during clock ticks")
+		ctrl.free()
+		return false
+	if coord._population.get_total_population() != initial_pop:
+		printerr("Population mutated during clock ticks")
+		ctrl.free()
+		return false
+	if coord.get_warehouse_usable_stock("SWORD") != initial_swords:
+		printerr("Warehouse stock mutated during clock ticks")
 		ctrl.free()
 		return false
 

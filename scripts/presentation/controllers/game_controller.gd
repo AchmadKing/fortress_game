@@ -589,13 +589,27 @@ func _on_battle_timer_timeout() -> void:
 		return
 	var snapshot: GameStateSnapshot = coordinator.get_current_state()
 	if snapshot.game_phase != "BATTLE":
+		if _battle_timer != null and _battle_timer.is_inside_tree():
+			_battle_timer.stop()
 		return
 
-	_battle_step_index += 1
+	# Eksekusi tepat satu langkah simulasi kanonikal via coordinator
+	var stepped: bool = coordinator.step_simulation()
+	if not stepped:
+		# Jika gagal step (misal karena jeda/pause atau state berubah), hentikan timer jika bukan pause
+		if coordinator.is_battle_paused():
+			return
+		if _battle_timer != null and _battle_timer.is_inside_tree():
+			_battle_timer.stop()
+		return
+
+	_battle_step_index = coordinator.get_battle_tick()
 	battle_step_triggered.emit(_battle_step_index)
-	
-	if _battle_step_index >= 3:
-		# Pertempuran selesai langkah-demi-langkah, selesaikan via CombatEngine
-		coordinator.execute_battle()
-	else:
+
+	# Selama fase tetap BATTLE, jadwalkan tick simulasi berikutnya (tidak auto-resolve execute_battle)
+	var post_snapshot: GameStateSnapshot = coordinator.get_current_state()
+	if post_snapshot.game_phase == "BATTLE":
 		_schedule_next_battle_step()
+	else:
+		if _battle_timer != null and _battle_timer.is_inside_tree():
+			_battle_timer.stop()
