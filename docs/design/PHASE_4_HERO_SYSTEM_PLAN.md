@@ -618,6 +618,38 @@ Setiap sub-fase Phase 4 wajib menyertakan automated headless test suite:
   - Aset visual final pixel-art, animasi karakter, shader visual, atau styling mobile khusus (Milik Phase 9).
   - Perubahan aturan matematis formula EXP, Ascension cost, বা batasan domain Phase 4A–4F.
 
+### 10. Batas Eksplisit Sub-Phase 4H (Hero System Integration & Verification) — COMPLETED / VERIFIED / CLOSED
+- **STATUS: COMPLETED / VERIFIED / CLOSED (81/81 Tests PASS, Full Regression 595/595 Tests PASS across 16 test suites, Scene Smoke Playtest ALL PASS)**
+- **DELIVERABLES FOR 4H (TELAH TERLAKSANA & TERVERIFIKASI):**
+  - **Audit Arsitektur Menyeluruh**:
+    - Validasi single-source-of-truth ownership di domain, application, dan presentation layer.
+    - Tidak ada duplicate manager/controller/chemistry-map (`HeroModel` adalah single source of truth untuk party_id, chemistry, dan attributes).
+    - Konservasi Shared Warehouse terjaga mutlak: $\text{Total Owned} = \text{USBL} + \text{DMGD} + \text{HERO} + \text{REGD}$.
+    - Penegakan Battle Lock mutlak pada 12 metode mutasi `GameCoordinator` selama status `STATE_BATTLE`.
+    - Isolasi tempur Party 1 terverifikasi 100%: hanya Party 1 hero hidup yang memasuki `CombatEngine`, berkontribusi ATK, menerima EXP tempur, dan mengakumulasi fatigue tempur. Party 2 dan Reserve sepenuhnya terisolasi dari medan laga.
+    - Penanganan terminal Permadeath: almarhum dilepas dari regu, dibersihkan dari posisi leader, seluruh gear dikembalikan ke gudang bersama tepat 1x, dan seluruh referensi chemistry dihapus simetris dari pahlawan lain.
+  - **Comprehensive Phase 4H Test Suite** (`tests/test_phase4h_hero_system_integration.gd`):
+    - 81 pengujian integrasi lintas-subsistem mencakup:
+      - Group A: Hero Domain & Lifecycle Integration (Tests 1-10)
+      - Group B: Party Management & Combat Routing Integration (Tests 11-20)
+      - Group C: Chemistry System Integrity & Single-Path Verification (Tests 21-30)
+      - Group D: Progression, EXP & Ascension Integration (Tests 31-40)
+      - Group E: Fatigue, Morale & Training Integration (Tests 41-48)
+      - Group F: Skills & Talents Integration (Tests 49-56)
+      - Group G: Equipment & Warehouse Conservation Integration (Tests 57-66)
+      - Group H: Recruitment & Ascension Economy Integration (Tests 67-72)
+      - Group I: State Machine, Snapshot & Presentation Sync (Tests 73-76)
+      - Group J: Permadeath End-to-End Resolution (Tests 77-80)
+      - Group K: Deterministic 50-Wave Multi-System Stress Simulation (Test 81)
+  - **50-Wave Multi-System Deterministic Stress Simulation**:
+    - Simulasi 50 gelombang tempur penuh tanpa henti mengintegrasikan rekrutmen, penugasan regu, pembagian EXP tempur, perolehan chemistry bertahap hingga cap 50, latihan anti-exploit, kenaikan tingkat & ascension, pembukaan skill & alokasi bakat, permadeath recovery & rotasi cadangan di gelombang 25, serta penegakan konservasi perlengkapan gudang bersama di setiap gelombang.
+- **OUT OF SCOPE FOR 4H (DILARANG PADA 4H):**
+  - Fitur gameplay baru di luar Phase 4 (Milik Phase 5+).
+  - Role pahlawan atau tipe perlengkapan baru.
+  - Bangunan atau modul benteng baru (Milik Phase 5).
+  - Taktik pertempuran dan AI musuh baru (Milik Phase 6).
+  - Pixel art dan visual mobile final (Milik Phase 9).
+
 ---
 
 ## X. Acceptance Criteria Phase 4
@@ -632,8 +664,11 @@ Phase 4 dinyatakan selesai hanya jika seluruh kriteria berikut terpenuhi:
 - [x] Invariant konservasi gudang bersama $\text{Total} = \text{USBL} + \text{DMGD} + \text{HERO} + \text{REGD}$ tetap valid 100%.
 - [x] Seluruh perlengkapan pahlawan permadeath kembali ke gudang bersama tepat 1 kali.
 - [x] Seluruh 134 baseline test existing tetap PASS 100%.
-- [x] Test suite baru untuk seluruh sub-fase Phase 4 lulus 100% (4A: 38, 4B: 47, 4C: 51, 4D: 54, 4E: 62, 4F: 68, 4G: 60).
+- [x] Test suite baru untuk seluruh sub-fase Phase 4 lulus 100% (4A: 38, 4B: 47, 4C: 51, 4D: 54, 4E: 62, 4F: 68, 4G: 60, 4H: 81).
+- [x] Simulasi stres multi-sistem 50 gelombang berturut-turut lulus 100% deterministik tanpa kebocoran memori, regresi, atau inkonsistensi invariant.
 - [x] Scene Smoke Playtest terintegrasi lulus tanpa error di Godot Editor.
+- [x] Full Automated Regression lulus 100% (595/595 PASSED across 16 test suites).
+- [x] Phase 4 (Hero System) resmi DITUTUP (COMPLETED / CLOSED).
 
 ---
 

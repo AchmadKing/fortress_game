@@ -4,6 +4,34 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.5.9] - Phase 4H: Hero System Integration & Verification (Completed & Closed)
+
+### Added
+- **Phase 4H Comprehensive Integration Test Suite** (`tests/test_phase4h_hero_system_integration.gd`):
+  - 81 pengujian integrasi lintas sistem terdistribusi ke dalam 11 kelompok terstruktur:
+    - **Group A (Tests 1-10)**: Hero Domain & Lifecycle Integration — transisi `RECRUITABLE` $\rightarrow$ `ROSTER_ACTIVE` $\rightarrow$ `IN_PARTY` $\rightarrow$ `BATTLE_ACTIVE` $\rightarrow$ `IN_PARTY` / `PERMADEATH`; penegakan `PERMADEATH` sebagai state terminal mutlak dan sinkronisasi reaktif ke snapshot.
+    - **Group B (Tests 11-20)**: Party Management & Combat Routing Integration — pembatasan 2 regu kanonikal (`party_1`, `party_2`), batas kapasitas 3 pahlawan per regu, isolasi penuh Party 2 dan Reserve dari pertempuran, penegakan kontribusi ATK hanya dari Party 1, penanganan Party 1 kosong dengan graceful fallback, dan rollback atomik penugasan regu saat gagal.
+    - **Group C (Tests 21-30)**: Chemistry System Integrity & Single-Path Verification — validasi jalur tunggal kanonikal di `CombatEngine` pasca-survival (+2 chemistry per pasangan Party 1 hidup), simetri mutlak kemitraan, batas atas (*hard cap*) 50 poin, pemblokiran *self-chemistry*, persistensi saat pahlawan keluar/masuk regu, dan konfirmasi zero chemistry gain saat tidak ada pertempuran atau saat refresh snapshot.
+    - **Group D (Tests 31-40)**: Progression, EXP & Ascension Integration — pembagian EXP tempur deterministik dan terbatas pada Party 1 hidup, formula EXP kanonikal $\lfloor 120.0 \times L^{1.55} \rfloor$, level cap berbasis bintang ($\text{star} \times 10$), pelestarian carry-over EXP di level cap, aturan kenaikan poin bakat pada level ganjil (*odd-level rule*), dan non-interferensi EXP latihan vs tempur.
+    - **Group E (Tests 41-48)**: Fatigue, Morale & Training Integration — akumulasi fatigue tempur (+15) eksklusif pada Party 1, batasan latihan 1x per pahlawan per gelombang, batas kelelahan 100 tanpa silent clamping, aksi istirahat (-25 fatigue, +5 morale), dan pengaruh multiplier kelelahan dan moral pada stat tempur efektif.
+    - **Group F (Tests 49-56)**: Skills & Talents Integration — katalog skill 4 peran kanonikal (`KNIGHT`, `ARCHER`, `MAGE`, `PRIEST`), validasi syarat peran & level pada pembukaan skill, pembukaan idempoten (pencegahan duplikasi), alokasi bakat 3 cabang (`OFFENSE`, `DEFENSE`, `LEADERSHIP`) dengan batas level 3 per cabang, pengali stat gabungan deterministik, dan pelestarian data saat kloning.
+    - **Group G (Tests 57-66)**: Equipment & Shared Warehouse Conservation Integration — penegakan ketat invarian konservasi $\text{Total Owned} = \text{USBL} + \text{DMGD} + \text{HERO} + \text{REGD}$, validasi kompatibilitas slot & peran, transaksi atomik equip/unequip, kelestarian gear pada pahlawan yang bertahan hidup, pengembalian seluruh gear pahlawan permadeath ke gudang bersama tepat 1x tanpa pengembalian ganda, dan kebebasan mutasi regu tanpa merusak gear terpasang.
+    - **Group H (Tests 67-72)**: Recruitment & Ascension Economy Integration — biaya rekrutmen kanonikal mutlak 500 Gold tanpa override, penolakan saat kas < 500 Gold, gear awal pahlawan baru kosong (konservasi gudang), biaya ascension kanonikal $\text{star} \times 150 \text{ Gold}$, dan pelestarian seluruh atribut progresi pahlawan saat ascension.
+    - **Group I (Tests 73-76)**: State Machine, Snapshot & Presentation Sync — deep-copy kloning `HeroModel`, `PartyModel`, dan `GameStateSnapshot` membuktikan isolasi memori penuh, serta sinkronisasi reaktif snapshot dan emisi sinyal `state_changed` pada setiap mutasi pahlawan.
+    - **Group J (Tests 77-80)**: Permadeath End-to-End Resolution — pelepasan otomatis pahlawan permadeath dari regu, pengosongan status ketua regu, pembersihan referensi chemistry secara simetris dari pahlawan lain, dan pemblokiran total pahlawan permadeath dari aksi rekrutmen, latihan, istirahat, ascension, equip, alokasi bakat, pembukaan skill, maupun penugasan regu.
+    - **Group K (Test 81)**: Deterministic 50-Wave Multi-System Stress Simulation — simulasi ketahanan 50 gelombang tempur tanpa henti membuktikan stabilitas siklus `PREPARATION` $\rightarrow$ `WAVE_PREVIEW` $\rightarrow$ `BATTLE` $\rightarrow$ `RESULT` $\rightarrow$ `RECOVERY` $\rightarrow$ `PREPARATION`, batas atas chemistry $\le 50$, perutean isolasi tempur Party 1, eksekusi gugur permadeath di gelombang 25 dengan pembersihan regu dan penggantian oleh pahlawan cadangan di gelombang 26, serta pelestarian invarian konservasi gudang bersama di setiap gelombang.
+- **Architectural & Safety Verification**:
+  - Audit cross-layer membuktikan kepatuhan single-source-of-truth ownership di `HeroModel` dan `GameCoordinator`.
+  - Penegakan Battle Lock terverifikasi pada 12 metode mutasi `GameCoordinator` selama status `STATE_BATTLE`.
+
+### Verified
+- **Phase 4H Test Suite**: 81/81 PASSED (100%).
+- **Full Automated Regression Suite**: 595/595 PASSED across all 16 test suites (Phase 1 through Phase 4H) with 0 regressions.
+- **Scene Smoke Playtest**: ALL PASS (0 errors) on Godot SceneTree.
+- **Phase 4 (Hero System)**: RESMI DITUTUP (**COMPLETED / CLOSED**).
+
+---
+
 ## [0.5.8] - Phase 4G: Hero Management UX (Implemented & Verified)
 
 ### Added

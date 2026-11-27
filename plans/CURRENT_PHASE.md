@@ -1,8 +1,10 @@
 # Current Development Phase
 
-## Phase 4 — Hero System (IN PROGRESS / SUB-PHASE 4G COMPLETED & VERIFIED)
+## Phase 4 — Hero System (COMPLETED / CLOSED)
 
-Project saat ini berada pada tahap **Phase 4 — Hero System (Sub-Phase 4A: COMPLETED / VERIFIED; Sub-Phase 4B: COMPLETED / VERIFIED; Sub-Phase 4C: COMPLETED / VERIFIED / CLOSED; Sub-Phase 4D: COMPLETED / VERIFIED; Sub-Phase 4E: COMPLETED / VERIFIED; Sub-Phase 4F: COMPLETED / VERIFIED / CLOSED; Sub-Phase 4G: COMPLETED / VERIFIED; Sub-Phase 4H: NEXT / LOCKED)**.
+Project saat ini telah menyelesaikan secara tuntas dan menutup **Phase 4 — Hero System (Sub-Phase 4A: COMPLETED / VERIFIED; Sub-Phase 4B: COMPLETED / VERIFIED; Sub-Phase 4C: COMPLETED / VERIFIED / CLOSED; Sub-Phase 4D: COMPLETED / VERIFIED; Sub-Phase 4E: COMPLETED / VERIFIED; Sub-Phase 4F: COMPLETED / VERIFIED / CLOSED; Sub-Phase 4G: COMPLETED / VERIFIED; Sub-Phase 4H: COMPLETED / VERIFIED / CLOSED)**.
+Phase 4 resmi ditutup (**COMPLETED / CLOSED**).
+Phase 5 (Fortress & Management Systems) berstatus **LOCKED** dan menunggu persetujuan eksplisit (*explicit approval*) developer sebelum dimulai.
 Phase 3 (Gameplay Prototype) telah resmi ditutup (**COMPLETED / CLOSED**) pada commit `e6c0c97`.
 
 Roadmap teknis dan spesifikasi arsitektur komprehensif Phase 4 tersedia di [docs/design/PHASE_4_HERO_SYSTEM_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_4_HERO_SYSTEM_PLAN.md).
@@ -100,8 +102,13 @@ Roadmap teknis dan spesifikasi arsitektur komprehensif Phase 4 tersedia di [docs
     - Banner Umpan Balik (*Feedback Banner*): pesan konfirmasi yang jelas dan informatif untuk setiap aksi sukses atau penolakan transaksi.
     - Test Suite Phase 4G: **60/60 PASSED, 0 FAILED** ([tests/test_phase4g_hero_management_ux.gd](file:///d:/fortress_game/tests/test_phase4g_hero_management_ux.gd)).
     - Full Regression: **514 tests PASSED (134 baseline Phase 1-3 + 38 Phase 4A + 47 Phase 4B + 51 Phase 4C + 54 Phase 4D + 62 Phase 4E + 68 Phase 4F + 60 Phase 4G)** + Scene Smoke Playtest ALL PASS.
-  - Sub-Phase 4H — Hero System Integration & Verification: **NEXT / LOCKED** (Terkunci hingga tinjauan developer)
-- **Phase 5 — Fortress & Management Systems**: **LOCKED**
+  - **Sub-Phase 4H — Hero System Integration & Verification**: **COMPLETED / VERIFIED / CLOSED**
+    - Audit arsitektur cross-layer menyeluruh (Domain, Application, Simulation, Presentation, Test) memastikan single-source-of-truth ownership pada `HeroModel`, eliminasi duplicate manager/controller/chemistry-map, isolasi perutean tempur Party 1 terverifikasi 100%, penegakan Battle Lock mutlak pada 12 metode mutasi `GameCoordinator`, dan penanganan permadeath terminal lengkap.
+    - Test Suite Phase 4H: **81/81 PASSED, 0 FAILED** ([tests/test_phase4h_hero_system_integration.gd](file:///d:/fortress_game/tests/test_phase4h_hero_system_integration.gd)) mencakup Group A s/d Group J serta Group K (simulasi stres deterministik 50 gelombang tempur penuh).
+    - Verifikasi Multi-System Stress 50 Gelombang: integrasi stabil rekrutmen, penugasan regu, pembagian EXP deterministik, batas kemitraan chemistry (cap 50), latihan anti-exploit per gelombang, kenaikan tingkat & ascension, alokasi bakat & skill, permadeath recovery & rotasi pahlawan cadangan di gelombang 25, serta pelestarian invarian konservasi Shared Warehouse $\text{Total} = \text{USBL} + \text{DMGD} + \text{HERO} + \text{REGD}$ di setiap gelombang.
+    - Full Automated Regression: **595 tests PASSED across all 16 test suites** (134 baseline Phase 1-3 + 38 Phase 4A + 47 Phase 4B + 51 Phase 4C + 54 Phase 4D + 62 Phase 4E + 68 Phase 4F + 60 Phase 4G + 81 Phase 4H) + Scene Smoke Playtest ALL PASS.
+    - **PHASE 4 — HERO SYSTEM RESMI DITUTUP (COMPLETED / CLOSED)**.
+- **Phase 5 — Fortress & Management Systems**: **LOCKED** (Menunggu persetujuan eksplisit developer)
 - **Phase 6 — Tactical Battle & Battlefield Systems**: **LOCKED**
 
 ---
@@ -109,9 +116,9 @@ Roadmap teknis dan spesifikasi arsitektur komprehensif Phase 4 tersedia di [docs
 ### Aturan & Batasan Saat Ini
 
 > [!IMPORTANT]
-> **PHASE 3 TELAH RESMI DITUTUP (OFFICIALLY CLOSED).**
-> **PHASE 4 TELAH DIBUKA (AUTHORIZED TO START)**: Pengembangan Phase 4 wajib mematuhi rencana kerja terstruktur (Sub-Phases 4A–4H), prinsip *Extend, Don't Break*, dan tidak boleh merusak baseline 134 pengujian Phase 1–3 yang telah lulus.
-> **PHASE 5 & 6 TETAP LOCKED**: DILARANG memulai implementasi sistem pertarungan taktis mendalam, battlefield physics, maupun konstruksi modul benteng.
+> **PHASE 3 & PHASE 4 TELAH RESMI DITUTUP (OFFICIALLY CLOSED).**
+> **PHASE 5 TETAP LOCKED**: DILARANG memulai implementasi sistem pertahanan benteng lanjutan, modul/fasilitas benteng baru, maupun ekonomi tingkat lanjut sebelum persetujuan eksplisit (*explicit approval*) diberikan oleh developer.
+> **PHASE 6 TETAP LOCKED**: DILARANG memulai implementasi sistem pertarungan taktis mendalam, battlefield physics, maupun AI taktis musuh.
 
 ---
 
