@@ -1,13 +1,12 @@
 # Current Development Phase
 
-## Phase 5 — Fortress & Management Systems (COMPLETED / CLOSED)
+## Phase 6 — Tactical Battle & Battlefield Systems (ARCHITECTURE PLANNING ONLY)
 
-Project saat ini telah menyelesaikan secara tuntas dan menutup **Phase 5 — Fortress & Management Systems**.
-Phase 5 resmi ditutup (**COMPLETED / CLOSED**).
-Phase 6 (Tactical Battle & Battlefield Systems) berstatus **LOCKED** dan menunggu persetujuan eksplisit (*explicit approval*) developer sebelum dimulai.
-Phase 4 (Hero System) telah resmi ditutup (**COMPLETED / CLOSED**).
+Project saat ini telah menyelesaikan secara tuntas dan menutup **Phase 0–5 (Phase 5: COMPLETED / CLOSED)**.
+Phase 6 (Tactical Battle & Battlefield Systems) saat ini berstatus **ARCHITECTURE PLANNING ONLY — DO NOT IMPLEMENT YET**.
+Phase 7+ berstatus **LOCKED**.
 
-Roadmap teknis dan spesifikasi arsitektur komprehensif Phase 5 tersedia di [docs/design/PHASE_5_FORTRESS_MANAGEMENT_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_5_FORTRESS_MANAGEMENT_PLAN.md).
+Dokumen perencanaan teknis dan arsitektur komprehensif Phase 6 tersedia di [plans/PHASE_6_TACTICAL_BATTLE_PLAN.md](file:///d:/fortress_game/plans/PHASE_6_TACTICAL_BATTLE_PLAN.md).
 
 ---
 
@@ -18,189 +17,31 @@ Roadmap teknis dan spesifikasi arsitektur komprehensif Phase 5 tersedia di [docs
 - **Phase 2 — Mathematical / Systems Prototype**: **COMPLETED** (Commit `dd74512`)
 - **Phase 3 — Gameplay Prototype**: **COMPLETED** (Commits `2452397`, `4f01bfe`, `1d3d51d`, `463f91c`, `ba3c0c5`, `e6c0c97`)
 - **Phase 4 — Hero System**: **COMPLETED / CLOSED** (Sub-Phases 4A through 4H COMPLETED / VERIFIED)
-- **Phase 5 — Fortress & Management Systems**: **COMPLETED / CLOSED**
+- **Phase 5 — Fortress & Management Systems**: **COMPLETED / CLOSED** (Commit `e765c6e`)
   - **Low-Fi Wireframe Archival**: Diarsipkan di `docs/design/wireframes/fortress-main-screen/` dan terindeks di `docs/design/WIREFRAME_INDEX.md` (Commit `6642896`).
-  - **Fortress Defense Foundation**:
-    - Ekstensi `FortressModel` mengelola integritas Tembok (`wall_hp` / `wall_max_hp`, awal 500) dan Gerbang (`gate_hp` / `gate_max_hp`, awal 300).
-    - Metode domain `damage_wall()`, `repair_wall()`, `damage_gate()`, `repair_gate()`, `is_wall_breached()`, `is_gate_breached()`.
-    - Penegakan invarian fisik ketat ($0 \le \text{hp} \le \text{max}$) dan penolakan nilai negatif.
-  - **Population Accounting & Conservation**:
-    - Ekstensi `PopulationModel` mengelola tenaga kerja benteng (`workers`).
-    - Konversi zero-sum mutlak: `civilian_to_worker()` dan `worker_to_civilian()`.
-    - Persamaan konservasi mutlak: $\text{Total Population} = \text{Civilians} + \text{Workers} + \text{Soldiers}$.
-    - Penolakan over-allocation, over-conversion, dan nilai negatif.
-    - Korban perang memotong populasi secara permanen tanpa mengganggu alokasi warga sipil dan pekerja yang tidak terlibat.
-  - **Worker Workforce & Productivity Foundation**:
-    - Model domain baru `WorkerModel` (`scripts/domain/model/worker_model.gd`, `class_name WorkerModel extends RefCounted`).
-    - Alokasi 4 tugas kanonikal: `IDLE`, `BLACKSMITH`, `REPAIR`, `CONSTRUCTION`.
-    - Konservasi tenaga kerja mutlak: $\text{Total Workers} = \text{Blacksmith} + \text{Repair} + \text{Construction} + \text{Idle}$.
-    - Mutasi pekerjaan antar-job `reassign()` dengan validasi ketersediaan dan penolakan pekerjaan tidak sah.
-    - Sinkronisasi dinamis `sync_total_workers()`: penambahan pekerja diarahkan ke `IDLE`, pengurangan menyusutkan alokasi secara proporsional dan aman.
-    - Moral tenaga kerja ($0–100$) dan derivasi produktivitas deterministik: $\text{Productivity} = 0.50 + (\text{morale} / 100.0) \times 0.75$ (rentang $0.50$ s/d $1.25$).
-  - **Building & Facility Foundation**:
-    - Model domain baru `BuildingModel` (`scripts/domain/model/building_model.gd`, `class_name BuildingModel extends RefCounted`).
-    - 9 Fasilitas Kanonikal: `FORTRESS`, `WALL`, `GATE`, `BARRACKS`, `BLACKSMITH`, `WAREHOUSE`, `TRAINING_FACILITY`, `MERCENARY_GUILD`, `CONSTRUCTION_AREA`.
-    - Tingkat fasilitas ($1–5$), batas maksimal, status terbangun, dan validasi invarian.
-  - **Structure Repair System**:
-    - Perbaikan atomik struktur benteng (`FORTRESS`, `WALL`, `GATE`) via `GameCoordinator.repair_structure()`.
-    - Prasyarat: `repair_workers > 0`, kas emas mencukupi, tidak melebihi HP maksimal, dan dilindungi Battle Lock.
-    - Biaya kanonikal: $0.15 \text{ Gold per HP}$ yang diperbaiki ($\lfloor \text{amount} \times 0.15 \rfloor$).
-    - Transaksi atomik: pemotongan kas emas dan penambahan HP terjadi serentak dengan rollback penuh jika gagal.
-  - **Construction System**:
-    - Manajemen proyek pembangunan fasilitas via `GameCoordinator.start_construction()`, `advance_construction()`, dan `cancel_construction()`.
-    - Prasyarat: `construction_workers > 0`, kas emas mencukupi, dan dilindungi Battle Lock.
-    - Penyelesaian proyek secara otomatis menaikkan level gedung target (+1 tingkat).
-    - Pembatalan proyek mengembalikan biaya emas kas secara utuh (*100% refund*).
-  - **Management UI & Wireframe Mapping**:
-    - Antarmuka fungsional pada `PrototypeDebugView` berbasis tata letak wireframe: Header, Sidebar, Area Tengah Benteng (Wall HP, Gate HP, tombol reparasi, konversi populasi, daftar fasilitas, status konstruksi), Panel Tab Kanan, dan Action Bar Bawah.
-    - Tombol `Start Battle` dinonaktifkan secara eksplisit pada Phase 5 (`disabled = true`) untuk menjaga kepemilikan siklus tempur tetap berada di Phase 6.
-    - Proteksi Battle Lock ditegakkan pada seluruh kontrol mutasi.
-  - **Snapshot Integration & Memory Isolation**:
-    - `GameStateSnapshot` diperluas dengan `worker_data`, `buildings_data`, `active_repair_data`, dan `active_construction_data`.
-    - Kloning mendalam (*deep-copy*) membuktikan isolasi memori 100% pada seluruh model Phase 5.
-  - **Testing & Verification**:
-    - Dedicated test suite `tests/test_phase5_fortress_management.gd`: **82/82 PASSED (100%)**, 0 FAILED.
-    - Stress test deterministik 100 siklus manajemen (`test_h1`): **PASS** tanpa pelanggaran invarian populasi, invarian pekerja, invarian pertahanan, maupun konservasi gudang.
-    - Full Automated Regression Suite: **677/677 PASSED (100%)** lintas 17 suite test dengan 0 regresi.
-    - Prototype Scene Smoke Playtest: **ALL PASS, 0 ERRORS** pada Godot SceneTree.
-- **Phase 6 — Tactical Battle & Battlefield Systems**: **LOCKED** (Menunggu explicit approval developer)
-  - Dokumen Roadmap & Spesifikasi Arsitektur: **ESTABLISHED** ([docs/design/PHASE_4_HERO_SYSTEM_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_4_HERO_SYSTEM_PLAN.md))
-  - **Sub-Phase 4A — Hero Domain & Lifecycle Foundation**: **COMPLETED / VERIFIED (CORRECTION GATE PASSED)**
-    - Peran Kanonikal Domain: `KNIGHT`, `MAGE`, `ARCHER`, `PRIEST` via `HeroRole` (`scripts/domain/model/hero_role.gd`).
-    - Matriks Kompatibilitas Perlengkapan Kanonikal: Knight (`SWORD`, `SHIELD`, `HEAVY_ARMOR`), Archer (`BOW`, `LIGHT_ARMOR`, no `HEAVY_ARMOR`), Mage & Priest (future gear only; seluruh Phase 3 gear non-kompatibel).
-    - State Siklus Hidup Pahlawan: `RECRUITABLE`, `ROSTER_ACTIVE`, `IN_PARTY`, `IN_TRAINING`, `BATTLE_ACTIVE`, `PERMADEATH` via `HeroLifecycleState` (`scripts/domain/model/hero_lifecycle_state.gd`).
-    - Validasi transisi legal dan penegakan `PERMADEATH` sebagai state terminal mutlak.
-    - Eliminasi silent normalization pada `HeroModel._init()`: input bintang, peran, dan state invalid tidak di-clamp diam-diam melainkan tertangkap oleh `validate_invariants()`.
-    - Test Suite Phase 4A: **38/38 PASSED, 0 FAILED** ([tests/test_phase4a_hero_domain_lifecycle.gd](file:///d:/fortress_game/tests/test_phase4a_hero_domain_lifecycle.gd)).
-    - Full Regression: **172 tests PASSED (134 baseline Phase 1-3 + 38 Phase 4A)** + Scene Smoke Playtest ALL PASS.
-  - **Sub-Phase 4B — Hero Progression & EXP**: **COMPLETED / VERIFIED**
-    - Formula EXP Kanonikal: $\text{ReqEXP}(L) = \lfloor 120.0 \times L^{1.55} \rfloor$ dengan nilai eksak $Lv1=120, Lv2=351, Lv3=658, Lv4=1028$.
-    - Progresi level hero dengan akumulasi carry-over EXP dan dukungan kenaikan multi-level seketika.
-    - Level Cap berbasis bintang saat ini: $\text{current\_star} \times 10$ ($1\star=10, 2\star=20, 3\star=30, 4\star=40, 5\star=50$). Hero di level cap tidak bertambah levelnya saat menerima EXP lebih lanjut.
-    - Kelayakan & Validasi Ascension: $1 \le \text{current\_star} < \text{potential\_star} \le 5$, hero hidup, tidak permadeath, dan $\text{level} \ge \text{current\_star} \times 10$.
-    - Biaya Ascension: $\text{current\_star} \times 150 \text{ Gold}$ ($1\star\rightarrow2\star=150, 2\star\rightarrow3\star=300, 3\star\rightarrow4\star=450, 4\star\rightarrow5\star=600$).
-    - Transaksi Atomik Kas Emas & Mutasi Bintang di `GameCoordinator.ascend_hero()`: dilindungi Battle Lock, kas benteng mencukupi, mutasi tepat $+1$ bintang, rollback jika gagal.
-    - Formula Battle EXP Kanonikal di `CombatEngine`: $\lfloor 60.0 \times (1.0 + \text{Wave} / 15.0) \rfloor$.
-    - Distribusi Battle EXP deterministik: pembagian rata kepada seluruh hero hidup yang bertarung, sisa (*remainder*) dialokasikan deterministik berdasarkan urutan alfabetik `hero_id`. Total terdistribusi tidak pernah melebihi nilai EXP yang diberikan.
-    - Telemetri Snapshot: Atribut `potential_star`, `level_cap`, `can_ascend`, dan `ascension_cost` diserialisasikan ke `GameStateSnapshot.heroes_data`.
-    - Test Suite Phase 4B: **47/47 PASSED, 0 FAILED** ([tests/test_phase4b_hero_progression.gd](file:///d:/fortress_game/tests/test_phase4b_hero_progression.gd)).
-    - Full Regression: **219 tests PASSED (134 baseline Phase 1-3 + 38 Phase 4A + 47 Phase 4B)** + Scene Smoke Playtest ALL PASS.
-  - **Sub-Phase 4C — Hero Recruitment & Roster Management**: **COMPLETED / VERIFIED / CLOSED**
-    - Biaya Rekrutmen Kanonikal Mutlak: 500 Gold (`GameCoordinator.HERO_RECRUITMENT_COST_DEFAULT`). Tidak ada parameter override biaya pada `recruit_hero()`.
-    - Alur Transaksi Atomik `GameCoordinator.recruit_hero()`: dilindungi Battle Lock, validasi invarian hero, validasi duplikasi ID, pemotongan kas 500 Gold, transisi `RECRUITABLE` $\rightarrow$ `ROSTER_ACTIVE`, penambahan ke `_heroes`, rollback jika gagal.
-    - Identitas Pahlawan Deterministik & Unik: `generate_unique_hero_id()` dan `generate_hero_candidate()`, pencegahan duplikasi ID di seluruh roster.
-    - Kepemilikan & Manajemen Roster: `get_roster_count()`, `get_roster()`, `get_heroes()`, `has_hero()`, `add_hero()`, `dismiss_hero()`, `remove_hero()`.
-    - Keamanan Gudang Bersama: pahlawan rekrutan selalu berperlengkapan kosong (`PRIMARY/SECONDARY/ARMOR = null/NONE`), tidak ada duplikasi atau bypassing perlengkapan gudang benteng. Pelepasan pahlawan (`dismiss_hero`) mengembalikan seluruh perlengkapan terpasang ke gudang bersama secara aman, menjaga invarian konservasi.
-    - Snapshot Telemetri Komprehensif: pelestarian `base_hp`, `base_atk`, `base_def`, `fatigue`, `morale`, `chemistry_map`, dan slot perlengkapan ke `heroes_data`.
-    - Test Suite Phase 4C: **51/51 PASSED, 0 FAILED** ([tests/test_phase4c_hero_recruitment.gd](file:///d:/fortress_game/tests/test_phase4c_hero_recruitment.gd)).
-    - Full Regression: **270 tests PASSED (134 baseline Phase 1-3 + 38 Phase 4A + 47 Phase 4B + 51 Phase 4C)** + Scene Smoke Playtest ALL PASS.
-  - **Sub-Phase 4D — Hero Training, Fatigue & Morale**: **COMPLETED / VERIFIED**
-    - Sesi Latihan Kanonikal MVP: `GameCoordinator.train_hero()` memberikan reward deterministik `40 EXP` dan menambahkan `+15 fatigue` (memanfaatkan `HeroModel.add_exp()` Phase 4B secara penuh).
-    - Batasan Anti-Exploit Gelombang: Dibatasi maksimal 1 kali sesi latihan per pahlawan per gelombang (`has_hero_trained_this_wave`). Pelacakan direset secara otomatis saat nomor gelombang naik.
-    - Batas Kelelahan (*Fatigue Boundary*): Rentang `0–100`. Latihan ditolak mutlak jika fatigue akhir melebihi 100 (misal: fatigue 85 menjadi 100 sukses; fatigue 86 atau 100 ditolak tanpa perubahan state dan tanpa clamping diam-diam).
-    - Aksi Pemulihan Istirahat (*Rest*): `GameCoordinator.rest_hero()` memulihkan kelelahan `-25 fatigue` (minimum 0) dan menambah `+5 morale` (maksimum 150) secara atomik. Istirahat tidak merubah EXP, level, bintang, perlengkapan, chemistry, maupun kas emas.
-    - Proteksi Battle Lock: Aksi latihan dan istirahat dilarang keras saat state `BATTLE`.
-    - Formula Multiplier Kelelahan: $\text{FatigueMultiplier} = 1.0 - (\text{fatigue} / 200.0)$ ($0 \rightarrow 1.00, 20 \rightarrow 0.90, 50 \rightarrow 0.75, 100 \rightarrow 0.50$).
-    - Formula Multiplier Moral: $\text{MoraleMultiplier} = 0.75 + (\text{morale} / 200.0)$ ($0 \rightarrow 0.75, 50 \rightarrow 1.00, 100 \rightarrow 1.25, 150 \rightarrow 1.50$).
-    - Urutan Efektivitas Stat: $\text{BaseStat} \times \text{LevelScale} \times \text{StarScale} \times \text{FatigueMultiplier} \times \text{MoraleMultiplier} \times \text{GearScale}$.
-    - Snapshot Telemetri: Serialisasi `trained_this_wave`, `fatigue`, `morale`, `effective_atk`, dan `effective_def` ke `GameStateSnapshot.heroes_data`.
-    - Test Suite Phase 4D: **54/54 PASSED, 0 FAILED** ([tests/test_phase4d_hero_training_fatigue_morale.gd](file:///d:/fortress_game/tests/test_phase4d_hero_training_fatigue_morale.gd)).
-    - Full Regression: **324 tests PASSED (134 baseline Phase 1-3 + 38 Phase 4A + 47 Phase 4B + 51 Phase 4C + 54 Phase 4D)** + Scene Smoke Playtest ALL PASS.
-  - **Sub-Phase 4E — Hero Skills & Talent Foundation**: **COMPLETED / VERIFIED**
-    - Model data murni `HeroSkill` (`scripts/domain/model/hero_skill.gd`) turunan `RefCounted` dengan validasi invarian identitas, nama, peran, syarat level, tipe skill, dan pengali kekuatan.
-    - Katalog skill kanonikal 4 peran (`KNIGHT`, `ARCHER`, `MAGE`, `PRIEST`) bertipe `PASSIVE_STAT` dan `AURA`.
-    - Validasi kelayakan pembukaan skill (`can_unlock_skill`, `unlock_skill`): peran cocok, level memenuhi, tidak duplikat, hero hidup dan non-permadeath.
-    - Perolehan Poin Bakat (*Talent Points*) berbasis kenaikan tingkat ganjil (*Odd-Level Rule*): $+1$ poin saat mencapai level ganjil (3, 5, 7, 9, dst.) melalui `HeroModel.add_exp()`; tidak ada perolehan retroaktif saat hero dibuat di level 1; multi-level jump terakomodasi akurat.
-    - Tiga cabang bakat kanonikal per peran: `OFFENSE`, `DEFENSE`, `LEADERSHIP` dengan batas maksimal tingkat 3 per cabang.
-    - Multiplier bakat deterministik:
-      - `OFFENSE`: $+2\%$ ATK per level (1.02, 1.04, 1.06).
-      - `DEFENSE`: $+2\%$ DEF per level (1.02, 1.04, 1.06).
-      - `LEADERSHIP`: $+1\%$ ATK dan $+1\%$ DEF per level (1.01, 1.02, 1.03).
-      - Formula komposit: $\text{AtkMultiplier} = (1.0 + \text{off} \times 0.02) \times (1.0 + \text{ldr} \times 0.01)$, $\text{DefMultiplier} = (1.0 + \text{def} \times 0.02) \times (1.0 + \text{ldr} \times 0.01)$.
-    - Integrasi stat efektif pahlawan: `get_effective_atk()` dan `get_effective_def()` mengintegrasikan pengali bakat dengan backward compatibility mutlak (multiplier 1.0 jika alokasi 0).
-    - Proteksi Battle Lock di `GameCoordinator`: `unlock_hero_skill()` dan `allocate_hero_talent()` diblokir keras saat status `STATE_BATTLE`.
-    - Deep-copy clone: `HeroModel.clone()` menduplikasi `unlocked_skills`, `talent_points`, dan `allocated_talents`.
-    - Snapshot Telemetri: Serialisasi `unlocked_skills`, `talent_points`, `allocated_talents`, `talent_atk_multiplier`, dan `talent_def_multiplier` ke dalam `GameStateSnapshot.heroes_data`.
-    - Test Suite Phase 4E: **62/62 PASSED, 0 FAILED** ([tests/test_phase4e_hero_skills_talents.gd](file:///d:/fortress_game/tests/test_phase4e_hero_skills_talents.gd)).
-    - Full Regression: **386 tests PASSED (134 baseline Phase 1-3 + 38 Phase 4A + 47 Phase 4B + 51 Phase 4C + 54 Phase 4D + 62 Phase 4E)** + Scene Smoke Playtest ALL PASS.
-  - **Sub-Phase 4F — Hero Chemistry & Party Management**: **COMPLETED / VERIFIED / CLOSED (CORRECTION GATE PASSED)**
-    - Model domain murni `PartyModel` (`scripts/domain/model/party_model.gd`, `class_name PartyModel extends RefCounted`) dengan id regu kanonikal `party_1` dan `party_2`, kapasitas maksimal 3 pahlawan per regu, manajemen anggota, penetapan ketua regu (*leader*), kloning mendalam, serta validasi invarian.
-    - Perluasan `HeroModel`: atribut `party_id: String = ""` ("" = RESERVE, "party_1", "party_2"), metode pembantu (`is_in_party`, `get_party_id`, `set_party_id`, `clear_party_assignment`), sinkronisasi status invarian dengan `HeroLifecycleState`, pembersihan otomatis saat gugur (`mark_dead()`), serta proteksi terhadap self-chemistry (`p_id == hero_id`).
-    - Jalur tunggal akumulasi chemistry di `CombatEngine`: dihapus dari perulangan melee Phase 3, dialihkan ke satu-satunya jalur resmi pada Fase 5 pasca-kelangsungan hidup pertempuran (+2 poin per pasang hero hidup yang bertarung bersama di Party 1, batas maksimal 50 poin, penambahan bersifat simetris mutlak).
-    - Serialisasi Snapshot di `GameStateSnapshot`: penambahan serialisasi `parties_data: Array` pada `_init`, `clone()`, `to_dictionary()`, dan `from_dictionary()`.
-    - Manajemen Regu di `GameCoordinator`: inisialisasi tepat 2 regu (`party_1` dan `party_2`), API kueri, alokasi/pelepasan hero menggunakan canonical domain method `hero.set_party_id(party.party_id)` dengan rollback atomik jika gagal, penetapan ketua regu, proteksi Battle Lock selama `STATE_BATTLE`, perutean tempur eksklusif Party 1 (kontribusi serangan, kelelahan tempur, dan EXP tempur hanya untuk Party 1), dan pembersihan komprehensif saat permadeath (pelepasan keanggotaan regu, penghapusan ketua regu, dan penghapusan referensi chemistry secara simetris).
-    - Test Suite Phase 4F: **68/68 PASSED, 0 FAILED** ([tests/test_phase4f_hero_chemistry_party.gd](file:///d:/fortress_game/tests/test_phase4f_hero_chemistry_party.gd)).
-    - Full Regression: **454 tests PASSED (134 baseline Phase 1-3 + 38 Phase 4A + 47 Phase 4B + 51 Phase 4C + 54 Phase 4D + 62 Phase 4E + 68 Phase 4F)** + Scene Smoke Playtest ALL PASS.
-  - **Sub-Phase 4G — Hero Management UX**: **COMPLETED / VERIFIED**
-    - Integrasi antarmuka Prototype/Debug View (`scripts/presentation/views/prototype_debug_view.gd`) yang fungsional, responsif, dan ringan tanpa polling `_process()`.
-    - Panel Rekrutmen Mercenary Guild: penampil biaya kanonikal (500 Gold mutlak) & kas emas, pemilih peran kandidat (Knight, Archer, Mage, Priest), dan penegakan proteksi Battle Lock serta validasi saldo kas.
-    - Panel Manajemen Regu: tampilan status Party 1 (Active Battle Party) & Party 2 (Management Reserve), anggota, dan cadangan (RESERVE) dengan tombol alokasi regu, pelepasan regu, serta penetapan pemimpin regu (*Leader*).
-    - Panel Roster Pahlawan: daftar pahlawan terdaftar dengan status identitas, peran, bintang/potensi, level, EXP saat ini/syarat, fatigue, morale, lifecycle state, status regu, dan indikator permadeath beserta seleksi pahlawan interaktif.
-    - Panel Detail Pahlawan Terpilih:
-      - Identitas & Combat Stats: HP dasar, ATK & DEF efektif beserta nilai dasar.
-      - Aksi Progresi: tombol Ascension (+1★ seharga kanonikal emas), tombol Latihan (+40 EXP, +15 Fatigue), dan tombol Istirahat (-25 Fatigue, +5 Morale).
-      - Katalog Keahlian Kanonikal: daftar skill peran dengan status terbuka/terkunci dan tombol pembukaan skill berbasis level minimum.
-      - Pohon Bakat: 3 cabang bakat (OFFENSE, DEFENSE, LEADERSHIP), poin bakat tersedia, multiplier aktif, dan tombol alokasi poin bakat (maksimal tingkat 3).
-      - Status Kemitraan (Chemistry): display-only interaktif menampilkan pasangan mitra tempur di Party 1, poin akumulasi (maks 50), dan bonus efektivitas (+0.5%/pt).
-      - Kontrol Perlengkapan: aksi pasang (equip) dan lepas (unequip) senjata primer, sekunder, dan zirah terintegrasi stok gudang bersama (Shared Warehouse).
-    - Penegakan Battle Lock menyeluruh: seluruh kontrol mutasi pahlawan dinonaktifkan secara ketat selama fase `BATTLE`.
-    - Delegasi GameController: penambahan 20 metode delegasi pada `GameController` menghubungkan presentasi ke `GameCoordinator`.
-    - Banner Umpan Balik (*Feedback Banner*): pesan konfirmasi yang jelas dan informatif untuk setiap aksi sukses atau penolakan transaksi.
-    - Test Suite Phase 4G: **60/60 PASSED, 0 FAILED** ([tests/test_phase4g_hero_management_ux.gd](file:///d:/fortress_game/tests/test_phase4g_hero_management_ux.gd)).
-    - Full Regression: **514 tests PASSED (134 baseline Phase 1-3 + 38 Phase 4A + 47 Phase 4B + 51 Phase 4C + 54 Phase 4D + 62 Phase 4E + 68 Phase 4F + 60 Phase 4G)** + Scene Smoke Playtest ALL PASS.
-  - **Sub-Phase 4H — Hero System Integration & Verification**: **COMPLETED / VERIFIED / CLOSED**
-    - Audit arsitektur cross-layer menyeluruh (Domain, Application, Simulation, Presentation, Test) memastikan single-source-of-truth ownership pada `HeroModel`, eliminasi duplicate manager/controller/chemistry-map, isolasi perutean tempur Party 1 terverifikasi 100%, penegakan Battle Lock mutlak pada 12 metode mutasi `GameCoordinator`, dan penanganan permadeath terminal lengkap.
-    - Test Suite Phase 4H: **81/81 PASSED, 0 FAILED** ([tests/test_phase4h_hero_system_integration.gd](file:///d:/fortress_game/tests/test_phase4h_hero_system_integration.gd)) mencakup Group A s/d Group J serta Group K (simulasi stres deterministik 50 gelombang tempur penuh).
-    - Verifikasi Multi-System Stress 50 Gelombang: integrasi stabil rekrutmen, penugasan regu, pembagian EXP deterministik, batas kemitraan chemistry (cap 50), latihan anti-exploit per gelombang, kenaikan tingkat & ascension, alokasi bakat & skill, permadeath recovery & rotasi pahlawan cadangan di gelombang 25, serta pelestarian invarian konservasi Shared Warehouse $\text{Total} = \text{USBL} + \text{DMGD} + \text{HERO} + \text{REGD}$ di setiap gelombang.
-    - Full Automated Regression: **595 tests PASSED across all 16 test suites** (134 baseline Phase 1-3 + 38 Phase 4A + 47 Phase 4B + 51 Phase 4C + 54 Phase 4D + 62 Phase 4E + 68 Phase 4F + 60 Phase 4G + 81 Phase 4H) + Scene Smoke Playtest ALL PASS.
-    - **PHASE 4 — HERO SYSTEM RESMI DITUTUP (COMPLETED / CLOSED)**.
-- **Phase 5 — Fortress & Management Systems**: **LOCKED** (Menunggu persetujuan eksplisit developer)
-- **Phase 6 — Tactical Battle & Battlefield Systems**: **LOCKED**
+  - **Fortress Defense Foundation**: Tembok Pertahanan (`wall_hp`/`wall_max_hp`), Gerbang Utama (`gate_hp`/`gate_max_hp`), reparasi, deteksi breach.
+  - **Population Accounting & Conservation**: Tenaga kerja benteng (`workers`), konversi zero-sum mutlak $\text{Total} = \text{Civilians} + \text{Workers} + \text{Soldiers}$.
+  - **Worker Workforce & Productivity Foundation**: `WorkerModel`, 4 tugas kanonikal (`IDLE`, `BLACKSMITH`, `REPAIR`, `CONSTRUCTION`), moral $0–100$, produktivitas $0.50–1.25$.
+  - **Building & Facility Foundation**: `BuildingModel`, 9 fasilitas kanonikal, level $1–5$.
+  - **Structure Repair System**: Perbaikan atomik struktur benteng ($0.15 \text{ Gold/HP}$), proteksi Battle Lock.
+  - **Construction System**: Proyek pembangunan bertahap dengan pekerja konstruksi, auto-upgrade saat rampung, refund 100% saat dibatalkan.
+  - **Management UI & Wireframe Mapping**: Antarmuka fungsional pada `PrototypeDebugView`, tombol `Start Battle` dinonaktifkan (milik Phase 6).
+  - **Snapshot Integration & Memory Isolation**: `GameStateSnapshot` diperluas, kloning deep-copy 100% isolasi memori.
+  - **Testing & Verification**: 82/82 Phase 5 tests PASS, 100-cycle stress simulation PASS, 677/677 Full Regression PASS (17 suites), Scene Smoke Playtest ALL PASS.
+- **Phase 6 — Tactical Battle & Battlefield Systems**: **IN ARCHITECTURE PLANNING (DO NOT IMPLEMENT YET)**
+  - Dokumen Perencanaan Arsitektur: **ESTABLISHED** ([plans/PHASE_6_TACTICAL_BATTLE_PLAN.md](file:///d:/fortress_game/plans/PHASE_6_TACTICAL_BATTLE_PLAN.md)).
+  - Konsep: Football Manager commander gameplay, simulasi real-time berbasis tick, medan perang 7 zona diskrit, partisipasi Party 1 dan serdadu agregat, 6 perintah taktis komandan, perutean kerusakan bertingkat ke Gate/Wall/Fortress, resolusi korban serdadu & perlengkapan Phase 3D.
+  - Rencana Sub-Fase: 6A (Zones & Enemies), 6B (Tick & Pacing), 6C (Formations & Aura), 6D (Commander Commands), 6E (Damage Routing & Casualties), 6F (UI & Verification Gate).
+- **Phase 7 — Economy & Progression**: **LOCKED**
+- **Phase 8 — Content Implementation**: **LOCKED**
+- **Phase 9 — Visual / UI / Pixel Art Integration**: **LOCKED**
+- **Phase 10 — Save/Load, Mobile Optimization & Polish**: **LOCKED**
 
 ---
 
 ### Aturan & Batasan Saat Ini
 
 > [!IMPORTANT]
-> **PHASE 3 & PHASE 4 TELAH RESMI DITUTUP (OFFICIALLY CLOSED).**
-> **PHASE 5 TETAP LOCKED**: DILARANG memulai implementasi sistem pertahanan benteng lanjutan, modul/fasilitas benteng baru, maupun ekonomi tingkat lanjut sebelum persetujuan eksplisit (*explicit approval*) diberikan oleh developer.
-> **PHASE 6 TETAP LOCKED**: DILARANG memulai implementasi sistem pertarungan taktis mendalam, battlefield physics, maupun AI taktis musuh.
-
----
-
-### Verifikasi Gerbang Keluar Phase 3 (Phase 3 Exit Gate Checklist)
-
-- [x] Seluruh existing regression tests PASS (Phase 1: 5/5, Phase 2: 21/21, Phase 3A: 11/11, Phase 3B: 27/27, Phase 3C: 22/22, Phase 3D: 10/10, Follow-up: 23/23)
-- [x] Seluruh Phase 3E verification tests PASS (15/15 PASS)
-- [x] 20-wave stress verification PASS (100% stabilitas tanpa crash / memory leak)
-- [x] Tidak ada critical crash
-- [x] Tidak ada duplikasi equipment
-- [x] Tidak ada kehilangan equipment yang tidak sah (non-casualty)
-- [x] Tidak ada nilai resource atau prajurit negatif
-- [x] Tidak ada bug kalkulasi jumlah serdadu
-- [x] Tidak ada transisi state ilegal
-- [x] Tidak ada eksekusi ganda pada result / recovery
-- [x] Konservasi gudang bersama selalu valid di setiap aksi
-- [x] Persistensi equipment Hero bekerja lintas gelombang
-- [x] Aturan durabilitas serdadu & resolusi korban 35%/65% terverifikasi
-- [x] Reparasi Pandai Besi bekerja presisi dan atomik
-- [x] Scene Smoke Playtest PASS di Godot SceneTree
-- [x] Dokumentasi status dan changelog diperbarui
-- [x] Phase 4 tetap LOCKED
-
----
-
-### Hasil Audit Komponen Teknis Phase 3 Final
-
-| Komponen Sistem | Status | Evaluasi & Status Akhir |
-| :--- | :---: | :--- |
-| **Gameplay State Machine** | COMPLETED | Rantai siklus `BOOT -> PREP -> PREVIEW -> BATTLE -> RESULT -> RECOVERY -> PREP` dan terminal `GAME_OVER` 100% stabil. Menolak transisi ilegal. |
-| **Worker Economy** | COMPLETED | 4 pekerjaan sah (Repair, Smith, Constr, Idle). Bebas passive income dan production worker. Pendapatan murni dari Battle Loot. |
-| **Soldier Deployment** | COMPLETED | Alokasi sementara per gelombang, derivasi peran deterministik, pemisahan dari kolam prajurit benteng, reservasi atomik. |
-| **Equipment & Warehouse** | COMPLETED | Segregasi usable vs damaged, formula durabilitas prajurit selamat (100%), resolusi korban (35% hancur, 65% rusak), konservasi fisik 100%. |
-| **Blacksmith Repair** | COMPLETED | Reparasi item rusak menjadi 100% durabilitas menggunakan Gold dengan diskon alokasi pekerja Pandai Besi. Atomik dan bebas duplikasi. |
-| **Hero Foundation** | COMPLETED | Stat, level, fatigue, chemistry, slot perlengkapan persistent lintas gelombang, dan pengembalian gear permadeath tepat 1 kali. |
-| **Commander Commands** | COMPLETED | 6 intent command DTO diterima dan dicatat ke telemetri (`LOGGED_PHASE3_DEFERRED`). Efek taktis mendalam ke Phase 6. |
-| **Wave Preview & Battle** | COMPLETED | Threat budget & enemy counts via `WaveGenerator`. Pertempuran multi-fase via `CombatEngine` dengan tempo 1x/2x/4x/Pause. |
-| **Result & Recovery** | COMPLETED | Pasca-tempur atomik tanpa eksekusi ganda. Kembalinya prajurit selamat dan gear sementara ke gudang benteng. |
-| **Automated Test Suites** | COMPLETED | 134 pengujian unit/sistem + 1 Scene Smoke Playtest suite lulus 100% tanpa kegagalan (100% PASS). |
+> **PHASE 0 HINGGA PHASE 5 TELAH RESMI DITUTUP (OFFICIALLY COMPLETED & CLOSED).**
+> **PHASE 6 BERSTATUS PLANNING ONLY**: DILARANG memulai implementasi fitur gameplay, kode simulasi baru, maupun modifikasi skrip di `scripts/` sebelum rencana teknis `plans/PHASE_6_TACTICAL_BATTLE_PLAN.md` ditinjau dan disetujui secara eksplisit (*explicit approval*) oleh developer.
+> **PHASE 7+ TETAP LOCKED**: Seluruh fase lanjut tetap terkunci.
