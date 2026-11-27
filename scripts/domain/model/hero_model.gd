@@ -138,6 +138,14 @@ func validate_invariants() -> bool:
 		return false
 	if not validate_stars(current_star, potential_star):
 		return false
+	if level < 1 or level > get_level_cap():
+		return false
+	if current_exp < 0:
+		return false
+	if fatigue < 0 or fatigue > 100:
+		return false
+	if morale < 0 or morale > 150:
+		return false
 	if lifecycle_state == STATE_PERMADEATH and is_alive:
 		return false
 	if not is_alive and lifecycle_state != STATE_PERMADEATH:

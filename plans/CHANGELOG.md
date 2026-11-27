@@ -4,6 +4,64 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.5.3] - Phase 4C: Hero Recruitment & Roster Management (Implemented & Verified)
+
+### Added
+- **Canonical Hero Recruitment Cost** (`scripts/application/coordinators/game_coordinator.gd`):
+  - Ditetapkan biaya rekrutmen kanonikal MVP default: `500 Gold` (`const HERO_RECRUITMENT_COST_DEFAULT: int = 500`).
+  - Single source of truth via metode `get_hero_recruitment_cost() -> int`.
+- **Atomic Hero Recruitment Transaction** (`scripts/application/coordinators/game_coordinator.gd`):
+  - Metode `recruit_hero(candidate_or_role, cur_star, pot_star, p_id, p_name, cost) -> HeroModel`.
+  - Dilindungi Battle Lock (dilarang saat state `BATTLE`).
+  - Validasi invarian hero, validasi duplikasi ID di roster, validasi lifecycle state (`RECRUITABLE` atau `ROSTER_ACTIVE`), dan validasi slot perlengkapan awal harus kosong.
+  - Deduksi emas kas bendahara benteng dan transisi `RECRUITABLE` $\rightarrow$ `ROSTER_ACTIVE` secara atomik (dengan rollback otomatis jika mutasi gagal).
+  - Penambahan pahlawan ke dalam roster benteng `_heroes` dan pembaruan snapshot reaktif.
+- **Deterministic Unique Hero Identity Generator** (`scripts/application/coordinators/game_coordinator.gd`):
+  - Metode `generate_unique_hero_id(prefix)` menghasilkan ID unik deterministik yang belum ada di roster.
+  - Metode `generate_hero_candidate(role, cur_star, pot_star, p_id, p_name)` menghasilkan instance `HeroModel` berstatus `RECRUITABLE` untuk persiapan bursa sewa atau pengujian.
+  - Menjamin tidak ada ID hero duplikat yang dapat memasuki roster benteng.
+- **Roster Ownership & Management Methods** (`scripts/application/coordinators/game_coordinator.gd`):
+  - Metode otoritatif roster: `get_roster_count() -> int`, `get_roster() -> Array`, `get_heroes() -> Array`, `has_hero(hero_id: String) -> bool`.
+  - Metode penambahan langsung `add_hero(hero: HeroModel) -> bool` yang memvalidasi invarian dan menolak ID duplikat.
+  - Metode pelepasan pahlawan `dismiss_hero(hero_id: String) -> bool` dan `remove_hero(hero_id: String) -> bool` yang dilindungi Battle Lock dan secara otomatis mengembalikan seluruh perlengkapan terpasang ke gudang bersama (menjaga invarian konservasi).
+- **Hero Domain Invariant Expansion** (`scripts/domain/model/hero_model.gd`):
+  - Memperluas `validate_invariants()` untuk memvalidasi batas level ($1 \le \text{level} \le \text{get\_level\_cap()}$), EXP non-negatif, batas kelelahan ($0 \le \text{fatigue} \le 100$), dan batas moral ($0 \le \text{morale} \le 150$).
+- **Complete Snapshot Telemetry Preservation** (`scripts/application/coordinators/game_coordinator.gd`):
+  - Memperluas serialisasi entri hero pada `GameStateSnapshot.heroes_data` mencakup `base_hp`, `base_atk`, `base_def`, dan `chemistry_map`.
+- **Phase 4C Automated Test Suite** (`tests/test_phase4c_hero_recruitment.gd`):
+  - 48 pengujian unit dan integrasi otomatis mencakup:
+    - Recruitment (keberhasilan rekrutmen, transisi ke ROSTER_ACTIVE, deduksi 500 Gold, nominal emas pas, penolakan emas kurang, invariansi kas dan roster saat gagal, pertumbuhan ukuran roster).
+    - Identity (generasi ID unik, penolakan ID duplikat, resistensi reordering roster, lookup stabil berdasarkan ID, penanganan aman ID tidak ditemukan).
+    - Validation (penolakan peran tidak valid, penolakan bintang < 1 atau > 5, penolakan potensi < bintang atau > 5, penolakan level invalid, penolakan kandidat invalid, penerimaan progresi bintang-potensi legal).
+    - Initial State (awal di level 1, 0 EXP, perlengkapan kosong, fatigue 0, morale 100, chemistry map kosong).
+    - Roster Ownership (hanya hero valid di roster, penolakan duplikasi add_hero, lookup stabil banyak hero, dismiss_hero menjaga integritas sisa hero).
+    - Snapshot (pelestarian identitas, progresi, status siklus hidup, status perlengkapan, dan peta chemistry).
+    - Transaction Safety (kegagalan tidak memotong emas, deduksi emas tepat 1 kali, penambahan pahlawan tepat 1 kali, pencegahan request ganda).
+    - Supplementary Constraints (proteksi Battle Lock, penolakan kandidat dengan gear ilegal, penolakan kandidat dengan state awal invalid seperti PERMADEATH/BATTLE_ACTIVE).
+
+### Verified
+- **Full Regression Suite**:
+  - Phase 1 Architecture: 5/5 PASSED
+  - Phase 2 Mathematical Systems: 21/21 PASSED
+  - Phase 3A Gameplay Baseline: 11/11 PASSED
+  - Phase 3B Soldier Deployment: 27/27 PASSED
+  - Phase 3C Hero Equipment Foundation: 22/22 PASSED
+  - Phase 3D Prototype UX & Polish: 10/10 PASSED
+  - Phase 3D Follow-up Corrections: 23/23 PASSED
+  - Phase 3E Final Verification: 15/15 PASSED
+  - Phase 4A Hero Domain & Lifecycle: 38/38 PASSED
+  - Phase 4B Hero Progression & EXP: 47/47 PASSED
+  - Phase 4C Hero Recruitment & Roster: 48/48 PASSED
+  - Prototype Scene Smoke Playtest: ALL PASS, 0 ERRORS
+  - **Total: 267 unit/integration tests + 1 Scene Smoke Playtest suite PASSED 100%**.
+- **Phase 4 Status**:
+  - Sub-Phase 4A: COMPLETED / VERIFIED
+  - Sub-Phase 4B: COMPLETED / VERIFIED
+  - Sub-Phase 4C: IMPLEMENTED / VERIFIED
+  - Sub-Phase 4D: NEXT / LOCKED (terkunci hingga tinjauan developer)
+
+---
+
 ## [0.5.2] - Phase 4B: Hero Progression & EXP (Completed & Verified)
 
 ### Added

@@ -25,6 +25,8 @@ const EconomyManager = preload("res://scripts/simulation/economy_manager.gd")
 const WaveGenerator = preload("res://scripts/simulation/wave_generator.gd")
 const CombatEngine = preload("res://scripts/simulation/combat_engine.gd")
 
+const HERO_RECRUITMENT_COST_DEFAULT: int = 500
+
 var _current_state: GameStateSnapshot
 var _simulation_runner: SimulationRunner
 var _state_machine: GameplayStateMachine
@@ -50,6 +52,7 @@ var _last_command: CommanderCommand = null
 var _battle_speed: float = 1.0
 var _battle_paused: bool = false
 var _session_seed: int = 12345
+var _hero_id_counter: int = 1
 
 
 func _init(initial_state: GameStateSnapshot = null, runner: SimulationRunner = null) -> void:
@@ -621,6 +624,168 @@ func ascend_hero(hero_id: String) -> bool:
 	return true
 
 
+# ==============================================================================
+# PHASE 4C HERO RECRUITMENT & ROSTER MANAGEMENT
+# ==============================================================================
+
+## Mengembalikan biaya rekrutmen pahlawan standar kanonikal (500 Gold)
+func get_hero_recruitment_cost() -> int:
+	return HERO_RECRUITMENT_COST_DEFAULT
+
+
+## Menghasilkan hero_id unik dan deterministik yang belum ada di roster
+func generate_unique_hero_id(prefix: String = "hero_recruited_") -> String:
+	while true:
+		var candidate_id: String = prefix + str(_hero_id_counter)
+		_hero_id_counter += 1
+		if get_hero(candidate_id) == null:
+			return candidate_id
+	return prefix + str(Time.get_ticks_msec())
+
+
+## Menghasilkan kandidat hero terkontrol untuk persiapan rekrutmen atau pengujian
+func generate_hero_candidate(
+	role: String = HeroRole.KNIGHT,
+	cur_star: int = 1,
+	pot_star: int = 3,
+	p_id: String = "",
+	p_name: String = ""
+) -> HeroModel:
+	var target_id: String = p_id if not p_id.strip_edges().is_empty() else generate_unique_hero_id()
+	var target_name: String = p_name if not p_name.strip_edges().is_empty() else ("Recruit " + role.capitalize())
+	return HeroModel.new(target_id, target_name, cur_star, pot_star, role, HeroLifecycleState.RECRUITABLE)
+
+
+## Mengembalikan jumlah pahlawan saat ini di dalam roster benteng
+func get_roster_count() -> int:
+	return _heroes.size()
+
+
+## Mengembalikan salinan daftar pahlawan di dalam roster benteng
+func get_roster() -> Array:
+	return _heroes.duplicate()
+
+
+## Mengembalikan salinan seluruh pahlawan di dalam roster benteng (alias get_roster)
+func get_heroes() -> Array:
+	return _heroes.duplicate()
+
+
+## Memeriksa apakah pahlawan dengan ID tertentu terdaftar di roster
+func has_hero(hero_id: String) -> bool:
+	return get_hero(hero_id) != null
+
+
+## Menambahkan instance HeroModel yang valid langsung ke roster (mencegah ID duplikat)
+func add_hero(hero: HeroModel) -> bool:
+	if hero == null:
+		return false
+	if not hero.validate_invariants():
+		return false
+	if get_hero(hero.hero_id) != null:
+		return false # Penolakan duplikasi ID
+	_heroes.append(hero)
+	_update_snapshot()
+	state_changed.emit(_current_state.clone())
+	return true
+
+
+## Memberhentikan / melepas pahlawan dari roster (perlengkapan dikembalikan ke gudang)
+func dismiss_hero(hero_id: String) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		push_warning("dismiss_hero dilarang pada fase BATTLE (Battle Lock)")
+		return false
+	var target_idx: int = -1
+	var target_hero: HeroModel = null
+	for i in range(_heroes.size()):
+		var h = _heroes[i]
+		if h is HeroModel and (h as HeroModel).hero_id == hero_id:
+			target_idx = i
+			target_hero = h as HeroModel
+			break
+	if target_hero == null or target_idx == -1:
+		return false
+	var items: Array = target_hero.clear_equipment()
+	for item in items:
+		if item is EquipmentModel:
+			_return_equipment_to_warehouse(item as EquipmentModel)
+	_heroes.remove_at(target_idx)
+	_update_snapshot()
+	state_changed.emit(_current_state.clone())
+	return true
+
+
+## Alias untuk dismiss_hero
+func remove_hero(hero_id: String) -> bool:
+	return dismiss_hero(hero_id)
+
+
+## Merekrut pahlawan baru ke dalam roster benteng secara atomik
+func recruit_hero(
+	candidate_or_role: Variant = null,
+	cur_star: int = 1,
+	pot_star: int = 3,
+	p_id: String = "",
+	p_name: String = "",
+	recruitment_cost: int = -1
+) -> HeroModel:
+	# 1. Validasi Battle Lock
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		push_warning("recruit_hero dilarang pada fase BATTLE (Battle Lock)")
+		return null
+
+	# 2. Tentukan kandidat HeroModel
+	var hero: HeroModel = null
+	if candidate_or_role is HeroModel:
+		hero = candidate_or_role as HeroModel
+	elif candidate_or_role is String or candidate_or_role == null:
+		var target_role: String = (candidate_or_role as String) if candidate_or_role is String and not (candidate_or_role as String).is_empty() else HeroRole.KNIGHT
+		var target_id: String = p_id if not p_id.strip_edges().is_empty() else generate_unique_hero_id()
+		var target_name: String = p_name if not p_name.strip_edges().is_empty() else ("Recruit " + target_role.capitalize())
+		hero = HeroModel.new(target_id, target_name, cur_star, pot_star, target_role, HeroLifecycleState.RECRUITABLE)
+	else:
+		return null
+
+	# 3. Validasi Invarian Hero
+	if hero == null or not hero.validate_invariants():
+		return null
+
+	# 4. Validasi Duplikasi ID di Roster
+	if get_hero(hero.hero_id) != null:
+		return null
+
+	# 5. Validasi State Siklus Hidup Calon Rekrut (hanya RECRUITABLE atau ROSTER_ACTIVE)
+	if hero.lifecycle_state != HeroLifecycleState.RECRUITABLE and hero.lifecycle_state != HeroLifecycleState.ROSTER_ACTIVE:
+		return null
+
+	# 6. Validasi Perlengkapan Awal (Harus Kosong untuk Keamanan Konservasi Gudang)
+	if hero.has_equipment("PRIMARY") or hero.has_equipment("SECONDARY") or hero.has_equipment("ARMOR"):
+		return null
+
+	# 7. Validasi dan Kalkulasi Biaya Emas
+	var cost: int = recruitment_cost if recruitment_cost >= 0 else get_hero_recruitment_cost()
+	if _economy == null or _economy.treasury_gold < cost:
+		return null
+
+	# 8. Transaksi Atomik: Potong Emas & Transisi State
+	_economy.treasury_gold -= cost
+	
+	if hero.lifecycle_state == HeroLifecycleState.RECRUITABLE:
+		var transitioned: bool = hero.transition_lifecycle_state(HeroLifecycleState.ROSTER_ACTIVE)
+		if not transitioned:
+			# Rollback
+			_economy.treasury_gold += cost
+			return null
+
+	# 9. Masukkan ke Roster Benteng
+	_heroes.append(hero)
+
+	# 10. Perbarui Snapshot & Emit Sinyal
+	_update_snapshot()
+	state_changed.emit(_current_state.clone())
+	return hero
+
+
 ## Inspeksi gelombang ancaman berikutnya (transisi PREPARATION -> WAVE_PREVIEW)
 func inspect_wave() -> bool:
 	if _state_machine.current_state != GameplayStateMachine.STATE_PREPARATION:
@@ -842,6 +1007,7 @@ func restart_session() -> void:
 # ==============================================================================
 
 func _init_default_domain_models() -> void:
+	_hero_id_counter = 1
 	_population = PopulationModel.new(18, 30, 100)
 	_fortress = FortressModel.new(1000, 40)
 	_economy = EconomyManager.new(150)
@@ -924,12 +1090,16 @@ func _update_snapshot() -> void:
 				"current_exp": hero.current_exp,
 				"current_star": hero.current_star,
 				"potential_star": hero.potential_star,
+				"base_hp": hero.base_hp,
+				"base_atk": hero.base_atk,
+				"base_def": hero.base_def,
 				"level_cap": hero.get_level_cap(),
 				"can_ascend": hero.can_ascend(),
 				"ascension_cost": hero.get_ascension_cost(),
 				"fatigue": hero.fatigue,
 				"morale": hero.morale,
 				"is_alive": hero.is_alive,
+				"chemistry_map": hero.chemistry_map.duplicate(true),
 				"effective_atk": hero.get_effective_atk(),
 				"effective_def": hero.get_effective_def(),
 				"primary_equipment": hero.primary_equipment.role_type if hero.primary_equipment != null else "NONE",

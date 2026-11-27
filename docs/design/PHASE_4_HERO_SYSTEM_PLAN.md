@@ -510,13 +510,35 @@ Setiap sub-fase Phase 4 wajib menyertakan automated headless test suite:
   - Inventaris atau jenis perlengkapan baru (Dilarang).
   - Pixel art dan visual mobile final (Milik Phase 9).
 
+### 5. Batas Eksplisit Sub-Phase 4C (Hero Recruitment & Roster Management) — IMPLEMENTED
+- **STATUS: COMPLETED / VERIFIED (48/48 Tests PASS, Full Regression 267/267 Tests PASS, Scene Smoke Playtest ALL PASS)**
+- **IN SCOPE FOR 4C (IMPLEMENTED):**
+  - Biaya rekrutmen kanonikal MVP default: `500 Gold` (`GameCoordinator.HERO_RECRUITMENT_COST_DEFAULT`).
+  - Alur rekrutmen hero atomik: validasi request, validasi invarian hero, validasi duplikasi ID, validasi kas emas, deduksi emas, transisi state `RECRUITABLE` $\rightarrow$ `ROSTER_ACTIVE`, penambahan ke roster `_heroes`, dan pembaruan snapshot.
+  - Penolakan rekrutmen saat state `BATTLE` (Battle Lock).
+  - Generator identitas pahlawan deterministik dan unik (`generate_unique_hero_id`, `generate_hero_candidate`).
+  - Pencegahan duplikasi identitas hero di seluruh state game (`get_hero(id) != null`).
+  - Kepemilikan dan manajemen roster benteng pada `GameCoordinator` (`get_roster_count`, `get_roster`, `get_heroes`, `has_hero`, `add_hero`, `dismiss_hero`, `remove_hero`).
+  - Keamanan konservasi gudang bersama: hero hasil rekrutmen selalu berperlengkapan kosong (`PRIMARY = null, SECONDARY = null, ARMOR = null`), tidak ada pembuatan/duplikasi gear gratis.
+  - Integrasi snapshot telemetri lengkap (`heroes_data` memuat `hero_id`, `hero_name`, `role`, `lifecycle_state`, `level`, `current_exp`, `current_star`, `potential_star`, `base_hp`, `base_atk`, `base_def`, `fatigue`, `morale`, `chemistry_map`, equipment slots).
+  - Test suite mandiri `tests/test_phase4c_hero_recruitment.gd` (48/48 PASS).
+- **OUT OF SCOPE FOR 4C (DILARANG PADA 4C):**
+  - Fasilitas latihan benteng (*Training Facility*), aksi latihan, dan batas kelelahan $\ge 75$ (Milik 4D).
+  - Redesain kelelahan atau dinamika moral (Milik 4D).
+  - Sistem skill aktif/pasif dan pohon bakat (Milik 4E).
+  - Model party dan chemistry baru (Milik 4F).
+  - Hero Management UI & Recruitment UI (Milik 4G).
+  - Taktik pertempuran dan AI musuh baru (Milik Phase 6).
+  - Inventaris atau jenis perlengkapan baru (Dilarang).
+  - Pixel art dan visual mobile final (Milik Phase 9).
+
 ---
 
 ## X. Acceptance Criteria Phase 4
 
 Phase 4 dinyatakan selesai hanya jika seluruh kriteria berikut terpenuhi:
 - [ ] Model `HeroModel` telah diperluas mencakup peran kanonikal, bakat, keahlian, dan regu tanpa merusak API Phase 3.
-- [ ] Sistem rekrutmen Mercenary Guild berfungsi deterministik dan terintegrasi dengan kas emas benteng.
+- [x] Sistem rekrutmen Mercenary Guild berfungsi deterministik dan terintegrasi dengan kas emas benteng.
 - [x] Sistem progresi level, kenaikan bintang (*Ascension*), dan pembatasan level berbasis bintang berjalan akurat.
 - [ ] Fasilitas latihan (*Training Facility*) berfungsi dengan konsumsi emas dan penambahan kelelahan yang adil.
 - [ ] Pemisahan stamina (kelelahan) dan moral berfungsi independen dan mempengaruhi performa tempur.

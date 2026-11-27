@@ -1,8 +1,8 @@
 # Current Development Phase
 
-## Phase 4 — Hero System (IN PROGRESS / SUB-PHASE 4B COMPLETED)
+## Phase 4 — Hero System (IN PROGRESS / SUB-PHASE 4C IMPLEMENTED)
 
-Project saat ini berada pada tahap **Phase 4 — Hero System (Sub-Phase 4A: COMPLETED / VERIFIED; Sub-Phase 4B: COMPLETED / VERIFIED; Sub-Phase 4C: NEXT / AUTHORIZED TARGET)**.
+Project saat ini berada pada tahap **Phase 4 — Hero System (Sub-Phase 4A: COMPLETED / VERIFIED; Sub-Phase 4B: COMPLETED / VERIFIED; Sub-Phase 4C: IMPLEMENTED / VERIFIED; Sub-Phase 4D: NEXT / LOCKED)**.
 Phase 3 (Gameplay Prototype) telah resmi ditutup (**COMPLETED / CLOSED**) pada commit `e6c0c97`.
 
 Roadmap teknis dan spesifikasi arsitektur komprehensif Phase 4 tersedia di [docs/design/PHASE_4_HERO_SYSTEM_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_4_HERO_SYSTEM_PLAN.md).
@@ -37,7 +37,16 @@ Roadmap teknis dan spesifikasi arsitektur komprehensif Phase 4 tersedia di [docs
     - Telemetri Snapshot: Atribut `potential_star`, `level_cap`, `can_ascend`, dan `ascension_cost` diserialisasikan ke `GameStateSnapshot.heroes_data`.
     - Test Suite Phase 4B: **47/47 PASSED, 0 FAILED** ([tests/test_phase4b_hero_progression.gd](file:///d:/fortress_game/tests/test_phase4b_hero_progression.gd)).
     - Full Regression: **219 tests PASSED (134 baseline Phase 1-3 + 38 Phase 4A + 47 Phase 4B)** + Scene Smoke Playtest ALL PASS.
-  - Sub-Phase 4C — Hero Recruitment & Roster Management: **NEXT / AUTHORIZED TARGET**
+  - **Sub-Phase 4C — Hero Recruitment & Roster Management**: **IMPLEMENTED / VERIFIED**
+    - Biaya Rekrutmen Kanonikal: 500 Gold (`GameCoordinator.HERO_RECRUITMENT_COST_DEFAULT`).
+    - Alur Transaksi Atomik `GameCoordinator.recruit_hero()`: dilindungi Battle Lock, validasi invarian hero, validasi duplikasi ID, pemotongan kas 500 Gold, transisi `RECRUITABLE` $\rightarrow$ `ROSTER_ACTIVE`, penambahan ke `_heroes`, rollback jika gagal.
+    - Identitas Pahlawan Deterministik & Unik: `generate_unique_hero_id()` dan `generate_hero_candidate()`, pencegahan duplikasi ID di seluruh roster.
+    - Kepemilikan & Manajemen Roster: `get_roster_count()`, `get_roster()`, `get_heroes()`, `has_hero()`, `add_hero()`, `dismiss_hero()`, `remove_hero()`.
+    - Keamanan Gudang Bersama: pahlawan rekrutan selalu berperlengkapan kosong (`PRIMARY/SECONDARY/ARMOR = null/NONE`), tidak ada duplikasi atau bypassing perlengkapan gudang benteng.
+    - Snapshot Telemetri Komprehensif: pelestarian `base_hp`, `base_atk`, `base_def`, `fatigue`, `morale`, `chemistry_map`, dan slot perlengkapan ke `heroes_data`.
+    - Test Suite Phase 4C: **48/48 PASSED, 0 FAILED** ([tests/test_phase4c_hero_recruitment.gd](file:///d:/fortress_game/tests/test_phase4c_hero_recruitment.gd)).
+    - Full Regression: **267 tests PASSED (134 baseline Phase 1-3 + 38 Phase 4A + 47 Phase 4B + 48 Phase 4C)** + Scene Smoke Playtest ALL PASS.
+  - Sub-Phase 4D — Hero Training / Fatigue / Morale: **NEXT / LOCKED** (Terkunci hingga tinjauan developer)
   - Sub-Phase 4D — Hero Training / Fatigue / Morale: **PLANNED**
   - Sub-Phase 4E — Hero Skills & Talent Foundation: **PLANNED**
   - Sub-Phase 4F — Hero Chemistry & Party Management: **PLANNED**
