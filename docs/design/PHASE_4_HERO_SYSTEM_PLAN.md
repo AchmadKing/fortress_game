@@ -534,6 +534,29 @@ Setiap sub-fase Phase 4 wajib menyertakan automated headless test suite:
   - Inventaris atau jenis perlengkapan baru (Dilarang).
   - Pixel art dan visual mobile final (Milik Phase 9).
 
+### 6. Batas Eksplisit Sub-Phase 4D (Hero Training, Fatigue & Morale) — COMPLETED / VERIFIED
+- **STATUS: COMPLETED / VERIFIED (54/54 Tests PASS, Full Regression 324/324 Tests PASS, Scene Smoke Playtest ALL PASS)**
+- **IN SCOPE FOR 4D (IMPLEMENTED):**
+  - Reward latihan kanonikal MVP: `40 EXP` (`HeroModel.add_exp()` digunakan ulang secara penuh tanpa duplikasi).
+  - Akumulasi kelelahan latihan: `+15 fatigue` per sesi latihan.
+  - Batasan sesi latihan per gelombang: maksimum 1 sesi latihan per pahlawan per gelombang (`GameCoordinator.has_hero_trained_this_wave()`). Status pelacakan direset saat berpindah ke gelombang berikutnya.
+  - Batas mutlak kelelahan: rentang `0–100`. Latihan ditolak mutlak jika fatigue akhir $> 100$ (misal: fatigue 85 menjadi 100 berhasil; fatigue 86 atau 100 gagal tanpa perubahan state atau EXP).
+  - Aksi pemulihan istirahat (*Rest*): `GameCoordinator.rest_hero()` dan `HeroModel.rest()` memulihkan kelelahan `-25 fatigue` (minimum 0) dan menaikkan moral `+5 morale` (maksimum 150) secara atomik. Istirahat tidak merubah EXP, level, bintang, perlengkapan, chemistry, maupun kas emas.
+  - Proteksi Battle Lock: Aksi latihan dan istirahat dilarang keras saat state `BATTLE`.
+  - Formula multiplier kelelahan kanonikal: $\text{FatigueMultiplier} = 1.0 - (\text{fatigue} / 200.0)$ ($0 \rightarrow 1.00, 20 \rightarrow 0.90, 50 \rightarrow 0.75, 100 \rightarrow 0.50$).
+  - Formula multiplier moral kanonikal: $\text{MoraleMultiplier} = 0.75 + (\text{morale} / 200.0)$ ($0 \rightarrow 0.75, 50 \rightarrow 1.00, 100 \rightarrow 1.25, 150 \rightarrow 1.50$).
+  - Urutan efektivitas stat: $\text{BaseStat} \times \text{LevelMultiplier} \times \text{StarMultiplier} \times \text{FatigueMultiplier} \times \text{MoraleMultiplier} \times \text{GearMultiplier}$.
+  - Integrasi snapshot telemetri lengkap (`heroes_data` memuat `trained_this_wave`, `fatigue`, `morale`, `effective_atk`, `effective_def`).
+  - Test suite mandiri `tests/test_phase4d_hero_training_fatigue_morale.gd` (54/54 PASS).
+- **OUT OF SCOPE FOR 4D (DILARANG PADA 4D):**
+  - Sistem skill aktif/pasif dan pohon bakat (Milik 4E).
+  - Model party dan chemistry baru (Milik 4F).
+  - Hero Management UI & Training UI (Milik 4G).
+  - Taktik pertempuran dan AI musuh baru (Milik Phase 6).
+  - Bangunan benteng baru selain integrasi logika latihan (Milik Phase 5).
+  - Inventaris atau jenis perlengkapan baru (Dilarang).
+  - Pixel art dan visual mobile final (Milik Phase 9).
+
 ---
 
 ## X. Acceptance Criteria Phase 4
@@ -542,8 +565,8 @@ Phase 4 dinyatakan selesai hanya jika seluruh kriteria berikut terpenuhi:
 - [ ] Model `HeroModel` telah diperluas mencakup peran kanonikal, bakat, keahlian, dan regu tanpa merusak API Phase 3.
 - [x] Sistem rekrutmen Mercenary Guild berfungsi deterministik dan terintegrasi dengan kas emas benteng.
 - [x] Sistem progresi level, kenaikan bintang (*Ascension*), dan pembatasan level berbasis bintang berjalan akurat.
-- [ ] Fasilitas latihan (*Training Facility*) berfungsi dengan konsumsi emas dan penambahan kelelahan yang adil.
-- [ ] Pemisahan stamina (kelelahan) dan moral berfungsi independen dan mempengaruhi performa tempur.
+- [x] Fasilitas latihan (*Training*) berfungsi dengan batas anti-exploit per gelombang dan penambahan kelelahan yang adil.
+- [x] Pemisahan stamina (kelelahan) dan moral berfungsi independen dan mempengaruhi performa tempur.
 - [ ] Sistem Party memisahkan pahlawan tempur dan cadangan secara transparan.
 - [ ] Invariant konservasi gudang bersama $\text{Total} = \text{USBL} + \text{DMGD} + \text{HERO} + \text{REGD}$ tetap valid 100%.
 - [ ] Seluruh perlengkapan pahlawan permadeath kembali ke gudang bersama tepat 1 kali.

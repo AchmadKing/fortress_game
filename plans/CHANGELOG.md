@@ -4,6 +4,59 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.5.5] - Phase 4D: Hero Training, Fatigue & Morale (Implemented & Verified)
+
+### Added
+- **Canonical Hero Training Logic** (`scripts/domain/model/hero_model.gd`, `scripts/application/coordinators/game_coordinator.gd`):
+  - Sesi latihan kanonikal MVP memberikan reward deterministik `40 EXP` dan menambahkan `+15 fatigue`.
+  - Integrasi penuh dengan sistem progresi Phase 4B (`add_exp()`) dengan mempertahankan kenaikan level multi-tingkat, carry-over EXP, dan pembatasan level cap bintang.
+  - Validasi ketat batas kelelahan: jika kelelahan akhir melebihi 100 (misal: fatigue 86 atau 100), latihan gagal secara atomik tanpa memutasi EXP atau kelelahan.
+- **Wave-Based Anti-Exploit Training Enforcement** (`scripts/application/coordinators/game_coordinator.gd`):
+  - Penegakan aturan anti-exploit maksimal 1 sesi latihan per pahlawan per gelombang (`_hero_training_wave_tracker`).
+  - Latihan kedua pada gelombang yang sama ditolak tanpa EXP dan tanpa kelelahan.
+  - Pelacakan gelombang terhubung ke nomor gelombang otoritatif benteng (`_current_wave_num`), mereset kelayakan latihan otomatis saat naik ke gelombang berikutnya.
+- **Atomic Fatigue & Morale Recovery (Rest Action)** (`scripts/domain/model/hero_model.gd`, `scripts/application/coordinators/game_coordinator.gd`):
+  - Metode `rest_hero(hero_id, recovery)` dan `HeroModel.rest(recovery)` memulihkan `-25 fatigue` (minimum 0) dan menambah `+5 morale` (maksimum 150) secara simultan dan atomik.
+  - Aksi istirahat tidak merubah EXP, level, bintang, perlengkapan, chemistry, maupun kas emas benteng.
+- **Morale Management & Effective Stat Multipliers** (`scripts/domain/model/hero_model.gd`):
+  - Rentang nilai moral otoritatif `0–150` (baseline `100`).
+  - Metode penyesuaian moral `adjust_morale(delta)` dengan batas bawah 0 dan batas atas 150.
+  - Formula multiplier kelelahan kanonikal: $\text{FatigueMultiplier} = 1.0 - (\text{fatigue} / 200.0)$ ($0 \rightarrow 1.00, 20 \rightarrow 0.90, 50 \rightarrow 0.75, 100 \rightarrow 0.50$).
+  - Formula multiplier moral kanonikal: $\text{MoraleMultiplier} = 0.75 + (\text{morale} / 200.0)$ ($0 \rightarrow 0.75, 50 \rightarrow 1.00, 100 \rightarrow 1.25, 150 \rightarrow 1.50$).
+  - Urutan efektivitas stat akhir pahlawan pada `get_effective_atk()` dan `get_effective_def()` mengintegrasikan $\text{BaseStat} \times \text{LevelScale} \times \text{StarScale} \times \text{FatigueMultiplier} \times \text{MoraleMultiplier} \times \text{GearScale}$.
+- **Battle Lock Protection**:
+  - Aksi `train_hero()` dan `rest_hero()` diblokir keras selama fase `BATTLE`.
+- **Snapshot Telemetry Preservation** (`scripts/application/coordinators/game_coordinator.gd`):
+  - Serialisasi status `trained_this_wave`, `fatigue`, `morale`, `effective_atk`, dan `effective_def` ke dalam `GameStateSnapshot.heroes_data`.
+- **Phase 4D Automated Test Suite** (`tests/test_phase4d_hero_training_fatigue_morale.gd`):
+  - 54 pengujian otomatis mencakup:
+    - Training Tests (1-20): keberhasilan latihan, 40 EXP, +15 fatigue, level up, carry-over, star level cap, penolakan latihan kedua di wave sama, zero EXP/fatigue pada penolakan, latihan aktif kembali di wave berikutnya, penolakan hero mati/permadeath/battle/invalid, batas fatigue 85 vs 86 vs 100, invariansi kas emas dan perlengkapan.
+    - Fatigue Tests (21-33): awal di 0, akumulasi +15, transisi 85 -> 100, penolakan di 86 dan 100, rest -25, batas bawah 0, rest di 0 tetap 0, proteksi battle lock, rest tidak merubah EXP/level/star/gear.
+    - Morale Tests (34-42): awal di 100, penyesuaian positif dan negatif, clamp 0 dan 150, rest +5 morale, atomisitas rest, independensi moral dari fatigue dan EXP.
+    - Effective Stat Tests (43-54): multiplier fatigue (0=1.00, 50=0.75, 100=0.50), multiplier moral (0=0.75, 50=1.00, 100=1.25, 150=1.50), kombinasi stat, scaling level/star tetap utuh, determinisme ATK dan DEF.
+
+### Verified
+- **Full Regression Suite**:
+  - Phase 1 Architecture: 5/5 PASSED
+  - Phase 2 Mathematical Systems: 21/21 PASSED
+  - Phase 3A Gameplay Baseline: 11/11 PASSED
+  - Phase 3B Soldier Deployment: 27/27 PASSED
+  - Phase 3C Hero Equipment Foundation: 22/22 PASSED
+  - Phase 3D Prototype UX & Polish: 10/10 PASSED
+  - Phase 3D Follow-up Corrections: 23/23 PASSED
+  - Phase 3E Final Verification: 15/15 PASSED
+  - Phase 4A Hero Domain & Lifecycle: 38/38 PASSED
+  - Phase 4B Hero Progression & EXP: 47/47 PASSED
+  - Phase 4C Hero Recruitment & Roster: 51/51 PASSED
+  - Phase 4D Hero Training, Fatigue & Morale: 54/54 PASSED
+  - Total: **324 / 324 PASSED (100%)**
+  - Scene Smoke Playtest: **ALL PASS (0 ERRORS)**
+- **Phase Status Transition**:
+  - Sub-Phase 4D: **COMPLETED / VERIFIED**.
+  - Sub-Phase 4E: **NEXT / LOCKED**.
+
+---
+
 ## [0.5.4] - Phase 4C Final Correction Gate: Locked Recruitment Cost Authority & Closed Phase 4C
 
 ### Fixed

@@ -53,6 +53,7 @@ var _battle_speed: float = 1.0
 var _battle_paused: bool = false
 var _session_seed: int = 12345
 var _hero_id_counter: int = 1
+var _hero_training_wave_tracker: Dictionary = {} # hero_id (String) -> wave_num (int)
 
 
 func _init(initial_state: GameStateSnapshot = null, runner: SimulationRunner = null) -> void:
@@ -117,6 +118,7 @@ func start_new_session(session_id: String = "session_proto", seed_val: int = 123
 	_battle_paused = false
 	_last_command = null
 	_last_battle_result = {}
+	_hero_training_wave_tracker.clear()
 
 	_init_default_domain_models()
 
@@ -710,6 +712,7 @@ func dismiss_hero(hero_id: String) -> bool:
 		if item is EquipmentModel:
 			_return_equipment_to_warehouse(item as EquipmentModel)
 	_heroes.remove_at(target_idx)
+	_hero_training_wave_tracker.erase(hero_id)
 	_update_snapshot()
 	state_changed.emit(_current_state.clone())
 	return true
@@ -783,6 +786,86 @@ func recruit_hero(
 	_update_snapshot()
 	state_changed.emit(_current_state.clone())
 	return hero
+
+
+# ==============================================================================
+# PHASE 4D HERO TRAINING, FATIGUE, & MORALE
+# ==============================================================================
+
+## Memeriksa apakah pahlawan telah melakukan sesi latihan pada gelombang saat ini
+func has_hero_trained_this_wave(hero_id: String) -> bool:
+	return int(_hero_training_wave_tracker.get(hero_id, -1)) == _current_wave_num
+
+
+## Memvalidasi kelayakan pahlawan untuk melakukan latihan pada gelombang saat ini
+func can_train_hero(hero_id: String) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		return false
+	var hero := get_hero(hero_id)
+	if hero == null or not hero.is_alive:
+		return false
+	if hero.lifecycle_state == HeroLifecycleState.PERMADEATH or hero.lifecycle_state == HeroLifecycleState.BATTLE_ACTIVE:
+		return false
+	if has_hero_trained_this_wave(hero.hero_id):
+		return false
+	if not hero.can_train(15):
+		return false
+	return true
+
+
+## Menjalankan sesi latihan untuk pahlawan (40 EXP, +15 fatigue, max 1 session/hero/wave)
+func train_hero(hero_id: String) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		push_warning("train_hero dilarang pada fase BATTLE (Battle Lock)")
+		return false
+	var hero := get_hero(hero_id)
+	if hero == null or not hero.is_alive:
+		return false
+	if hero.lifecycle_state == HeroLifecycleState.PERMADEATH or hero.lifecycle_state == HeroLifecycleState.BATTLE_ACTIVE:
+		return false
+	if has_hero_trained_this_wave(hero.hero_id):
+		return false
+	if not hero.can_train(15):
+		return false
+
+	# Eksekusi latihan secara atomik
+	hero.train(40, 15)
+	_hero_training_wave_tracker[hero.hero_id] = _current_wave_num
+
+	_update_snapshot()
+	state_changed.emit(_current_state.clone())
+	return true
+
+
+## Memvalidasi kelayakan pahlawan untuk beristirahat
+func can_rest_hero(hero_id: String) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		return false
+	var hero := get_hero(hero_id)
+	if hero == null or not hero.is_alive:
+		return false
+	if hero.lifecycle_state == HeroLifecycleState.PERMADEATH or hero.lifecycle_state == HeroLifecycleState.BATTLE_ACTIVE:
+		return false
+	return true
+
+
+## Menjalankan aksi istirahat untuk pahlawan (-25 fatigue, +5 morale)
+func rest_hero(hero_id: String, recovery: int = 25) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		push_warning("rest_hero dilarang pada fase BATTLE (Battle Lock)")
+		return false
+	var hero := get_hero(hero_id)
+	if hero == null or not hero.is_alive:
+		return false
+	if hero.lifecycle_state == HeroLifecycleState.PERMADEATH or hero.lifecycle_state == HeroLifecycleState.BATTLE_ACTIVE:
+		return false
+
+	# Eksekusi istirahat secara atomik
+	hero.rest(recovery)
+
+	_update_snapshot()
+	state_changed.emit(_current_state.clone())
+	return true
 
 
 ## Inspeksi gelombang ancaman berikutnya (transisi PREPARATION -> WAVE_PREVIEW)
@@ -1097,6 +1180,7 @@ func _update_snapshot() -> void:
 				"ascension_cost": hero.get_ascension_cost(),
 				"fatigue": hero.fatigue,
 				"morale": hero.morale,
+				"trained_this_wave": has_hero_trained_this_wave(hero.hero_id),
 				"is_alive": hero.is_alive,
 				"chemistry_map": hero.chemistry_map.duplicate(true),
 				"effective_atk": hero.get_effective_atk(),

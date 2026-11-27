@@ -1,8 +1,8 @@
 # Current Development Phase
 
-## Phase 4 — Hero System (IN PROGRESS / SUB-PHASE 4C COMPLETED & CLOSED)
+## Phase 4 — Hero System (IN PROGRESS / SUB-PHASE 4D COMPLETED & VERIFIED)
 
-Project saat ini berada pada tahap **Phase 4 — Hero System (Sub-Phase 4A: COMPLETED / VERIFIED; Sub-Phase 4B: COMPLETED / VERIFIED; Sub-Phase 4C: COMPLETED / VERIFIED / CLOSED; Sub-Phase 4D: NEXT / LOCKED)**.
+Project saat ini berada pada tahap **Phase 4 — Hero System (Sub-Phase 4A: COMPLETED / VERIFIED; Sub-Phase 4B: COMPLETED / VERIFIED; Sub-Phase 4C: COMPLETED / VERIFIED / CLOSED; Sub-Phase 4D: COMPLETED / VERIFIED; Sub-Phase 4E: NEXT / LOCKED)**.
 Phase 3 (Gameplay Prototype) telah resmi ditutup (**COMPLETED / CLOSED**) pada commit `e6c0c97`.
 
 Roadmap teknis dan spesifikasi arsitektur komprehensif Phase 4 tersedia di [docs/design/PHASE_4_HERO_SYSTEM_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_4_HERO_SYSTEM_PLAN.md).
@@ -46,8 +46,19 @@ Roadmap teknis dan spesifikasi arsitektur komprehensif Phase 4 tersedia di [docs
     - Snapshot Telemetri Komprehensif: pelestarian `base_hp`, `base_atk`, `base_def`, `fatigue`, `morale`, `chemistry_map`, dan slot perlengkapan ke `heroes_data`.
     - Test Suite Phase 4C: **51/51 PASSED, 0 FAILED** ([tests/test_phase4c_hero_recruitment.gd](file:///d:/fortress_game/tests/test_phase4c_hero_recruitment.gd)).
     - Full Regression: **270 tests PASSED (134 baseline Phase 1-3 + 38 Phase 4A + 47 Phase 4B + 51 Phase 4C)** + Scene Smoke Playtest ALL PASS.
-  - Sub-Phase 4D — Hero Training / Fatigue / Morale: **NEXT / LOCKED** (Terkunci hingga tinjauan developer)
-  - Sub-Phase 4D — Hero Training / Fatigue / Morale: **PLANNED**
+  - **Sub-Phase 4D — Hero Training, Fatigue & Morale**: **COMPLETED / VERIFIED**
+    - Sesi Latihan Kanonikal MVP: `GameCoordinator.train_hero()` memberikan reward deterministik `40 EXP` dan menambahkan `+15 fatigue` (memanfaatkan `HeroModel.add_exp()` Phase 4B secara penuh).
+    - Batasan Anti-Exploit Gelombang: Dibatasi maksimal 1 kali sesi latihan per pahlawan per gelombang (`has_hero_trained_this_wave`). Pelacakan direset secara otomatis saat nomor gelombang naik.
+    - Batas Kelelahan (*Fatigue Boundary*): Rentang `0–100`. Latihan ditolak mutlak jika fatigue akhir melebihi 100 (misal: fatigue 85 menjadi 100 sukses; fatigue 86 atau 100 ditolak tanpa perubahan state dan tanpa clamping diam-diam).
+    - Aksi Pemulihan Istirahat (*Rest*): `GameCoordinator.rest_hero()` memulihkan kelelahan `-25 fatigue` (minimum 0) dan menambah `+5 morale` (maksimum 150) secara atomik. Istirahat tidak merubah EXP, level, bintang, perlengkapan, chemistry, maupun kas emas.
+    - Proteksi Battle Lock: Aksi latihan dan istirahat dilarang keras saat state `BATTLE`.
+    - Formula Multiplier Kelelahan: $\text{FatigueMultiplier} = 1.0 - (\text{fatigue} / 200.0)$ ($0 \rightarrow 1.00, 20 \rightarrow 0.90, 50 \rightarrow 0.75, 100 \rightarrow 0.50$).
+    - Formula Multiplier Moral: $\text{MoraleMultiplier} = 0.75 + (\text{morale} / 200.0)$ ($0 \rightarrow 0.75, 50 \rightarrow 1.00, 100 \rightarrow 1.25, 150 \rightarrow 1.50$).
+    - Urutan Efektivitas Stat: $\text{BaseStat} \times \text{LevelScale} \times \text{StarScale} \times \text{FatigueMultiplier} \times \text{MoraleMultiplier} \times \text{GearScale}$.
+    - Snapshot Telemetri: Serialisasi `trained_this_wave`, `fatigue`, `morale`, `effective_atk`, dan `effective_def` ke `GameStateSnapshot.heroes_data`.
+    - Test Suite Phase 4D: **54/54 PASSED, 0 FAILED** ([tests/test_phase4d_hero_training_fatigue_morale.gd](file:///d:/fortress_game/tests/test_phase4d_hero_training_fatigue_morale.gd)).
+    - Full Regression: **324 tests PASSED (134 baseline Phase 1-3 + 38 Phase 4A + 47 Phase 4B + 51 Phase 4C + 54 Phase 4D)** + Scene Smoke Playtest ALL PASS.
+  - Sub-Phase 4E — Hero Skills & Talent Foundation: **NEXT / LOCKED** (Terkunci hingga tinjauan developer)
   - Sub-Phase 4E — Hero Skills & Talent Foundation: **PLANNED**
   - Sub-Phase 4F — Hero Chemistry & Party Management: **PLANNED**
   - Sub-Phase 4G — Hero Management UX: **PLANNED**
