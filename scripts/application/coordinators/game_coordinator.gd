@@ -726,8 +726,7 @@ func recruit_hero(
 	cur_star: int = 1,
 	pot_star: int = 3,
 	p_id: String = "",
-	p_name: String = "",
-	recruitment_cost: int = -1
+	p_name: String = ""
 ) -> HeroModel:
 	# 1. Validasi Battle Lock
 	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
@@ -762,8 +761,8 @@ func recruit_hero(
 	if hero.has_equipment("PRIMARY") or hero.has_equipment("SECONDARY") or hero.has_equipment("ARMOR"):
 		return null
 
-	# 7. Validasi dan Kalkulasi Biaya Emas
-	var cost: int = recruitment_cost if recruitment_cost >= 0 else get_hero_recruitment_cost()
+	# 7. Validasi dan Kalkulasi Biaya Emas Kanonikal (500 Gold mutlak)
+	var cost: int = get_hero_recruitment_cost()
 	if _economy == null or _economy.treasury_gold < cost:
 		return null
 

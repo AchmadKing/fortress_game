@@ -25,7 +25,7 @@ func _init() -> void:
 	var failed: int = 0
 
 	var test_list: Array = [
-		# Recruitment (1-9)
+		# Recruitment (1-11)
 		{"name": "test_valid_recruitment_succeeds", "fn": Callable(self, "_test_valid_recruitment_succeeds")},
 		{"name": "test_recruited_hero_enters_roster_active", "fn": Callable(self, "_test_recruited_hero_enters_roster_active")},
 		{"name": "test_recruitment_deducts_exact_gold", "fn": Callable(self, "_test_recruitment_deducts_exact_gold")},
@@ -35,8 +35,10 @@ func _init() -> void:
 		{"name": "test_insufficient_gold_leaves_roster_unchanged", "fn": Callable(self, "_test_insufficient_gold_leaves_roster_unchanged")},
 		{"name": "test_successful_recruitment_increases_roster_size", "fn": Callable(self, "_test_successful_recruitment_increases_roster_size")},
 		{"name": "test_failed_recruitment_does_not_increase_roster_size", "fn": Callable(self, "_test_failed_recruitment_does_not_increase_roster_size")},
+		{"name": "test_gold_with_surplus_501_leaves_1_gold", "fn": Callable(self, "_test_gold_with_surplus_501_leaves_1_gold")},
+		{"name": "test_no_custom_cost_override_parameter_exists", "fn": Callable(self, "_test_no_custom_cost_override_parameter_exists")},
 
-		# Identity (10-15)
+		# Identity (12-17)
 		{"name": "test_hero_id_is_generated", "fn": Callable(self, "_test_hero_id_is_generated")},
 		{"name": "test_hero_id_is_unique", "fn": Callable(self, "_test_hero_id_is_unique")},
 		{"name": "test_duplicate_hero_id_rejected", "fn": Callable(self, "_test_duplicate_hero_id_rejected")},
@@ -44,7 +46,7 @@ func _init() -> void:
 		{"name": "test_hero_lookup_by_id_works", "fn": Callable(self, "_test_hero_lookup_by_id_works")},
 		{"name": "test_missing_hero_lookup_fails_safely", "fn": Callable(self, "_test_missing_hero_lookup_fails_safely")},
 
-		# Validation (16-23)
+		# Validation (18-25)
 		{"name": "test_invalid_role_rejected", "fn": Callable(self, "_test_invalid_role_rejected")},
 		{"name": "test_current_star_less_than_one_rejected", "fn": Callable(self, "_test_current_star_less_than_one_rejected")},
 		{"name": "test_current_star_greater_than_five_rejected", "fn": Callable(self, "_test_current_star_greater_than_five_rejected")},
@@ -54,7 +56,7 @@ func _init() -> void:
 		{"name": "test_invalid_generated_hero_rejected", "fn": Callable(self, "_test_invalid_generated_hero_rejected")},
 		{"name": "test_valid_potential_star_progression_accepted", "fn": Callable(self, "_test_valid_potential_star_progression_accepted")},
 
-		# Initial State (24-31)
+		# Initial State (26-33)
 		{"name": "test_new_hero_starts_at_level_1", "fn": Callable(self, "_test_new_hero_starts_at_level_1")},
 		{"name": "test_new_hero_starts_at_zero_exp", "fn": Callable(self, "_test_new_hero_starts_at_zero_exp")},
 		{"name": "test_new_hero_has_valid_current_star", "fn": Callable(self, "_test_new_hero_has_valid_current_star")},
@@ -64,27 +66,28 @@ func _init() -> void:
 		{"name": "test_new_hero_has_valid_morale", "fn": Callable(self, "_test_new_hero_has_valid_morale")},
 		{"name": "test_new_hero_has_valid_chemistry_map", "fn": Callable(self, "_test_new_hero_has_valid_chemistry_map")},
 
-		# Roster Ownership (32-35)
+		# Roster Ownership (34-38)
 		{"name": "test_roster_contains_only_valid_heroes", "fn": Callable(self, "_test_roster_contains_only_valid_heroes")},
 		{"name": "test_duplicate_insertion_rejected", "fn": Callable(self, "_test_duplicate_insertion_rejected")},
 		{"name": "test_stable_roster_lookup_works_after_adding_multiple_heroes", "fn": Callable(self, "_test_stable_roster_lookup_works_after_adding_multiple_heroes")},
 		{"name": "test_removal_reordering_does_not_corrupt_remaining_heroes", "fn": Callable(self, "_test_removal_reordering_does_not_corrupt_remaining_heroes")},
+		{"name": "test_dismiss_hero_returns_equipment_to_warehouse", "fn": Callable(self, "_test_dismiss_hero_returns_equipment_to_warehouse")},
 
-		# Snapshot (36-40)
+		# Snapshot (39-43)
 		{"name": "test_hero_roster_snapshot_preserves_identity", "fn": Callable(self, "_test_hero_roster_snapshot_preserves_identity")},
 		{"name": "test_snapshot_preserves_progression_fields", "fn": Callable(self, "_test_snapshot_preserves_progression_fields")},
 		{"name": "test_snapshot_preserves_lifecycle_state", "fn": Callable(self, "_test_snapshot_preserves_lifecycle_state")},
 		{"name": "test_snapshot_preserves_equipment_references_state", "fn": Callable(self, "_test_snapshot_preserves_equipment_references_state")},
 		{"name": "test_snapshot_preserves_chemistry_map", "fn": Callable(self, "_test_snapshot_preserves_chemistry_map")},
 
-		# Transaction Safety (41-45)
+		# Transaction Safety (44-48)
 		{"name": "test_failed_hero_generation_does_not_consume_gold", "fn": Callable(self, "_test_failed_hero_generation_does_not_consume_gold")},
 		{"name": "test_failed_roster_insertion_does_not_consume_gold", "fn": Callable(self, "_test_failed_roster_insertion_does_not_consume_gold")},
 		{"name": "test_successful_recruitment_consumes_gold_exactly_once", "fn": Callable(self, "_test_successful_recruitment_consumes_gold_exactly_once")},
 		{"name": "test_hero_is_added_exactly_once", "fn": Callable(self, "_test_hero_is_added_exactly_once")},
 		{"name": "test_duplicate_recruitment_request_cannot_duplicate_same_hero_id", "fn": Callable(self, "_test_duplicate_recruitment_request_cannot_duplicate_same_hero_id")},
 
-		# Supplementary Constraints (46-48)
+		# Supplementary Constraints (49-51)
 		{"name": "test_recruitment_blocked_during_battle_state", "fn": Callable(self, "_test_recruitment_blocked_during_battle_state")},
 		{"name": "test_candidate_with_existing_equipment_rejected", "fn": Callable(self, "_test_candidate_with_existing_equipment_rejected")},
 		{"name": "test_candidate_with_invalid_initial_lifecycle_state_rejected", "fn": Callable(self, "_test_candidate_with_invalid_initial_lifecycle_state_rejected")}
@@ -141,15 +144,16 @@ func _test_recruitment_deducts_exact_gold() -> bool:
 	coord.start_new_session("proto_rec_3")
 	coord.set_treasury_gold(1000)
 	var cost: int = coord.get_hero_recruitment_cost() # 500
+	if cost != 500:
+		return false
 	var hero: HeroModel = coord.recruit_hero()
-	return hero != null and coord.get_treasury_gold() == (1000 - cost)
+	return hero != null and coord.get_treasury_gold() == 500
 
 
 func _test_exact_gold_amount_succeeds() -> bool:
 	var coord := GameCoordinator.new()
 	coord.start_new_session("proto_rec_4")
-	var cost: int = coord.get_hero_recruitment_cost()
-	coord.set_treasury_gold(cost)
+	coord.set_treasury_gold(500)
 	var hero: HeroModel = coord.recruit_hero()
 	return hero != null and coord.get_treasury_gold() == 0
 
@@ -157,10 +161,9 @@ func _test_exact_gold_amount_succeeds() -> bool:
 func _test_insufficient_gold_fails() -> bool:
 	var coord := GameCoordinator.new()
 	coord.start_new_session("proto_rec_5")
-	var cost: int = coord.get_hero_recruitment_cost()
-	coord.set_treasury_gold(cost - 1)
+	coord.set_treasury_gold(499)
 	var hero: HeroModel = coord.recruit_hero()
-	return hero == null
+	return hero == null and coord.get_treasury_gold() == 499
 
 
 func _test_insufficient_gold_leaves_gold_unchanged() -> bool:
@@ -196,6 +199,31 @@ func _test_failed_recruitment_does_not_increase_roster_size() -> bool:
 	coord.set_treasury_gold(50)
 	coord.recruit_hero()
 	return coord.get_roster_count() == count_before
+
+
+func _test_gold_with_surplus_501_leaves_1_gold() -> bool:
+	var coord := GameCoordinator.new()
+	coord.start_new_session("proto_rec_501")
+	coord.set_treasury_gold(501)
+	var hero: HeroModel = coord.recruit_hero()
+	return hero != null and coord.get_treasury_gold() == 1
+
+
+func _test_no_custom_cost_override_parameter_exists() -> bool:
+	var coord := GameCoordinator.new()
+	var method_found := false
+	var arg_count := 0
+	for m in coord.get_method_list():
+		if m.get("name") == "recruit_hero":
+			method_found = true
+			var args: Array = m.get("args", [])
+			arg_count = args.size()
+			for arg in args:
+				var arg_name: String = str(arg.get("name", ""))
+				if arg_name == "recruitment_cost" or arg_name == "cost":
+					return false
+			break
+	return method_found and arg_count == 5
 
 
 # ==============================================================================
@@ -443,6 +471,25 @@ func _test_removal_reordering_does_not_corrupt_remaining_heroes() -> bool:
 	var remaining_priest := coord.get_hero("hero_priest_target")
 	var remaining_alder := coord.get_hero("hero_alder")
 	return remaining_mage == h1 and remaining_priest == h2 and remaining_alder != null
+
+
+func _test_dismiss_hero_returns_equipment_to_warehouse() -> bool:
+	var coord := GameCoordinator.new()
+	coord.start_new_session("proto_dismiss_gear")
+	coord.set_treasury_gold(1000)
+	var hero := coord.recruit_hero(HeroRole.KNIGHT, 1, 3, "hero_gear_test")
+	if hero == null:
+		return false
+	var sword_before: int = coord.get_warehouse_stock("SWORD")
+	if sword_before < 1:
+		return false
+	var ok_equip: bool = coord.equip_hero("hero_gear_test", "PRIMARY", "SWORD")
+	if not ok_equip or coord.get_warehouse_stock("SWORD") != sword_before - 1:
+		return false
+	var dismissed: bool = coord.dismiss_hero("hero_gear_test")
+	if not dismissed or coord.has_hero("hero_gear_test"):
+		return false
+	return coord.get_warehouse_stock("SWORD") == sword_before
 
 
 # ==============================================================================

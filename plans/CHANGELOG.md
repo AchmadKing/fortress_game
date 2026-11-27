@@ -4,6 +4,32 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.5.4] - Phase 4C Final Correction Gate: Locked Recruitment Cost Authority & Closed Phase 4C
+
+### Fixed
+- **Single Canonical Recruitment Cost Authority** (`scripts/application/coordinators/game_coordinator.gd`):
+  - Menghapus parameter override biaya pada `recruit_hero(candidate_or_role, cur_star, pot_star, p_id, p_name)` sehingga biaya rekrutmen diputuskan mutlak oleh `get_hero_recruitment_cost()` (`HERO_RECRUITMENT_COST_DEFAULT = 500`).
+  - Pemanggil tidak dapat lagi meng-override biaya rekrutmen.
+
+### Added
+- **Strengthened Canonical Pricing Tests** (`tests/test_phase4c_hero_recruitment.gd`):
+  - Pengujian deduksi tepat 500 Gold.
+  - Pengujian saldo pas 500 Gold sukses dan menyisakan 0 Gold.
+  - Pengujian saldo 499 Gold gagal dan kas 499 Gold tetap utuh tak berubah.
+  - Pengujian saldo 501 Gold sukses dan menyisakan tepat 1 Gold.
+  - Pengujian refleksi method memastikan tidak ada parameter override biaya pada `recruit_hero`.
+  - Pengujian pelepasan pahlawan (`dismiss_hero`) mengembalikan perlengkapan ke gudang senjata bersama dan menjaga invarian konservasi perlengkapan.
+
+### Verified
+- **Automated Test Suites**:
+  - Test Suite Phase 4C: **51/51 PASSED, 0 FAILED** (`tests/test_phase4c_hero_recruitment.gd`).
+  - Full Regression Suite: **270 PASSED, 0 FAILED** (100% pass across 11 test suites) + Scene Smoke Playtest ALL PASS.
+- **Phase Status Transition**:
+  - Sub-Phase 4C: **COMPLETED / VERIFIED / CLOSED**.
+  - Sub-Phase 4D: **NEXT / LOCKED**.
+
+---
+
 ## [0.5.3] - Phase 4C: Hero Recruitment & Roster Management (Implemented & Verified)
 
 ### Added

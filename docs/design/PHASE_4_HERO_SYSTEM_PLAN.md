@@ -222,10 +222,10 @@ stateDiagram-v2
    - Awal fase `PREPARATION`: `GameCoordinator` menyediakan 2–3 kandidat hero di bursa sewa.
    - Kandidat dibuat secara deterministik berbasis `_session_seed + current_wave`.
 2. **Biaya Rekrutmen (Gold):**
-   $$\text{Hiring Cost} = \text{base\_cost} \times \text{current\_star} \times (1 + (\text{potential\_star} - \text{current\_star}) \times 0.35)$$
-   - Hero Bintang 1 (Potensi 3): $50 \times 1 \times (1 + 2 \times 0.35) = 85 \text{ Gold}$.
+   - Biaya Rekrutmen Kanonikal MVP: `500 Gold` (`GameCoordinator.HERO_RECRUITMENT_COST_DEFAULT`).
+   - Biaya bersifat mutlak dan otoritatif dari domain/coordinator. Pemanggil (`recruit_hero`) **tidak dapat meng-override** biaya rekrutmen.
 3. **Validasi:**
-   - Kas benteng mencukupi ($\text{Treasury Gold} \ge \text{Cost}$).
+   - Kas benteng mencukupi ($\text{Treasury Gold} \ge 500 \text{ Gold}$).
    - Roster pahlawan benteng belum penuh (maksimal 6 pahlawan pada MVP).
    - `hero_id` unik terverifikasi (mencegah ID duplikat).
 
@@ -510,18 +510,20 @@ Setiap sub-fase Phase 4 wajib menyertakan automated headless test suite:
   - Inventaris atau jenis perlengkapan baru (Dilarang).
   - Pixel art dan visual mobile final (Milik Phase 9).
 
-### 5. Batas Eksplisit Sub-Phase 4C (Hero Recruitment & Roster Management) — IMPLEMENTED
-- **STATUS: COMPLETED / VERIFIED (48/48 Tests PASS, Full Regression 267/267 Tests PASS, Scene Smoke Playtest ALL PASS)**
-- **IN SCOPE FOR 4C (IMPLEMENTED):**
-  - Biaya rekrutmen kanonikal MVP default: `500 Gold` (`GameCoordinator.HERO_RECRUITMENT_COST_DEFAULT`).
+### 5. Batas Eksplisit Sub-Phase 4C (Hero Recruitment & Roster Management) — COMPLETED / VERIFIED / CLOSED
+- **STATUS: COMPLETED / VERIFIED / CLOSED (51/51 Tests PASS, Full Regression 270/270 Tests PASS, Scene Smoke Playtest ALL PASS)**
+- **IN SCOPE FOR 4C (IMPLEMENTED & LOCKED):**
+  - Biaya rekrutmen kanonikal MVP mutlak: `500 Gold` (`GameCoordinator.HERO_RECRUITMENT_COST_DEFAULT`).
+  - Single source of truth biaya: `GameCoordinator.recruit_hero()` memanggil `get_hero_recruitment_cost()` secara internal dan tidak menerima parameter override biaya.
   - Alur rekrutmen hero atomik: validasi request, validasi invarian hero, validasi duplikasi ID, validasi kas emas, deduksi emas, transisi state `RECRUITABLE` $\rightarrow$ `ROSTER_ACTIVE`, penambahan ke roster `_heroes`, dan pembaruan snapshot.
   - Penolakan rekrutmen saat state `BATTLE` (Battle Lock).
   - Generator identitas pahlawan deterministik dan unik (`generate_unique_hero_id`, `generate_hero_candidate`).
   - Pencegahan duplikasi identitas hero di seluruh state game (`get_hero(id) != null`).
   - Kepemilikan dan manajemen roster benteng pada `GameCoordinator` (`get_roster_count`, `get_roster`, `get_heroes`, `has_hero`, `add_hero`, `dismiss_hero`, `remove_hero`).
   - Keamanan konservasi gudang bersama: hero hasil rekrutmen selalu berperlengkapan kosong (`PRIMARY = null, SECONDARY = null, ARMOR = null`), tidak ada pembuatan/duplikasi gear gratis.
+  - Pelepasan pahlawan (`dismiss_hero`) mengembalikan seluruh perlengkapan terpasang ke gudang bersama secara aman, mempertahankan invarian konservasi $\text{Total} = \text{USBL} + \text{DMGD} + \text{HERO} + \text{REGD}$.
   - Integrasi snapshot telemetri lengkap (`heroes_data` memuat `hero_id`, `hero_name`, `role`, `lifecycle_state`, `level`, `current_exp`, `current_star`, `potential_star`, `base_hp`, `base_atk`, `base_def`, `fatigue`, `morale`, `chemistry_map`, equipment slots).
-  - Test suite mandiri `tests/test_phase4c_hero_recruitment.gd` (48/48 PASS).
+  - Test suite mandiri `tests/test_phase4c_hero_recruitment.gd` (51/51 PASS).
 - **OUT OF SCOPE FOR 4C (DILARANG PADA 4C):**
   - Fasilitas latihan benteng (*Training Facility*), aksi latihan, dan batas kelelahan $\ge 75$ (Milik 4D).
   - Redesain kelelahan atau dinamika moral (Milik 4D).

@@ -84,7 +84,7 @@ High-level roadmap pengembangan proyek `fortress_game`.
 - **Tujuan**: Struktur dan sistem hero/karakter mendalam (talent tree, active/passive skills, recruitment/tavern, ascension). Spesifikasi teknis: [docs/design/PHASE_4_HERO_SYSTEM_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_4_HERO_SYSTEM_PLAN.md).
   - **Phase 4A — Hero Domain & Lifecycle Foundation**: COMPLETED / VERIFIED
   - **Phase 4B — Hero Progression & EXP**: COMPLETED / VERIFIED
-  - **Phase 4C — Hero Recruitment & Roster Management**: IMPLEMENTED / VERIFIED
+  - **Phase 4C — Hero Recruitment & Roster Management**: COMPLETED / VERIFIED / CLOSED
   - **Phase 4D — Hero Training / Fatigue / Morale**: NEXT / LOCKED
   - **Phase 4E — Hero Skills & Talent Foundation**: PLANNED
   - **Phase 4F — Hero Chemistry & Party Management**: PLANNED
