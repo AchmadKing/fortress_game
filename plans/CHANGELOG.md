@@ -4,6 +4,63 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.5.2] - Phase 4B: Hero Progression & EXP (Implemented & Verified)
+
+### Added
+- **Canonical EXP Requirement Formula** (`scripts/domain/model/hero_model.gd`):
+  - Formula kebutuhan EXP kanonikal: $\text{ReqEXP}(L) = \lfloor 120.0 \times L^{1.55} \rfloor$.
+  - Akumulasi carry-over EXP dan dukungan kenaikan multi-level seketika saat menerima EXP dalam jumlah besar.
+  - Penanganan nilai EXP non-positif (nilai negatif dan nol diabaikan tanpa efek samping).
+- **Star-Based Level Cap System** (`scripts/domain/model/hero_model.gd`):
+  - Metode `get_level_cap() -> int` menghitung batas level berdasarkan bintang aktif: $\text{current\_star} \times 10$ ($1\star=10, 2\star=20, 3\star=30, 4\star=40, 5\star=50$).
+  - Hero di batas level cap tidak dapat naik level lagi dengan penambahan EXP; carry-over EXP dibatasi pada nilai kebutuhan level cap saat ini.
+- **Hero Ascension Domain Validation & Mutation** (`scripts/domain/model/hero_model.gd`):
+  - Metode `get_ascension_cost() -> int` menghitung biaya kenaikan bintang: $\text{current\_star} \times 150 \text{ Gold}$.
+  - Metode `can_ascend() -> bool` memvalidasi kelayakan: hero hidup, tidak permadeath, $1 \le \text{current\_star} < \text{potential\_star} \le 5$, dan $\text{level} \ge \text{current\_star} \times 10$.
+  - Metode `ascend() -> bool` memutasi kenaikan bintang tepat $+1$ (`current_star += 1`) tanpa merusak atau mengubah level, current EXP, perlengkapan terpasang, fatigue, morale, maupun potential star.
+- **Atomic Ascension Transaction with Battle Lock** (`scripts/application/coordinators/game_coordinator.gd`):
+  - Metode `ascend_hero(hero_id: String) -> bool` mengeksekusi transaksi kenaikan bintang secara aman dan atomik.
+  - Dilindungi oleh Battle Lock: dilarang keras dieksekusi selama state `BATTLE`.
+  - Memverifikasi kecukupan kas bendahara benteng (`_economy.treasury_gold >= cost`).
+  - Pemotongan kas bendahara dan kenaikan bintang dijalankan secara atomik dengan rollback otomatis jika mutasi domain gagal.
+  - Pembaruan snapshot dan pemancaran sinyal reaktif `state_changed`.
+- **Deterministic Battle EXP Calculation & Distribution** (`scripts/simulation/combat_engine.gd`):
+  - Metode statis `calculate_battle_exp(wave_num: int) -> int`: $\lfloor 60.0 \times (1.0 + \text{Wave} / 15.0) \rfloor$ (Wave 1 = 64, Wave 15 = 120, Wave 30 = 180).
+  - Metode statis `distribute_battle_exp(total_exp: int, surviving_heroes: Array) -> Dictionary`: membagikan total EXP secara merata dan deterministik kepada hero yang bertahan hidup; sisa (*remainder*) dialokasikan deterministik berdasarkan urutan alfabetik `hero_id`. Total terdistribusi tidak pernah melebihi nilai total EXP yang diberikan.
+  - Hero yang gugur tidak menerima perolehan EXP tempur.
+- **Application Telemetry Snapshot Extension** (`scripts/application/coordinators/game_coordinator.gd`):
+  - Serialisasi atribut progresi `potential_star`, `level_cap`, `can_ascend`, dan `ascension_cost` ke dalam setiap entri hero di `GameStateSnapshot.heroes_data`.
+- **Phase 4B Automated Test Suite** (`tests/test_phase4b_hero_progression.gd`):
+  - 47 pengujian unit dan integrasi otomatis mencakup:
+    - EXP formula (ReqEXP Lv1, Lv2, Lv3, Lv4).
+    - Level progression (level up Lv1->Lv2, carry-over, multi-level up, negative/zero EXP handling, level cap 1★/2★/5★, pencegahan kenaikan level melampaui cap).
+    - Stat integration (+12% ATK per level, +10% DEF per level, +20% per bintang, pengali senjata & zirah tetap utuh).
+    - Ascension rules & costs (kelayakan Lv10 pada 1★, pencegahan di bawah cap / di batas potential star / untuk hero gugur / di 5★, biaya 1★=150, 2★=300, 3★=450, 4★=600, mutasi bintang tepat +1, persistensi data lain).
+    - Atomic Gold transaction (penolakan kas tidak mencukupi, kas & bintang tidak termutasi saat gagal, pemotongan kas presisi dan mutasi bintang saat sukses).
+    - Battle EXP (kalkulasi Wave 1, 15, 30, pemberian EXP ke hero selamat, penolakan ke hero mati, determinisme distribusi remainder, jaminan total tidak melebihi alokasi).
+    - Supplementary tests: penolakan `ascend_hero` saat Battle Lock dan verifikasi snapshot telemetri.
+
+### Verified
+- **Full Regression Suite**:
+  - Phase 1 Architecture: 5/5 PASSED
+  - Phase 2 Mathematical Systems: 21/21 PASSED
+  - Phase 3A Gameplay Baseline: 11/11 PASSED
+  - Phase 3B Soldier Deployment: 27/27 PASSED
+  - Phase 3C Hero Equipment Foundation: 22/22 PASSED
+  - Phase 3D Prototype UX & Polish: 10/10 PASSED
+  - Phase 3D Follow-up Corrections: 23/23 PASSED
+  - Phase 3E Final Verification: 15/15 PASSED
+  - Phase 4A Hero Domain & Lifecycle: 38/38 PASSED
+  - Phase 4B Hero Progression & EXP: 47/47 PASSED
+  - Prototype Scene Smoke Playtest: ALL PASS, 0 ERRORS
+  - **Total: 219 unit/integration tests + 1 Scene Smoke Playtest suite PASSED 100%**.
+- **Phase 4 Status**:
+  - Sub-Phase 4A: COMPLETED / VERIFIED
+  - Sub-Phase 4B: IMPLEMENTED / VERIFIED
+  - Sub-Phase 4C: PLANNED / LOCKED (terkunci hingga tinjauan developer)
+
+---
+
 ## [0.5.1] - Phase 4A: Hero Domain & Lifecycle Foundation (Implemented & Corrected)
 
 ### Added

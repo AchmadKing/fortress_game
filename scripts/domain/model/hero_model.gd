@@ -228,12 +228,53 @@ func get_required_exp(target_level: int) -> int:
 	return int(floor(120.0 * pow(float(target_level), 1.55)))
 
 
+## Memeriksa batas level maksimum berdasarkan bintang saat ini (current_star * 10)
+func get_level_cap() -> int:
+	return current_star * 10
+
+
+## Menghitung biaya Gold untuk ascension ke bintang berikutnya (current_star * 150)
+func get_ascension_cost() -> int:
+	return current_star * 150
+
+
+## Memvalidasi kelayakan hero untuk melakukan ascension
+func can_ascend() -> bool:
+	if not is_alive or lifecycle_state == STATE_PERMADEATH:
+		return false
+	if not validate_stars(current_star, potential_star):
+		return false
+	if current_star >= potential_star:
+		return false
+	if current_star >= 5:
+		return false
+	if level < get_level_cap():
+		return false
+	return true
+
+
+## Melakukan mutasi kenaikan bintang hero (+1 current_star)
+func ascend() -> bool:
+	if not can_ascend():
+		return false
+	current_star += 1
+	return true
+
+
 func add_exp(amount: int) -> int:
-	if not is_alive:
+	if not is_alive or amount <= 0:
 		return 0
-	current_exp += maxi(0, amount)
+
+	var cap: int = get_level_cap()
+	if level >= cap:
+		# Hero already at star level cap: retain/cap EXP at current level's required EXP without leveling up
+		var req: int = get_required_exp(level)
+		current_exp = mini(current_exp + amount, req)
+		return 0
+
+	current_exp += amount
 	var levels_gained: int = 0
-	while true:
+	while level < cap:
 		var req: int = get_required_exp(level)
 		if current_exp >= req:
 			current_exp -= req
@@ -241,6 +282,12 @@ func add_exp(amount: int) -> int:
 			levels_gained += 1
 		else:
 			break
+
+	# If level reached cap, cap any remaining carry-over EXP at req of cap level
+	if level >= cap:
+		var req_at_cap: int = get_required_exp(level)
+		current_exp = mini(current_exp, req_at_cap)
+
 	return levels_gained
 
 

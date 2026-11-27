@@ -486,6 +486,30 @@ Setiap sub-fase Phase 4 wajib menyertakan automated headless test suite:
   - Inventaris atau jenis perlengkapan baru (Dilarang).
   - Pixel art dan visual mobile final (Milik Phase 9).
 
+### 4. Batas Eksplisit Sub-Phase 4B (Hero Progression & EXP) — IMPLEMENTED
+- **STATUS: COMPLETED / VERIFIED (47/47 Tests PASS, Full Regression 219/219 Tests PASS, Scene Smoke Playtest ALL PASS)**
+- **IN SCOPE FOR 4B (IMPLEMENTED):**
+  - Formula kebutuhan EXP kanonikal: $\text{ReqEXP}(L) = \lfloor 120.0 \times L^{1.55} \rfloor$.
+  - Progresi level hero dengan akumulasi carry-over EXP dan dukungan kenaikan multi-level seketika.
+  - Batas level maksimal berbasis bintang saat ini: $\text{Level Cap} = \text{current\_star} \times 10$ ($1\star=10, 2\star=20, 3\star=30, 4\star=40, 5\star=50$). Hero di level cap tidak dapat naik level lagi.
+  - Formula dan aturan kelayakan Ascension: $1 \le \text{current\_star} < \text{potential\_star} \le 5$, hero hidup, tidak permadeath, dan $\text{level} \ge \text{current\_star} \times 10$.
+  - Formula biaya Ascension: $\text{current\_star} \times 150 \text{ Gold}$.
+  - Transaksi atomik Ascension di `GameCoordinator`: validasi status non-BATTLE (Battle Lock), ketersediaan kas bendahara, deduksi Gold atomik, dan mutasi kenaikan bintang $+1$.
+  - Formula Battle EXP kanonikal di `CombatEngine`: $\lfloor 60.0 \times (1.0 + \text{Wave} / 15.0) \rfloor$.
+  - Distribusi Battle EXP deterministik kepada pahlawan yang bertahan hidup dengan pembagian rata dan alokasi sisa (*remainder*) berbasis urutan alfabetik `hero_id`.
+  - Telemetri snapshot: integrasi atribut `potential_star`, `level_cap`, `can_ascend`, dan `ascension_cost` pada `GameStateSnapshot.heroes_data`.
+  - Test suite mandiri `tests/test_phase4b_hero_progression.gd` (47/47 PASS).
+- **OUT OF SCOPE FOR 4B (DILARANG PADA 4B):**
+  - Bursa Mercenary Guild, penawaran kandidat hero, batas kapasitas roster pahlawan (Milik 4C).
+  - Aksi latihan fasilitas benteng (*Training Facility*), interaksi latihan dan batas kelelahan $\ge 75$ (Milik 4D).
+  - Redesain kelelahan atau dinamika moral (Milik 4D).
+  - Sistem skill dan pohon bakat (Milik 4E).
+  - Model party dan chemistry baru (Milik 4F).
+  - Hero Management UI & Ascension UI (Milik 4G).
+  - Taktik pertempuran dan AI musuh baru (Milik Phase 6).
+  - Inventaris atau jenis perlengkapan baru (Dilarang).
+  - Pixel art dan visual mobile final (Milik Phase 9).
+
 ---
 
 ## X. Acceptance Criteria Phase 4
@@ -493,7 +517,7 @@ Setiap sub-fase Phase 4 wajib menyertakan automated headless test suite:
 Phase 4 dinyatakan selesai hanya jika seluruh kriteria berikut terpenuhi:
 - [ ] Model `HeroModel` telah diperluas mencakup peran kanonikal, bakat, keahlian, dan regu tanpa merusak API Phase 3.
 - [ ] Sistem rekrutmen Mercenary Guild berfungsi deterministik dan terintegrasi dengan kas emas benteng.
-- [ ] Sistem progresi level, kenaikan bintang (*Ascension*), dan pembatasan level berbasis bintang berjalan akurat.
+- [x] Sistem progresi level, kenaikan bintang (*Ascension*), dan pembatasan level berbasis bintang berjalan akurat.
 - [ ] Fasilitas latihan (*Training Facility*) berfungsi dengan konsumsi emas dan penambahan kelelahan yang adil.
 - [ ] Pemisahan stamina (kelelahan) dan moral berfungsi independen dan mempengaruhi performa tempur.
 - [ ] Sistem Party memisahkan pahlawan tempur dan cadangan secara transparan.

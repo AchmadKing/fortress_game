@@ -592,6 +592,35 @@ func swap_hero_equipment(hero_id: String, slot: String, new_eq_type: String) -> 
 	return equip_hero(hero_id, slot, eq)
 
 
+## Melakukan ascension bintang hero secara atomik (membutuhkan gold dan syarat ascension terpenuhi)
+func ascend_hero(hero_id: String) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		push_warning("ascend_hero dilarang pada fase BATTLE (Battle Lock)")
+		return false
+
+	var hero := get_hero(hero_id)
+	if hero == null or not hero.is_alive:
+		return false
+
+	if not hero.can_ascend():
+		return false
+
+	var cost: int = hero.get_ascension_cost()
+	if _economy == null or _economy.treasury_gold < cost:
+		return false
+
+	# Transaksi atomik:
+	_economy.treasury_gold -= cost
+	var success: bool = hero.ascend()
+	if not success:
+		_economy.treasury_gold += cost
+		return false
+
+	_update_snapshot()
+	state_changed.emit(_current_state.clone())
+	return true
+
+
 ## Inspeksi gelombang ancaman berikutnya (transisi PREPARATION -> WAVE_PREVIEW)
 func inspect_wave() -> bool:
 	if _state_machine.current_state != GameplayStateMachine.STATE_PREPARATION:
@@ -894,6 +923,10 @@ func _update_snapshot() -> void:
 				"level": hero.level,
 				"current_exp": hero.current_exp,
 				"current_star": hero.current_star,
+				"potential_star": hero.potential_star,
+				"level_cap": hero.get_level_cap(),
+				"can_ascend": hero.can_ascend(),
+				"ascension_cost": hero.get_ascension_cost(),
 				"fatigue": hero.fatigue,
 				"morale": hero.morale,
 				"is_alive": hero.is_alive,

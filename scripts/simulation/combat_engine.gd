@@ -142,10 +142,13 @@ func simulate_battle(population: PopulationModel, heroes: Array, warehouse_equip
 	var hero_death_summary: Dictionary = _resolve_hero_survival_and_death(heroes, breach_threat, threat_budget, fortress.is_destroyed(), wave_num, seed_val)
 	
 	# 5.C: Perolehan EXP Hero yang masih hidup
-	var exp_gained_per_hero: int = int(floor(60.0 * (1.0 + float(wave_num) / 15.0)))
+	var total_battle_exp: int = calculate_battle_exp(wave_num)
+	var surviving_heroes: Array = []
 	for h in heroes:
 		if h is HeroModel and (h as HeroModel).is_alive:
-			(h as HeroModel).add_exp(exp_gained_per_hero)
+			surviving_heroes.append(h as HeroModel)
+	var exp_distribution: Dictionary = distribute_battle_exp(total_battle_exp, surviving_heroes)
+	var exp_gained_per_hero: int = total_battle_exp / maxi(1, surviving_heroes.size()) if not surviving_heroes.is_empty() else 0
 			
 	# 5.D: Hasil Pertempuran & Loot Emas
 	var is_victory: bool = not fortress.is_destroyed() and (breach_threat <= int(fortress.max_hp * 0.40))
@@ -168,6 +171,8 @@ func simulate_battle(population: PopulationModel, heroes: Array, warehouse_equip
 		"breach_threat": breach_threat,
 		"loot_gold": loot_gold,
 		"exp_per_hero": exp_gained_per_hero,
+		"battle_exp_total": total_battle_exp,
+		"exp_distribution": exp_distribution,
 		"equipment_lost": eq_loss_summary["lost_items"],
 		"equipment_damaged": eq_loss_summary["damaged_items"],
 		"heroes_killed": hero_death_summary["killed"],
@@ -332,3 +337,40 @@ func _seeded_float(seed_val: int, key: String, step_num: int) -> float:
 		h = (h * 31 + int(b)) ^ 0x45d9f3b
 	h = (h ^ (h >> 15)) * 0x45d9f3b
 	return float(abs(h % 10000)) / 10000.0
+
+
+# ==============================================================================
+# PHASE 4B BATTLE EXP FORMULA & DETERMINISTIC DISTRIBUTION
+# ==============================================================================
+
+## Menghitung total EXP pertempuran kanonikal untuk gelombang tertentu:
+## floor(60.0 * (1.0 + wave / 15.0))
+static func calculate_battle_exp(wave_num: int) -> int:
+	return int(floor(60.0 * (1.0 + float(wave_num) / 15.0)))
+
+
+## Membagikan total battle EXP secara merata dan deterministik kepada hero yang bertahan hidup
+static func distribute_battle_exp(total_exp: int, surviving_heroes: Array) -> Dictionary:
+	var distribution: Dictionary = {}
+	if surviving_heroes.is_empty() or total_exp <= 0:
+		return distribution
+
+	var sorted_heroes: Array = surviving_heroes.duplicate()
+	sorted_heroes.sort_custom(func(a: HeroModel, b: HeroModel) -> bool:
+		return a.hero_id < b.hero_id
+	)
+
+	var count: int = sorted_heroes.size()
+	var base_share: int = total_exp / count
+	var remainder: int = total_exp % count
+
+	var total_distributed: int = 0
+	for i in range(count):
+		var h: HeroModel = sorted_heroes[i] as HeroModel
+		var share: int = base_share + (1 if i < remainder else 0)
+		h.add_exp(share)
+		distribution[h.hero_id] = share
+		total_distributed += share
+
+	assert(total_distributed <= total_exp, "Total distributed EXP melebihi total EXP yang diberikan")
+	return distribution
