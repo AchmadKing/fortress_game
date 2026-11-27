@@ -87,7 +87,7 @@ High-level roadmap pengembangan proyek `fortress_game`.
   - **Phase 4C — Hero Recruitment & Roster Management**: COMPLETED / VERIFIED
   - **Phase 4D — Hero Training / Fatigue / Morale**: COMPLETED / VERIFIED
   - **Phase 4E — Hero Skills & Talent Foundation**: COMPLETED / VERIFIED
-  - **Phase 4F — Hero Chemistry & Party Management**: COMPLETED / VERIFIED
+  - **Phase 4F — Hero Chemistry & Party Management**: COMPLETED / VERIFIED / CLOSED
   - **Phase 4G — Hero Management UX**: NEXT / LOCKED
   - **Phase 4H — Hero System Integration & Verification**: PLANNED
 

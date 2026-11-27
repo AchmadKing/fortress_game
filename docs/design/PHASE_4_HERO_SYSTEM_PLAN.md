@@ -588,8 +588,8 @@ Setiap sub-fase Phase 4 wajib menyertakan automated headless test suite:
   - Perluasan `HeroModel`: atribut `party_id: String = ""` ("" = RESERVE, "party_1", "party_2"), metode pembantu (`is_in_party`, `get_party_id`, `set_party_id`, `clear_party_assignment`), sinkronisasi status invarian dengan `HeroLifecycleState`, pembersihan otomatis saat gugur (`mark_dead()`), serta perlindungan terhadap self-chemistry (`p_id == hero_id`).
   - Refaktor `CombatEngine`: penghapusan kenaikan chemistry dari perulangan melee Phase 3, dialihkan ke satu-satunya jalur resmi pada Fase 5 pasca-kelangsungan hidup pertempuran (+2 poin per pasang hero hidup yang bertarung bersama di Party 1, batas maksimal 50, bersifat simetris mutlak).
   - Perluasan `GameStateSnapshot`: penambahan serialisasi `parties_data: Array` pada `_init`, `clone()`, `to_dictionary()`, dan `from_dictionary()`.
-  - Manajemen Regu di `GameCoordinator`: inisialisasi tepat 2 regu (`party_1` dan `party_2`), API kueri, alokasi/pelepasan hero, penetapan ketua regu, penegakan Battle Lock selama `STATE_BATTLE`, perutean tempur eksklusif Party 1, dan pembersihan komprehensif saat permadeath (pelepasan keanggotaan regu, penghapusan ketua regu, dan penghapusan referensi chemistry secara simetris).
-  - Test suite mandiri `tests/test_phase4f_hero_chemistry_party.gd` (66/66 PASS).
+  - Manajemen Regu di `GameCoordinator`: inisialisasi tepat 2 regu (`party_1` dan `party_2`), API kueri, alokasi/pelepasan hero menggunakan canonical domain method `hero.set_party_id(party.party_id)` dengan transaksi atomik dan rollback penuh, penetapan ketua regu, penegakan Battle Lock selama `STATE_BATTLE`, perutean tempur eksklusif Party 1, dan pembersihan komprehensif saat permadeath (pelepasan keanggotaan regu, penghapusan ketua regu, dan penghapusan referensi chemistry secara simetris).
+  - Test suite mandiri `tests/test_phase4f_hero_chemistry_party.gd` (68/68 PASS).
 - **OUT OF SCOPE FOR 4F (DILARANG PADA 4F):**
   - Hero Management UI, Party Management UI, dan visual drag-and-drop (Milik 4G).
   - Formasi taktis medan tempur dan pergerakan unit real-time (Milik Phase 6).
@@ -610,7 +610,7 @@ Phase 4 dinyatakan selesai hanya jika seluruh kriteria berikut terpenuhi:
 - [x] Invariant konservasi gudang bersama $\text{Total} = \text{USBL} + \text{DMGD} + \text{HERO} + \text{REGD}$ tetap valid 100%.
 - [x] Seluruh perlengkapan pahlawan permadeath kembali ke gudang bersama tepat 1 kali.
 - [x] Seluruh 134 baseline test existing tetap PASS 100%.
-- [x] Test suite baru untuk seluruh sub-fase Phase 4 lulus 100% (4A: 38, 4B: 47, 4C: 51, 4D: 54, 4E: 62, 4F: 66).
+- [x] Test suite baru untuk seluruh sub-fase Phase 4 lulus 100% (4A: 38, 4B: 47, 4C: 51, 4D: 54, 4E: 62, 4F: 68).
 - [x] Scene Smoke Playtest terintegrasi lulus tanpa error di Godot Editor.
 
 ---

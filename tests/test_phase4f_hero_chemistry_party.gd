@@ -105,7 +105,11 @@ func _init() -> void:
 		{"name": "test_permadeath_cleans_chemistry_references_symmetrically", "fn": Callable(self, "_test_permadeath_cleans_chemistry_references_symmetrically")},
 		{"name": "test_permadeath_returns_equipment_to_shared_warehouse", "fn": Callable(self, "_test_permadeath_returns_equipment_to_shared_warehouse")},
 		{"name": "test_snapshot_telemetry_includes_party_id_and_parties_data", "fn": Callable(self, "_test_snapshot_telemetry_includes_party_id_and_parties_data")},
-		{"name": "test_20_wave_party_chemistry_stress_simulation", "fn": Callable(self, "_test_20_wave_party_chemistry_stress_simulation")}
+		{"name": "test_20_wave_party_chemistry_stress_simulation", "fn": Callable(self, "_test_20_wave_party_chemistry_stress_simulation")},
+
+		# Group G: Phase 4F Correction Gate Tests (67-68)
+		{"name": "test_assign_party_uses_canonical_hero_party_assignment", "fn": Callable(self, "_test_assign_party_uses_canonical_hero_party_assignment")},
+		{"name": "test_assign_party_rolls_back_atomically_when_mutation_fails", "fn": Callable(self, "_test_assign_party_rolls_back_atomically_when_mutation_fails")}
 	]
 
 	for t in test_list:
@@ -991,3 +995,132 @@ func _test_20_wave_party_chemistry_stress_simulation() -> bool:
 		return false
 
 	return true
+
+
+# ==============================================================================
+# GROUP G: PHASE 4F CORRECTION GATE TESTS (67-68)
+# ==============================================================================
+
+func _test_assign_party_uses_canonical_hero_party_assignment() -> bool:
+	var coord := GameCoordinator.new()
+	coord.start_new_session("proto_assign_canon")
+
+	var alder: HeroModel = coord.get_hero("hero_alder")
+	if alder == null:
+		printerr("Alder not found")
+		return false
+	if alder.is_in_party() or not alder.party_id.is_empty() or alder.lifecycle_state != HeroLifecycleState.ROSTER_ACTIVE:
+		printerr("Alder initial state invalid")
+		return false
+
+	var ok: bool = coord.assign_hero_to_party("hero_alder", "party_1")
+	if not ok:
+		printerr("assign_hero_to_party returned false")
+		return false
+
+	var party: PartyModel = coord.get_party("party_1")
+	var party_id_canonical: bool = (alder.get_party_id() == "party_1" and alder.party_id == "party_1")
+	var is_in_party_ok: bool = alder.is_in_party("party_1")
+	var lifecycle_ok: bool = (alder.lifecycle_state == HeroLifecycleState.IN_PARTY)
+	var party_model_contains_hero: bool = (party != null and party.has_member("hero_alder") and party.get_members().has("hero_alder"))
+	var invariants_ok: bool = alder.validate_invariants()
+
+	return party_id_canonical and is_in_party_ok and lifecycle_ok and party_model_contains_hero and invariants_ok
+
+
+func _test_assign_party_rolls_back_atomically_when_mutation_fails() -> bool:
+	var coord := GameCoordinator.new()
+	coord.start_new_session("proto_assign_rollback")
+
+	var alder: HeroModel = coord.get_hero("hero_alder")
+	if alder == null or alder.is_in_party() or alder.lifecycle_state != HeroLifecycleState.ROSTER_ACTIVE:
+		return false
+
+	# Test Part A: Simulasi kegagalan pada tahap set_party_id
+	# Kita manipulasi sementara party_id pada party_1 agar ditolak oleh HeroModel.set_party_id (bukan party_1 / party_2)
+	var p1: PartyModel = coord.get_party("party_1")
+	var orig_pid: String = p1.party_id
+	p1.party_id = "party_invalid_target"
+
+	var fail_res_a: bool = coord.assign_hero_to_party("hero_alder", "party_invalid_target")
+
+	# Pulihkan party_id party_1
+	p1.party_id = orig_pid
+
+	# Pastikan Part A rollback sempurna:
+	# 1. assign gagal
+	# 2. party_id kembali kosong ("")
+	# 3. is_in_party() false
+	# 4. lifecycle kembali ke ROSTER_ACTIVE
+	# 5. tidak ada partial membership di party
+	# 6. invarian hero tetap valid
+	var a_ok: bool = (not fail_res_a
+		and alder.party_id.is_empty()
+		and alder.get_party_id() == ""
+		and not alder.is_in_party()
+		and alder.lifecycle_state == HeroLifecycleState.ROSTER_ACTIVE
+		and not p1.has_member("hero_alder")
+		and p1.get_member_count() == 0
+		and alder.validate_invariants())
+
+	if not a_ok:
+		printerr("Rollback failed for set_party_id failure path")
+		return false
+
+	# Test Part B: Simulasi kegagalan pada tahap party.add_member
+	# Definisikan mock party yang menolak add_member
+	var mock_p := MockFailingParty.new()
+	coord._parties[0] = mock_p
+
+	var fail_res_b: bool = coord.assign_hero_to_party("hero_alder", "party_1")
+
+	# Pulihkan party_1 asli
+	coord._parties[0] = p1
+
+	# Pastikan Part B rollback sempurna:
+	# 1. assign gagal
+	# 2. hero.clear_party_assignment() dijalankan (party_id kembali kosong)
+	# 3. lifecycle_state kembali ke ROSTER_ACTIVE
+	# 4. tidak ada partial membership
+	# 5. invarian hero tetap valid
+	var b_ok: bool = (not fail_res_b
+		and alder.party_id.is_empty()
+		and alder.get_party_id() == ""
+		and not alder.is_in_party()
+		and alder.lifecycle_state == HeroLifecycleState.ROSTER_ACTIVE
+		and not p1.has_member("hero_alder")
+		and p1.get_member_count() == 0
+		and alder.validate_invariants())
+
+	if not b_ok:
+		printerr("Rollback failed for party.add_member failure path")
+		return false
+
+	return true
+
+
+class MockFailingParty:
+	extends RefCounted
+	var party_id: String = "party_1"
+	var party_name: String = "Mock Failing Party"
+	var leader_hero_id: String = ""
+	var member_hero_ids: Array = []
+	var is_deployed_to_battle: bool = true
+
+	func is_full() -> bool:
+		return false
+
+	func has_member(_h_id: String) -> bool:
+		return false
+
+	func add_member(_h_id: String) -> bool:
+		return false
+
+	func remove_member(_h_id: String) -> bool:
+		return true
+
+	func get_member_count() -> int:
+		return 0
+
+	func get_members() -> Array:
+		return []

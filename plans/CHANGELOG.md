@@ -4,7 +4,7 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
-## [0.5.7] - Phase 4F: Hero Chemistry & Party Management (Implemented & Verified)
+## [0.5.7] - Phase 4F: Hero Chemistry & Party Management (Implemented, Verified & Closed)
 
 ### Added
 - **Canonical PartyModel Pure Domain Model** (`scripts/domain/model/party_model.gd`):
@@ -30,18 +30,23 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
   - Proteksi Battle Lock: mutasi anggota regu dan penetapan ketua regu dilarang keras saat state `BATTLE`.
   - Perutean tempur aktif: hanya pahlawan Party 1 yang dikirim ke `CombatEngine.simulate_battle()`; Party 2 dan hero cadangan tidak berkontribusi serangan, tidak menerima kelelahan tempur, dan tidak memperoleh EXP tempur.
   - Pembersihan permadeath komprehensif pada `proceed_from_result()`: pahlawan gugur dilepas dari regu, status kepemimpinan regu dibersihkan, dan referensi chemistry pada pahlawan lain dihapus secara simetris tanpa merusak integritas gudang bersama.
+- **Correction Gate — Canonical Party Assignment Mutation Authority** (`scripts/application/coordinators/game_coordinator.gd`):
+  - Refaktor `GameCoordinator.assign_hero_to_party()` agar menggunakan canonical domain method `hero.set_party_id(party.party_id)` menggantikan direct field assignment (`hero.party_id = ...`).
+  - Penegakan urutan transaksi aman dan atomik: (1) validasi via `can_assign_hero_to_party()`, (2) simpan `prev_party_id` dan `prev_lifecycle`, (3) transisi lifecycle ke `IN_PARTY`, (4) mutasi domain via `hero.set_party_id()`, (5) penambahan anggota ke `PartyModel`, (6) rollback atomik tanpa meninggalkan mutasi parsial jika salah satu tahap gagal.
+  - Penambahan 2 regression tests pada suite Phase 4F: `test_assign_party_uses_canonical_hero_party_assignment` dan `test_assign_party_rolls_back_atomically_when_mutation_fails`.
 - **Phase 4F Automated Test Suite** (`tests/test_phase4f_hero_chemistry_party.gd`):
-  - 66 pengujian headless mencakup:
+  - 68 pengujian headless mencakup:
     - Group A: PartyModel Pure Domain & Invariant Tests (1-12)
     - Group B: HeroModel Party Attributes & Invariant Tests (13-24)
     - Group C: GameCoordinator Party Lifecycle & Battle Lock Tests (25-38)
     - Group D: Chemistry Progression & Rules Tests (39-50)
     - Group E: Combat Integration & Party 1 vs Party 2 Tests (51-60)
     - Group F: Permadeath Cleanup, Snapshot & 20-Wave Stress Tests (61-66)
+    - Group G: Phase 4F Correction Gate Tests (67-68)
 
 ### Verified
-- **Phase 4F Test Suite**: 66/66 PASSED (100%).
-- **Full Automated Regression Suite**: 452/452 PASSED across 14 test suites (Phase 1 s/d Phase 4F) with 0 regressions.
+- **Phase 4F Test Suite**: 68/68 PASSED (100%).
+- **Full Automated Regression Suite**: 454/454 PASSED across 14 test suites (Phase 1 s/d Phase 4F) with 0 regressions.
 - **Scene Smoke Playtest**: ALL PASS (0 errors) on Godot SceneTree.
 
 ---

@@ -1043,17 +1043,32 @@ func assign_hero_to_party(hero_id: String, party_id: String) -> bool:
 	var hero := get_hero(hero_id)
 	var party := get_party(party_id)
 
-	var prev_party_id: String = hero.party_id
+	var prev_party_id: String = hero.get_party_id()
 	var prev_lifecycle: String = hero.lifecycle_state
 
-	hero.party_id = party.party_id
+	# 1. Transisi lifecycle state ke IN_PARTY
 	var trans_ok: bool = hero.transition_lifecycle_state(HeroLifecycleState.IN_PARTY)
-	var add_ok: bool = party.add_member(hero.hero_id)
+	if not trans_ok:
+		return false
 
-	if not trans_ok or not add_ok:
+	# 2. Penugasan ID regu menggunakan canonical domain method
+	var set_ok: bool = hero.set_party_id(party.party_id)
+	if not set_ok:
+		# Rollback lifecycle
+		if not hero.transition_lifecycle_state(prev_lifecycle):
+			hero.lifecycle_state = prev_lifecycle
+		return false
+
+	# 3. Penambahan anggota ke PartyModel
+	var add_ok: bool = party.add_member(hero.hero_id)
+	if not add_ok:
 		# Rollback atomik
-		hero.party_id = prev_party_id
-		hero.lifecycle_state = prev_lifecycle
+		if prev_party_id.is_empty():
+			hero.clear_party_assignment()
+		else:
+			hero.set_party_id(prev_party_id)
+		if not hero.transition_lifecycle_state(prev_lifecycle):
+			hero.lifecycle_state = prev_lifecycle
 		party.remove_member(hero.hero_id)
 		return false
 

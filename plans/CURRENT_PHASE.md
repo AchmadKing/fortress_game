@@ -1,8 +1,8 @@
 # Current Development Phase
 
-## Phase 4 — Hero System (IN PROGRESS / SUB-PHASE 4F COMPLETED & VERIFIED)
+## Phase 4 — Hero System (IN PROGRESS / SUB-PHASE 4F COMPLETED, VERIFIED & CLOSED)
 
-Project saat ini berada pada tahap **Phase 4 — Hero System (Sub-Phase 4A: COMPLETED / VERIFIED; Sub-Phase 4B: COMPLETED / VERIFIED; Sub-Phase 4C: COMPLETED / VERIFIED / CLOSED; Sub-Phase 4D: COMPLETED / VERIFIED; Sub-Phase 4E: COMPLETED / VERIFIED; Sub-Phase 4F: COMPLETED / VERIFIED; Sub-Phase 4G: NEXT / LOCKED)**.
+Project saat ini berada pada tahap **Phase 4 — Hero System (Sub-Phase 4A: COMPLETED / VERIFIED; Sub-Phase 4B: COMPLETED / VERIFIED; Sub-Phase 4C: COMPLETED / VERIFIED / CLOSED; Sub-Phase 4D: COMPLETED / VERIFIED; Sub-Phase 4E: COMPLETED / VERIFIED; Sub-Phase 4F: COMPLETED / VERIFIED / CLOSED; Sub-Phase 4G: NEXT / LOCKED)**.
 Phase 3 (Gameplay Prototype) telah resmi ditutup (**COMPLETED / CLOSED**) pada commit `e6c0c97`.
 
 Roadmap teknis dan spesifikasi arsitektur komprehensif Phase 4 tersedia di [docs/design/PHASE_4_HERO_SYSTEM_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_4_HERO_SYSTEM_PLAN.md).
@@ -75,16 +75,15 @@ Roadmap teknis dan spesifikasi arsitektur komprehensif Phase 4 tersedia di [docs
     - Snapshot Telemetri: Serialisasi `unlocked_skills`, `talent_points`, `allocated_talents`, `talent_atk_multiplier`, dan `talent_def_multiplier` ke dalam `GameStateSnapshot.heroes_data`.
     - Test Suite Phase 4E: **62/62 PASSED, 0 FAILED** ([tests/test_phase4e_hero_skills_talents.gd](file:///d:/fortress_game/tests/test_phase4e_hero_skills_talents.gd)).
     - Full Regression: **386 tests PASSED (134 baseline Phase 1-3 + 38 Phase 4A + 47 Phase 4B + 51 Phase 4C + 54 Phase 4D + 62 Phase 4E)** + Scene Smoke Playtest ALL PASS.
-  - **Sub-Phase 4F — Hero Chemistry & Party Management**: **COMPLETED / VERIFIED**
+  - **Sub-Phase 4F — Hero Chemistry & Party Management**: **COMPLETED / VERIFIED / CLOSED (CORRECTION GATE PASSED)**
     - Model domain murni `PartyModel` (`scripts/domain/model/party_model.gd`, `class_name PartyModel extends RefCounted`) dengan id regu kanonikal `party_1` dan `party_2`, kapasitas maksimal 3 pahlawan per regu, manajemen anggota, penetapan ketua regu (*leader*), kloning mendalam, serta validasi invarian.
     - Perluasan `HeroModel`: atribut `party_id: String = ""` ("" = RESERVE, "party_1", "party_2"), metode pembantu (`is_in_party`, `get_party_id`, `set_party_id`, `clear_party_assignment`), sinkronisasi status invarian dengan `HeroLifecycleState`, pembersihan otomatis saat gugur (`mark_dead()`), serta proteksi terhadap self-chemistry (`p_id == hero_id`).
     - Jalur tunggal akumulasi chemistry di `CombatEngine`: dihapus dari perulangan melee Phase 3, dialihkan ke satu-satunya jalur resmi pada Fase 5 pasca-kelangsungan hidup pertempuran (+2 poin per pasang hero hidup yang bertarung bersama di Party 1, batas maksimal 50 poin, penambahan bersifat simetris mutlak).
     - Serialisasi Snapshot di `GameStateSnapshot`: penambahan serialisasi `parties_data: Array` pada `_init`, `clone()`, `to_dictionary()`, dan `from_dictionary()`.
-    - Manajemen Regu di `GameCoordinator`: inisialisasi tepat 2 regu (`party_1` dan `party_2`), API kueri, alokasi/pelepasan hero, penetapan ketua regu, proteksi Battle Lock selama `STATE_BATTLE`, perutean tempur eksklusif Party 1 (kontribusi serangan, kelelahan tempur, dan EXP tempur hanya untuk Party 1), dan pembersihan komprehensif saat permadeath (pelepasan keanggotaan regu, penghapusan ketua regu, dan penghapusan referensi chemistry secara simetris).
-    - Test Suite Phase 4F: **66/66 PASSED, 0 FAILED** ([tests/test_phase4f_hero_chemistry_party.gd](file:///d:/fortress_game/tests/test_phase4f_hero_chemistry_party.gd)).
-    - Full Regression: **452 tests PASSED (134 baseline Phase 1-3 + 38 Phase 4A + 47 Phase 4B + 51 Phase 4C + 54 Phase 4D + 62 Phase 4E + 66 Phase 4F)** + Scene Smoke Playtest ALL PASS.
+    - Manajemen Regu di `GameCoordinator`: inisialisasi tepat 2 regu (`party_1` dan `party_2`), API kueri, alokasi/pelepasan hero menggunakan canonical domain method `hero.set_party_id(party.party_id)` dengan rollback atomik jika gagal, penetapan ketua regu, proteksi Battle Lock selama `STATE_BATTLE`, perutean tempur eksklusif Party 1 (kontribusi serangan, kelelahan tempur, dan EXP tempur hanya untuk Party 1), dan pembersihan komprehensif saat permadeath (pelepasan keanggotaan regu, penghapusan ketua regu, dan penghapusan referensi chemistry secara simetris).
+    - Test Suite Phase 4F: **68/68 PASSED, 0 FAILED** ([tests/test_phase4f_hero_chemistry_party.gd](file:///d:/fortress_game/tests/test_phase4f_hero_chemistry_party.gd)).
+    - Full Regression: **454 tests PASSED (134 baseline Phase 1-3 + 38 Phase 4A + 47 Phase 4B + 51 Phase 4C + 54 Phase 4D + 62 Phase 4E + 68 Phase 4F)** + Scene Smoke Playtest ALL PASS.
   - Sub-Phase 4G — Hero Management UX: **NEXT / LOCKED** (Terkunci hingga tinjauan developer)
-  - Sub-Phase 4G — Hero Management UX: **PLANNED**
   - Sub-Phase 4H — Hero System Integration & Verification: **PLANNED**
 - **Phase 5 — Fortress & Management Systems**: **LOCKED**
 - **Phase 6 — Tactical Battle & Battlefield Systems**: **LOCKED**
