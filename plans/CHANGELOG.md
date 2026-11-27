@@ -4,6 +4,60 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.5.8] - Phase 4G: Hero Management UX (Implemented & Verified)
+
+### Added
+- **Functional Prototype Hero Management UX** (`scripts/presentation/views/prototype_debug_view.gd`):
+  - Arsitektur antarmuka prototype yang diperluas secara modular pada kolom kanan (`right_vbox`), mempertahankan keterpisahan lapisan presentasi dan bebas dari polling `_process()`.
+  - **Mercenary Guild Recruitment Panel**:
+    - Tampilan kas emas benteng dan biaya rekrutmen kanonikal mutlak 500 Gold (`HERO_RECRUITMENT_COST_DEFAULT = 500`).
+    - Role picker interaktif (`KNIGHT`, `ARCHER`, `MAGE`, `PRIEST`) dengan status seleksi peran dan pratinjau kandidat pahlawan (1★ / Potensi 3★).
+    - Proteksi Battle Lock dan validasi kecukupan kas benteng: tombol rekrutmen dinonaktifkan secara reaktif saat kas < 500 Gold atau selama fase `BATTLE`.
+    - Auto-selection: pahlawan yang baru direkrut langsung terpilih secara otomatis pada panel detail.
+  - **Party Management Panel (Phase 4F Integration)**:
+    - Visualisasi status Party 1 (Active Battle Party) dan Party 2 (Management Reserve) dengan kapasitas maksimal 3 pahlawan.
+    - Indikator ketua regu (`[LEADER]`), tombol jadikan pemimpin (`Jadikan Leader`), dan tombol lepas dari regu (`Lepas`).
+    - Visualisasi pahlawan cadangan (RESERVE) dengan tombol penugasan ke Party 1 (`+ Party 1`) dan Party 2 (`+ Party 2`).
+    - Proteksi otomatis: tombol penugasan dinonaktifkan saat regu penuh (3/3) atau selama fase `BATTLE`.
+  - **Hero Roster Panel**:
+    - Kartu ringkasan setiap pahlawan terdaftar: nama, level, peran, bintang/potensi, status kehidupan (`ALIVE` / `DEAD (Permadeath)`), EXP saat ini/syarat, fatigue, morale, lifecycle state, dan regu penugasan (`RESERVE` / `PARTY_1` / `PARTY_2`).
+    - Tombol seleksi pahlawan interaktif (`Pilih / Lihat Detail`) untuk menampilkan detail lengkap pahlawan terpilih.
+  - **Comprehensive Hero Detail Panel**:
+    - **Identitas & Statistik Tempur**: Bintang, potensi, level cap, EXP bar, status hidup, HP dasar, ATK & DEF efektif beserta nilai dasar, kelelahan (fatigue 0-100), dan moral (morale 0-150).
+    - **Aksi Progresi & Pemulihan**:
+      - Tombol *Ascension* (+1★): memvalidasi level cap, potensi bintang, dan kecukupan kas emas kanonikal.
+      - Tombol *Latihan* (+40 EXP, +15 Fatigue): memvalidasi batas 1x latihan per gelombang dan batas fatigue $\le 100$.
+      - Tombol *Istirahat* (-25 Fatigue, +5 Morale): pemulihan kelelahan dan moral secara aman.
+    - **Katalog Keahlian Kanonikal (Phase 4E)**: Menampilkan keahlian kanonikal sesuai peran pahlawan (`Iron Edge`, `Iron Guard`, `Battle Leadership` untuk Knight, dll.) dengan status terbuka/terkunci dan tombol pembukaan keahlian berbasis level minimum.
+    - **Pohon Bakat (Phase 4E)**: Visualisasi 3 cabang bakat (`OFFENSE`, `DEFENSE`, `LEADERSHIP`), pengali bakat aktif, poin bakat tersedia, dan tombol alokasi bakat (maksimal tingkat 3).
+    - **Status Kemitraan (Chemistry - Phase 4F)**: Tampilan display-only interaktif untuk pasangan mitra tempur di Party 1, poin kemitraan (cap 50), dan bonus efektivitas bersama (+0.5%/pt) tanpa tombol mutasi manual.
+    - **Kontrol Perlengkapan (Phase 3C)**: Aksi pasang (equip) dan lepas (unequip) senjata primer, sekunder, dan zirah yang terintegrasi dengan stok Shared Warehouse, serta pemblokiran total pada hero permadeath.
+  - **Actionable Feedback Banner**: Banner umpan balik visual terpadu (`_lbl_feedback_banner`) yang mengonfirmasi keberhasilan aksi (`[REKRUTMEN]`, `[ASCENSION]`, `[LATIHAN]`, `[ISTIRAHAT]`, `[SKILL]`, `[BAKAT]`, `[REGU]`, `[LEADER]`) serta memberikan alasan penolakan jika transaksi tidak valid (`[DITOLAK]`).
+- **GameController Presentation Forwarding APIs** (`scripts/presentation/controllers/game_controller.gd`):
+  - Penambahan 20 metode pembantu delegasi ke `GameCoordinator`: `get_heroes()`, `can_recruit_hero()`, `recruit_hero()`, `can_ascend_hero()`, `ascend_hero()`, `can_train_hero()`, `train_hero()`, `can_rest_hero()`, `rest_hero()`, `can_unlock_hero_skill()`, `unlock_hero_skill()`, `can_allocate_hero_talent()`, `allocate_hero_talent()`, `get_party()`, `get_parties()`, `can_assign_hero_to_party()`, `assign_hero_to_party()`, `can_remove_hero_from_party()`, `remove_hero_from_party()`, `can_set_party_leader()`, `set_party_leader()`.
+- **GameCoordinator Query Helpers & Snapshot Telemetry** (`scripts/application/coordinators/game_coordinator.gd`):
+  - Penambahan metode kueri validasi UI: `can_ascend_hero(hero_id: String) -> bool` dan `can_recruit_hero() -> bool`.
+  - Serialisasi atribut `required_exp` pada setiap entri `heroes_data` di `_update_snapshot()` untuk transparansi progresi pada antarmuka pengguna tanpa kalkulasi ulang di presentation layer.
+- **Phase 4G Automated Test Suite** (`tests/test_phase4g_hero_management_ux.gd`):
+  - 60 pengujian fungsional dan reaktif terstruktur dalam 10 kelompok:
+    - Group A: Hero Roster UX Tests (1-6)
+    - Group B: Hero Detail Panel UX Tests (7-12)
+    - Group C: Hero Recruitment UX Tests (13-18)
+    - Group D: Ascension UX Tests (19-24)
+    - Group E: Training & Rest UX Tests (25-30)
+    - Group F: Skills & Talents UX Tests (31-38)
+    - Group G: Party Management UX Tests (39-45)
+    - Group H: Chemistry UX Tests (46-49)
+    - Group I: Equipment UX & Permadeath Tests (50-54)
+    - Group J: Integration, Reactive Sync & Feedback Tests (55-60)
+
+### Verified
+- **Phase 4G Test Suite**: 60/60 PASSED (100%).
+- **Full Automated Regression Suite**: 514/514 PASSED across 15 test suites (Phase 1 s/d Phase 4G) with 0 regressions.
+- **Scene Smoke Playtest**: ALL PASS (0 errors) on Godot SceneTree.
+
+---
+
 ## [0.5.7] - Phase 4F: Hero Chemistry & Party Management (Implemented, Verified & Closed)
 
 ### Added

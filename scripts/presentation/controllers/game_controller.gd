@@ -202,6 +202,136 @@ func swap_hero_equipment(hero_id: String, slot: String, new_eq_type: String) -> 
 	return coordinator.swap_hero_equipment(hero_id, slot, new_eq_type)
 
 
+# ==============================================================================
+# PHASE 4G HERO MANAGEMENT ACTIONS & FORWARDING
+# ==============================================================================
+
+func get_heroes() -> Array:
+	if coordinator == null:
+		return []
+	return coordinator.get_heroes()
+
+
+func can_recruit_hero() -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.can_recruit_hero()
+
+
+func recruit_hero(candidate_or_role: Variant = null, cur_star: int = 1, pot_star: int = 3, p_id: String = "", p_name: String = "") -> RefCounted:
+	if coordinator == null:
+		return null
+	return coordinator.recruit_hero(candidate_or_role, cur_star, pot_star, p_id, p_name)
+
+
+func can_ascend_hero(hero_id: String) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.can_ascend_hero(hero_id)
+
+
+func ascend_hero(hero_id: String) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.ascend_hero(hero_id)
+
+
+func can_train_hero(hero_id: String) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.can_train_hero(hero_id)
+
+
+func train_hero(hero_id: String) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.train_hero(hero_id)
+
+
+func can_rest_hero(hero_id: String) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.can_rest_hero(hero_id)
+
+
+func rest_hero(hero_id: String, recovery: int = 25) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.rest_hero(hero_id, recovery)
+
+
+func can_unlock_hero_skill(hero_id: String, skill_id: String) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.can_unlock_hero_skill(hero_id, skill_id)
+
+
+func unlock_hero_skill(hero_id: String, skill_id: String) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.unlock_hero_skill(hero_id, skill_id)
+
+
+func can_allocate_hero_talent(hero_id: String, branch_id: String) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.can_allocate_hero_talent(hero_id, branch_id)
+
+
+func allocate_hero_talent(hero_id: String, branch_id: String) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.allocate_hero_talent(hero_id, branch_id)
+
+
+func get_party(party_id: String) -> RefCounted:
+	if coordinator == null:
+		return null
+	return coordinator.get_party(party_id)
+
+
+func get_parties() -> Array:
+	if coordinator == null:
+		return []
+	return coordinator.get_parties()
+
+
+func can_assign_hero_to_party(hero_id: String, party_id: String) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.can_assign_hero_to_party(hero_id, party_id)
+
+
+func assign_hero_to_party(hero_id: String, party_id: String) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.assign_hero_to_party(hero_id, party_id)
+
+
+func can_remove_hero_from_party(hero_id: String) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.can_remove_hero_from_party(hero_id)
+
+
+func remove_hero_from_party(hero_id: String) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.remove_hero_from_party(hero_id)
+
+
+func can_set_party_leader(hero_id: String, party_id: String) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.can_set_party_leader(hero_id, party_id)
+
+
+func set_party_leader(hero_id: String, party_id: String) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.set_party_leader(hero_id, party_id)
+
+
 func inspect_wave() -> bool:
 	if coordinator == null:
 		return false

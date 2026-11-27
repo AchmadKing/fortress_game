@@ -18,6 +18,10 @@ const GameController = preload("res://scripts/presentation/controllers/game_cont
 const CommanderCommand = preload("res://scripts/domain/command/commander_command.gd")
 const DeploymentComposition = preload("res://scripts/domain/model/deployment_composition.gd")
 const HeroModel = preload("res://scripts/domain/model/hero_model.gd")
+const HeroRole = preload("res://scripts/domain/model/hero_role.gd")
+const HeroLifecycleState = preload("res://scripts/domain/model/hero_lifecycle_state.gd")
+const HeroSkill = preload("res://scripts/domain/model/hero_skill.gd")
+const PartyModel = preload("res://scripts/domain/model/party_model.gd")
 
 var coordinator: GameCoordinator
 var controller: GameController
@@ -39,12 +43,24 @@ var _lbl_feedback_banner: Label
 var _panel_stage_actions: VBoxContainer
 var _txt_telemetry_log: RichTextLabel
 
+# Phase 4G Hero Management UI References
+var _lbl_recruitment: Label
+var _recruitment_container: VBoxContainer
+var _lbl_parties: Label
+var _party_container: VBoxContainer
 var _lbl_heroes: Label
 var _hero_container: VBoxContainer
+var _lbl_hero_detail: Label
+var _hero_detail_container: VBoxContainer
+
 var _lbl_warehouse: Label
 var _blacksmith_container: VBoxContainer
 
 var _last_snapshot: GameStateSnapshot
+
+# Local Hero Selection & Candidate State
+var _selected_hero_id: String = ""
+var _selected_recruit_role: String = "KNIGHT"
 
 # Local Deployment Builder Selection State
 var _selected_deploy_count: int = 2
@@ -274,16 +290,37 @@ func _build_ui() -> void:
 
 	content_hbox.add_child(VSeparator.new())
 
-	# KOLOM KANAN: Heroes & Warehouse
+	# KOLOM KANAN: Recruitment, Parties, Roster, Detail, Warehouse & Blacksmith
 	var right_scroll := ScrollContainer.new()
-	right_scroll.custom_minimum_size = Vector2(320, 0)
+	right_scroll.custom_minimum_size = Vector2(340, 0)
 	var right_vbox := VBoxContainer.new()
 	right_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	right_scroll.add_child(right_vbox)
 	content_hbox.add_child(right_scroll)
 
+	# 1. Hero Recruitment Section
+	_lbl_recruitment = Label.new()
+	_lbl_recruitment.text = "=== RECRUITMENT (MERCENARY GUILD) ==="
+	right_vbox.add_child(_lbl_recruitment)
+
+	_recruitment_container = VBoxContainer.new()
+	right_vbox.add_child(_recruitment_container)
+
+	right_vbox.add_child(HSeparator.new())
+
+	# 2. Party Management Section
+	_lbl_parties = Label.new()
+	_lbl_parties.text = "=== PARTY MANAGEMENT (PHASE 4F) ==="
+	right_vbox.add_child(_lbl_parties)
+
+	_party_container = VBoxContainer.new()
+	right_vbox.add_child(_party_container)
+
+	right_vbox.add_child(HSeparator.new())
+
+	# 3. Hero Roster Section
 	var lbl_sec3 := Label.new()
-	lbl_sec3.text = "=== HERO ROSTER & EQUIPMENT ==="
+	lbl_sec3.text = "=== HERO ROSTER ==="
 	right_vbox.add_child(lbl_sec3)
 
 	_lbl_heroes = Label.new()
@@ -295,6 +332,17 @@ func _build_ui() -> void:
 
 	right_vbox.add_child(HSeparator.new())
 
+	# 4. Hero Detail Panel Section
+	_lbl_hero_detail = Label.new()
+	_lbl_hero_detail.text = "=== HERO DETAIL PANEL ==="
+	right_vbox.add_child(_lbl_hero_detail)
+
+	_hero_detail_container = VBoxContainer.new()
+	right_vbox.add_child(_hero_detail_container)
+
+	right_vbox.add_child(HSeparator.new())
+
+	# 5. Shared Warehouse Conservation
 	var lbl_sec4 := Label.new()
 	lbl_sec4.text = "=== SHARED WAREHOUSE CONSERVATION ==="
 	right_vbox.add_child(lbl_sec4)
@@ -305,6 +353,7 @@ func _build_ui() -> void:
 
 	right_vbox.add_child(HSeparator.new())
 
+	# 6. Blacksmith Workshop
 	var lbl_sec5 := Label.new()
 	lbl_sec5.text = "=== BLACKSMITH WORKSHOP (REPAIR) ==="
 	right_vbox.add_child(lbl_sec5)
@@ -372,7 +421,10 @@ func _on_state_changed(snapshot: GameStateSnapshot) -> void:
 		_lbl_soldiers.text = "Deployed Soldiers: %d" % total_deployed
 
 	# Right Column updates
+	_render_recruitment_panel(snapshot)
+	_render_party_management(snapshot)
 	_render_hero_roster(snapshot)
+	_render_hero_detail_panel(snapshot)
 	_render_warehouse_conservation(snapshot)
 	_render_blacksmith_workshop(snapshot)
 
@@ -401,32 +453,301 @@ func _get_phase_guidance_text(phase: String) -> String:
 
 
 # ==============================================================================
-# HERO ROSTER & INTERACTIVE EQUIPMENT RENDERING (RIGHT COLUMN)
+# PHASE 4G HERO RECRUITMENT PANEL (RIGHT COLUMN)
+# ==============================================================================
+
+func _render_recruitment_panel(snapshot: GameStateSnapshot) -> void:
+	if _recruitment_container == null:
+		return
+	for child in _recruitment_container.get_children():
+		_recruitment_container.remove_child(child)
+		child.queue_free()
+
+	var gold: int = int(snapshot.economy_data.get("treasury_gold", 0))
+	var cost: int = 500
+	var is_battle: bool = (snapshot.game_phase == "BATTLE")
+	var can_afford: bool = (gold >= cost)
+	var can_rec: bool = (not is_battle and can_afford)
+
+	var card := PanelContainer.new()
+	var card_vbox := VBoxContainer.new()
+	card.add_child(card_vbox)
+	_recruitment_container.add_child(card)
+
+	var lbl_cost := Label.new()
+	lbl_cost.text = "Mercenary Guild | Biaya: %d Gold (Kas: %d Gold)" % [cost, gold]
+	card_vbox.add_child(lbl_cost)
+
+	# Role Picker
+	var role_hbox := HBoxContainer.new()
+	card_vbox.add_child(role_hbox)
+	var lbl_pick := Label.new()
+	lbl_pick.text = "Peran:"
+	role_hbox.add_child(lbl_pick)
+
+	var roles := ["KNIGHT", "ARCHER", "MAGE", "PRIEST"]
+	for r in roles:
+		var btn_r := Button.new()
+		btn_r.name = "BtnPickRole_" + r
+		btn_r.text = ("[%s]" if r == _selected_recruit_role else "%s") % r
+		btn_r.disabled = is_battle
+		btn_r.pressed.connect(func(role_choice=r):
+			_selected_recruit_role = role_choice
+			if _last_snapshot != null:
+				_render_recruitment_panel(_last_snapshot)
+		)
+		role_hbox.add_child(btn_r)
+
+	# Candidate Preview & Confirm Action
+	var act_hbox := HBoxContainer.new()
+	card_vbox.add_child(act_hbox)
+
+	var lbl_cand := Label.new()
+	lbl_cand.text = "Kandidat: Recruit %s (1★ / Potensi 3★)" % _selected_recruit_role.capitalize()
+	lbl_cand.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	act_hbox.add_child(lbl_cand)
+
+	var btn_rec := Button.new()
+	btn_rec.name = "BtnRecruitHero"
+	if is_battle:
+		btn_rec.text = "Terkunci (Battle Lock)"
+		btn_rec.disabled = true
+	elif not can_afford:
+		btn_rec.text = "Kas Tidak Cukup (%d/500 G)" % gold
+		btn_rec.disabled = true
+	else:
+		btn_rec.text = "Konfirmasi Rekrut (500 G)"
+		btn_rec.disabled = false
+
+	btn_rec.pressed.connect(func(): _action_recruit_hero())
+	act_hbox.add_child(btn_rec)
+
+
+# ==============================================================================
+# PHASE 4G PARTY MANAGEMENT (RIGHT COLUMN)
+# ==============================================================================
+
+func _render_party_management(snapshot: GameStateSnapshot) -> void:
+	if _party_container == null:
+		return
+	for child in _party_container.get_children():
+		_party_container.remove_child(child)
+		child.queue_free()
+
+	var is_battle: bool = (snapshot.game_phase == "BATTLE")
+
+	# Render PARTY 1
+	var p1_panel := PanelContainer.new()
+	var p1_vbox := VBoxContainer.new()
+	p1_panel.add_child(p1_vbox)
+	_party_container.add_child(p1_panel)
+
+	var p1_data: Dictionary = {}
+	var p2_data: Dictionary = {}
+	for p in snapshot.parties_data:
+		if p.get("party_id", "") == "party_1":
+			p1_data = p
+		elif p.get("party_id", "") == "party_2":
+			p2_data = p
+
+	var p1_leader: String = str(p1_data.get("leader_hero_id", ""))
+	var p1_members: Array = p1_data.get("member_hero_ids", [])
+
+	var lbl_p1 := Label.new()
+	lbl_p1.text = "PARTY 1 (Active Battle Party) — Anggota: %d/3 | Pemimpin: %s" % [
+		p1_members.size(),
+		p1_leader if not p1_leader.is_empty() else "(Belum Ada)"
+	]
+	p1_vbox.add_child(lbl_p1)
+
+	if p1_members.is_empty():
+		var lbl_empty := Label.new()
+		lbl_empty.text = "  (Party 1 kosong — Tugaskan pahlawan dari cadangan)"
+		p1_vbox.add_child(lbl_empty)
+	else:
+		for m_id in p1_members:
+			var m_box := HBoxContainer.new()
+			p1_vbox.add_child(m_box)
+			var h_info: String = str(m_id)
+			for hd in snapshot.heroes_data:
+				if hd.get("hero_id", "") == m_id:
+					h_info = "%s (Lv.%d %s)" % [hd.get("hero_name", m_id), hd.get("level", 1), hd.get("role", "")]
+					break
+			if m_id == p1_leader:
+				h_info += " [LEADER]"
+
+			var lbl_m := Label.new()
+			lbl_m.text = h_info
+			lbl_m.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			m_box.add_child(lbl_m)
+
+			if m_id != p1_leader:
+				var btn_lead := Button.new()
+				btn_lead.name = "BtnSetLeader_party_1_" + str(m_id)
+				btn_lead.text = "Jadikan Leader"
+				btn_lead.disabled = is_battle
+				btn_lead.pressed.connect(func(hid=m_id): _action_set_party_leader(hid, "party_1"))
+				m_box.add_child(btn_lead)
+
+			var btn_rem := Button.new()
+			btn_rem.name = "BtnRemoveParty_party_1_" + str(m_id)
+			btn_rem.text = "Lepas"
+			btn_rem.disabled = is_battle
+			btn_rem.pressed.connect(func(hid=m_id): _action_remove_hero_from_party(hid))
+			m_box.add_child(btn_rem)
+
+	# Render PARTY 2
+	var p2_panel := PanelContainer.new()
+	var p2_vbox := VBoxContainer.new()
+	p2_panel.add_child(p2_vbox)
+	_party_container.add_child(p2_panel)
+
+	var p2_leader: String = str(p2_data.get("leader_hero_id", ""))
+	var p2_members: Array = p2_data.get("member_hero_ids", [])
+
+	var lbl_p2 := Label.new()
+	lbl_p2.text = "PARTY 2 (Management Reserve) — Anggota: %d/3 | Pemimpin: %s" % [
+		p2_members.size(),
+		p2_leader if not p2_leader.is_empty() else "(Belum Ada)"
+	]
+	p2_vbox.add_child(lbl_p2)
+
+	if p2_members.is_empty():
+		var lbl_empty2 := Label.new()
+		lbl_empty2.text = "  (Party 2 kosong)"
+		p2_vbox.add_child(lbl_empty2)
+	else:
+		for m_id in p2_members:
+			var m_box2 := HBoxContainer.new()
+			p2_vbox.add_child(m_box2)
+			var h_info2: String = str(m_id)
+			for hd in snapshot.heroes_data:
+				if hd.get("hero_id", "") == m_id:
+					h_info2 = "%s (Lv.%d %s)" % [hd.get("hero_name", m_id), hd.get("level", 1), hd.get("role", "")]
+					break
+			if m_id == p2_leader:
+				h_info2 += " [LEADER]"
+
+			var lbl_m2 := Label.new()
+			lbl_m2.text = h_info2
+			lbl_m2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			m_box2.add_child(lbl_m2)
+
+			if m_id != p2_leader:
+				var btn_lead2 := Button.new()
+				btn_lead2.name = "BtnSetLeader_party_2_" + str(m_id)
+				btn_lead2.text = "Jadikan Leader"
+				btn_lead2.disabled = is_battle
+				btn_lead2.pressed.connect(func(hid=m_id): _action_set_party_leader(hid, "party_2"))
+				m_box2.add_child(btn_lead2)
+
+			var btn_rem2 := Button.new()
+			btn_rem2.name = "BtnRemoveParty_party_2_" + str(m_id)
+			btn_rem2.text = "Lepas"
+			btn_rem2.disabled = is_battle
+			btn_rem2.pressed.connect(func(hid=m_id): _action_remove_hero_from_party(hid))
+			m_box2.add_child(btn_rem2)
+
+	# Render RESERVE
+	var res_panel := PanelContainer.new()
+	var res_vbox := VBoxContainer.new()
+	res_panel.add_child(res_vbox)
+	_party_container.add_child(res_panel)
+
+	var lbl_res := Label.new()
+	lbl_res.text = "RESERVE (Pahlawan Cadangan):"
+	res_vbox.add_child(lbl_res)
+
+	var reserve_heroes: Array = []
+	for hd in snapshot.heroes_data:
+		var pid: String = str(hd.get("party_id", ""))
+		var alive: bool = bool(hd.get("is_alive", true))
+		if pid.is_empty() and alive:
+			reserve_heroes.append(hd)
+
+	if reserve_heroes.is_empty():
+		var lbl_no_res := Label.new()
+		lbl_no_res.text = "  (Tidak ada pahlawan di cadangan)"
+		res_vbox.add_child(lbl_no_res)
+	else:
+		for rh in reserve_heroes:
+			var rh_id: String = str(rh.get("hero_id", ""))
+			var rh_name: String = str(rh.get("hero_name", rh_id))
+			var rh_lvl: int = int(rh.get("level", 1))
+			var rh_role: String = str(rh.get("role", ""))
+
+			var r_box := HBoxContainer.new()
+			res_vbox.add_child(r_box)
+
+			var lbl_rh := Label.new()
+			lbl_rh.text = "%s (Lv.%d %s)" % [rh_name, rh_lvl, rh_role]
+			lbl_rh.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			r_box.add_child(lbl_rh)
+
+			var btn_p1 := Button.new()
+			btn_p1.name = "BtnAssign_party_1_" + rh_id
+			btn_p1.text = "+ Party 1"
+			btn_p1.disabled = (is_battle or p1_members.size() >= 3)
+			btn_p1.pressed.connect(func(hid=rh_id): _action_assign_hero_to_party(hid, "party_1"))
+			r_box.add_child(btn_p1)
+
+			var btn_p2 := Button.new()
+			btn_p2.name = "BtnAssign_party_2_" + rh_id
+			btn_p2.text = "+ Party 2"
+			btn_p2.disabled = (is_battle or p2_members.size() >= 3)
+			btn_p2.pressed.connect(func(hid=rh_id): _action_assign_hero_to_party(hid, "party_2"))
+			r_box.add_child(btn_p2)
+
+
+# ==============================================================================
+# PHASE 4G HERO ROSTER (RIGHT COLUMN)
 # ==============================================================================
 
 func _render_hero_roster(snapshot: GameStateSnapshot) -> void:
+	if _hero_container == null:
+		return
 	for child in _hero_container.get_children():
+		_hero_container.remove_child(child)
 		child.queue_free()
 
 	if snapshot.heroes_data.is_empty():
-		_lbl_heroes.text = "No heroes registered."
+		if _lbl_heroes != null:
+			_lbl_heroes.text = "No heroes registered."
 		return
 
-	_lbl_heroes.text = "Active Heroes: %d" % snapshot.heroes_data.size()
+	# Pastikan ada hero terpilih default
+	if _selected_hero_id.is_empty():
+		_selected_hero_id = str(snapshot.heroes_data[0].get("hero_id", ""))
+	else:
+		var found_selected: bool = false
+		for h in snapshot.heroes_data:
+			if str(h.get("hero_id", "")) == _selected_hero_id:
+				found_selected = true
+				break
+		if not found_selected and not snapshot.heroes_data.is_empty():
+			_selected_hero_id = str(snapshot.heroes_data[0].get("hero_id", ""))
 
-	var is_battle: bool = (snapshot.game_phase == "BATTLE")
+	if _lbl_heroes != null:
+		_lbl_heroes.text = "Active Heroes: %d | Terpilih: %s" % [snapshot.heroes_data.size(), _selected_hero_id]
 
 	for h in snapshot.heroes_data:
 		var hero_id: String = str(h.get("hero_id", ""))
 		var name_str: String = str(h.get("hero_name", "Hero"))
+		var role_str: String = str(h.get("role", "KNIGHT"))
 		var lvl: int = int(h.get("level", 1))
+		var cur_star: int = int(h.get("current_star", 1))
+		var pot_star: int = int(h.get("potential_star", 3))
+		var cur_exp: int = int(h.get("current_exp", 0))
+		var req_exp: int = int(h.get("required_exp", 120))
+		if req_exp <= 0:
+			req_exp = int(floor(120.0 * pow(float(lvl), 1.55)))
 		var fat: int = int(h.get("fatigue", 0))
+		var mor: int = int(h.get("morale", 100))
+		var lifecycle: String = str(h.get("lifecycle_state", "ROSTER_ACTIVE"))
+		var pid: String = str(h.get("party_id", ""))
+		var party_label: String = "RESERVE" if pid.is_empty() else pid.to_upper()
 		var alive: bool = bool(h.get("is_alive", true))
-		var prim: String = str(h.get("primary_equipment", "NONE"))
-		var sec: String = str(h.get("secondary_equipment", "NONE"))
-		var arm: String = str(h.get("armor_equipment", "NONE"))
-		var atk: int = int(h.get("effective_atk", 0))
-		var def_val: int = int(h.get("effective_def", 0))
+		var is_selected: bool = (hero_id == _selected_hero_id)
 
 		var hero_card := PanelContainer.new()
 		var card_vbox := VBoxContainer.new()
@@ -435,29 +756,287 @@ func _render_hero_roster(snapshot: GameStateSnapshot) -> void:
 
 		var status_str: String = "ALIVE" if alive else "DEAD (Permadeath)"
 		var lbl_info := Label.new()
-		lbl_info.text = "%s (Lv %d) [%s]\nATK: %d | DEF: %d | Fatigue: %d/100" % [
-			name_str, lvl, status_str, atk, def_val, fat
+		lbl_info.text = "%s (Lv.%d) [%s] [%d★ / %d★] [%s]" % [
+			name_str, lvl, role_str, cur_star, pot_star, status_str
 		]
 		card_vbox.add_child(lbl_info)
 
-		var lbl_gear := Label.new()
-		lbl_gear.text = "Gear: [P: %s | S: %s | A: %s]" % [prim, sec, arm]
-		card_vbox.add_child(lbl_gear)
+		var lbl_stats := Label.new()
+		lbl_stats.text = "EXP: %d/%d | Fatigue: %d/100 | Morale: %d/150" % [
+			cur_exp, req_exp, fat, mor
+		]
+		card_vbox.add_child(lbl_stats)
 
-		if not alive:
-			var dead_notice := Label.new()
-			dead_notice.text = "[PERMADEATH: Perlengkapan telah dikembalikan ke gudang]"
-			card_vbox.add_child(dead_notice)
-			continue
+		var lbl_party := Label.new()
+		lbl_party.text = "Status: [%s] | Regu: [%s]" % [lifecycle, party_label]
+		card_vbox.add_child(lbl_party)
 
-		if is_battle:
-			var lock_notice := Label.new()
-			lock_notice.text = "[BATTLE LOCK: Perlengkapan terkunci selama pertempuran]"
-			card_vbox.add_child(lock_notice)
-			continue
+		var sel_hbox := HBoxContainer.new()
+		card_vbox.add_child(sel_hbox)
 
-		# Kontrol Interaktif Equip / Unequip
-		# 1. Primary Slot
+		var btn_select := Button.new()
+		btn_select.name = "BtnSelect_" + hero_id
+		btn_select.text = "[TERPILIH]" if is_selected else "Pilih / Lihat Detail"
+		btn_select.disabled = is_selected
+		btn_select.pressed.connect(func(hid=hero_id):
+			_selected_hero_id = hid
+			if _last_snapshot != null:
+				_render_hero_roster(_last_snapshot)
+				_render_hero_detail_panel(_last_snapshot)
+		)
+		sel_hbox.add_child(btn_select)
+
+
+# ==============================================================================
+# PHASE 4G HERO DETAIL PANEL (RIGHT COLUMN)
+# ==============================================================================
+
+func _render_hero_detail_panel(snapshot: GameStateSnapshot) -> void:
+	if _hero_detail_container == null:
+		return
+	for child in _hero_detail_container.get_children():
+		_hero_detail_container.remove_child(child)
+		child.queue_free()
+
+	if _selected_hero_id.is_empty():
+		var lbl_empty := Label.new()
+		lbl_empty.text = "(Pilih pahlawan dari roster untuk melihat detail)"
+		_hero_detail_container.add_child(lbl_empty)
+		return
+
+	var hero_data: Dictionary = {}
+	for h in snapshot.heroes_data:
+		if str(h.get("hero_id", "")) == _selected_hero_id:
+			hero_data = h
+			break
+
+	if hero_data.is_empty():
+		var lbl_none := Label.new()
+		lbl_none.text = "(Pahlawan terpilih tidak ditemukan)"
+		_hero_detail_container.add_child(lbl_none)
+		return
+
+	var hid: String = str(hero_data.get("hero_id", ""))
+	var name_str: String = str(hero_data.get("hero_name", "Hero"))
+	var role_str: String = str(hero_data.get("role", "KNIGHT"))
+	var lvl: int = int(hero_data.get("level", 1))
+	var cur_star: int = int(hero_data.get("current_star", 1))
+	var pot_star: int = int(hero_data.get("potential_star", 3))
+	var cur_exp: int = int(hero_data.get("current_exp", 0))
+	var req_exp: int = int(hero_data.get("required_exp", 120))
+	if req_exp <= 0:
+		req_exp = int(floor(120.0 * pow(float(lvl), 1.55)))
+	var cap: int = int(hero_data.get("level_cap", 10))
+	var asc_cost: int = int(hero_data.get("ascension_cost", 150))
+	var hp: int = int(hero_data.get("base_hp", 250))
+	var b_atk: int = int(hero_data.get("base_atk", 35))
+	var b_def: int = int(hero_data.get("base_def", 20))
+	var eff_atk: int = int(hero_data.get("effective_atk", 35))
+	var eff_def: int = int(hero_data.get("effective_def", 20))
+	var fat: int = int(hero_data.get("fatigue", 0))
+	var mor: int = int(hero_data.get("morale", 100))
+	var lifecycle: String = str(hero_data.get("lifecycle_state", "ROSTER_ACTIVE"))
+	var pid: String = str(hero_data.get("party_id", ""))
+	var party_str: String = "RESERVE" if pid.is_empty() else pid.to_upper()
+	var alive: bool = bool(hero_data.get("is_alive", true))
+	var unlocked_skills: Array = hero_data.get("unlocked_skills", [])
+	var t_points: int = int(hero_data.get("talent_points", 0))
+	var alloc_talents: Dictionary = hero_data.get("allocated_talents", {})
+	var t_atk_mult: float = float(hero_data.get("talent_atk_multiplier", 1.0))
+	var t_def_mult: float = float(hero_data.get("talent_def_multiplier", 1.0))
+	var chem_map: Dictionary = hero_data.get("chemistry_map", {})
+	var prim: String = str(hero_data.get("primary_equipment", "NONE"))
+	var sec: String = str(hero_data.get("secondary_equipment", "NONE"))
+	var arm: String = str(hero_data.get("armor_equipment", "NONE"))
+	var is_battle: bool = (snapshot.game_phase == "BATTLE")
+
+	var card := PanelContainer.new()
+	var card_vbox := VBoxContainer.new()
+	card.add_child(card_vbox)
+	_hero_detail_container.add_child(card)
+
+	# --- 1. Identity & Combat Stats ---
+	var lbl_title := Label.new()
+	lbl_title.text = ">>> DETAIL: %s [%s] <<<" % [name_str, role_str]
+	card_vbox.add_child(lbl_title)
+
+	var lbl_ident := Label.new()
+	lbl_ident.text = "Identitas: Bintang %d★ / %d★ | Status: %s | Regu: %s" % [
+		cur_star, pot_star, "ALIVE" if alive else "DEAD (Permadeath)", party_str
+	]
+	card_vbox.add_child(lbl_ident)
+
+	var lbl_prog := Label.new()
+	lbl_prog.text = "Level: %d (Level Cap: %d) | EXP: %d / %d | Lifecycle: %s" % [
+		lvl, cap, cur_exp, req_exp, lifecycle
+	]
+	card_vbox.add_child(lbl_prog)
+
+	var lbl_stats := Label.new()
+	lbl_stats.text = "Combat Stats: HP: %d | ATK: %d (Base: %d) | DEF: %d (Base: %d)" % [
+		hp, eff_atk, b_atk, eff_def, b_def
+	]
+	card_vbox.add_child(lbl_stats)
+
+	var lbl_cond := Label.new()
+	lbl_cond.text = "Kondisi: Fatigue: %d/100 | Morale: %d/150" % [fat, mor]
+	card_vbox.add_child(lbl_cond)
+
+	if not alive:
+		var dead_lbl := Label.new()
+		dead_lbl.text = "[PERMADEATH: Pahlawan gugur permanen. Seluruh aksi terkunci.]"
+		card_vbox.add_child(dead_lbl)
+		return
+
+	if is_battle:
+		var battle_lbl := Label.new()
+		battle_lbl.text = "[BATTLE LOCK: Seluruh mutasi pahlawan terkunci selama pertempuran.]"
+		card_vbox.add_child(battle_lbl)
+
+	card_vbox.add_child(HSeparator.new())
+
+	# --- 2. Progression Actions: Ascension, Training, Rest ---
+	var act_header := Label.new()
+	act_header.text = "-- Aksi Progresi & Pemulihan --"
+	card_vbox.add_child(act_header)
+
+	var prog_hbox := HBoxContainer.new()
+	card_vbox.add_child(prog_hbox)
+
+	# Ascension Button
+	var btn_asc := Button.new()
+	btn_asc.name = "BtnAscendHero"
+	var can_asc_coord: bool = controller.can_ascend_hero(hid) if controller else false
+	btn_asc.text = "Ascend (+1★) [%d G]" % asc_cost
+	btn_asc.disabled = not can_asc_coord
+	btn_asc.pressed.connect(func(): _action_ascend_hero(hid))
+	prog_hbox.add_child(btn_asc)
+
+	# Training Button
+	var btn_train := Button.new()
+	btn_train.name = "BtnTrainHero"
+	var can_train: bool = controller.can_train_hero(hid) if controller else false
+	btn_train.text = "Latihan (+40 EXP, +15 Fat)"
+	btn_train.disabled = not can_train
+	btn_train.pressed.connect(func(): _action_train_hero(hid))
+	prog_hbox.add_child(btn_train)
+
+	# Rest Button
+	var btn_rest := Button.new()
+	btn_rest.name = "BtnRestHero"
+	var can_rest: bool = controller.can_rest_hero(hid) if controller else false
+	btn_rest.text = "Istirahat (-25 Fat, +5 Mor)"
+	btn_rest.disabled = not can_rest
+	btn_rest.pressed.connect(func(): _action_rest_hero(hid))
+	prog_hbox.add_child(btn_rest)
+
+	card_vbox.add_child(HSeparator.new())
+
+	# --- 3. Canonical Skills Catalog ---
+	var skill_header := Label.new()
+	skill_header.text = "-- Keahlian Kanonikal (%s) --" % role_str
+	card_vbox.add_child(skill_header)
+
+	var canon_skills: Array = HeroSkill.get_skills_for_role(role_str)
+	for sk in canon_skills:
+		if sk is HeroSkill:
+			var s_obj := sk as HeroSkill
+			var s_box := HBoxContainer.new()
+			card_vbox.add_child(s_box)
+
+			var is_unlocked: bool = (s_obj.skill_id in unlocked_skills)
+			var can_unlock: bool = controller.can_unlock_hero_skill(hid, s_obj.skill_id) if controller else false
+
+			var status_tag: String = "[TERBUKA]" if is_unlocked else "[TERKUNCI]"
+			var lbl_sk := Label.new()
+			lbl_sk.text = "%s %s (Lv.%d req) - %s (+%.0f%%)" % [
+				status_tag, s_obj.skill_name, s_obj.required_level, s_obj.skill_type, (s_obj.power_multiplier - 1.0) * 100.0
+			]
+			lbl_sk.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			s_box.add_child(lbl_sk)
+
+			var btn_unl := Button.new()
+			btn_unl.name = "BtnUnlockSkill_" + s_obj.skill_id
+			btn_unl.text = "Terbuka" if is_unlocked else "Buka Skill"
+			btn_unl.disabled = (is_unlocked or not can_unlock)
+			btn_unl.pressed.connect(func(sid=s_obj.skill_id): _action_unlock_skill(hid, sid))
+			s_box.add_child(btn_unl)
+
+	card_vbox.add_child(HSeparator.new())
+
+	# --- 4. Talent Tree ---
+	var talent_header := Label.new()
+	talent_header.text = "-- Pohon Bakat (Poin Tersedia: %d) --" % t_points
+	card_vbox.add_child(talent_header)
+
+	var mult_lbl := Label.new()
+	mult_lbl.text = "Pengali Bakat: ATK x%.2f | DEF x%.2f" % [t_atk_mult, t_def_mult]
+	card_vbox.add_child(mult_lbl)
+
+	var branches := ["OFFENSE", "DEFENSE", "LEADERSHIP"]
+	for br in branches:
+		var br_box := HBoxContainer.new()
+		card_vbox.add_child(br_box)
+
+		var cur_lvl: int = int(alloc_talents.get(br, 0))
+		var desc: String = ""
+		match br:
+			"OFFENSE": desc = "+2% ATK per tingkat"
+			"DEFENSE": desc = "+2% DEF per tingkat"
+			"LEADERSHIP": desc = "+1% ATK & +1% DEF per tingkat"
+
+		var lbl_br := Label.new()
+		lbl_br.text = "%-11s: Lv.%d/3 (%s)" % [br, cur_lvl, desc]
+		lbl_br.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		br_box.add_child(lbl_br)
+
+		var can_alloc: bool = controller.can_allocate_hero_talent(hid, br) if controller else false
+		var btn_alloc := Button.new()
+		btn_alloc.name = "BtnAllocateTalent_" + br
+		btn_alloc.text = "Maks" if cur_lvl >= 3 else "Alokasikan (+1)"
+		btn_alloc.disabled = (cur_lvl >= 3 or not can_alloc)
+		btn_alloc.pressed.connect(func(branch=br): _action_allocate_talent(hid, branch))
+		br_box.add_child(btn_alloc)
+
+	card_vbox.add_child(HSeparator.new())
+
+	# --- 5. Chemistry Information (Display Only) ---
+	var chem_header := Label.new()
+	chem_header.text = "-- Kemitraan Tempur (Chemistry - Display Only) --"
+	card_vbox.add_child(chem_header)
+
+	if chem_map.is_empty():
+		var no_chem := Label.new()
+		no_chem.text = "  (Belum ada chemistry — terbentuk dari pertempuran bersama di Party 1)"
+		card_vbox.add_child(no_chem)
+	else:
+		for partner_id in chem_map:
+			var pts: int = int(chem_map[partner_id])
+			var bonus_pct: float = float(pts) * 0.5
+			var partner_name: String = str(partner_id)
+			for hd in snapshot.heroes_data:
+				if hd.get("hero_id", "") == partner_id:
+					partner_name = str(hd.get("hero_name", partner_id))
+					break
+			var chem_lbl := Label.new()
+			chem_lbl.text = "  - Kemitraan dengan %s: %d / 50 poin (+%.1f%% efektivitas bersama)" % [
+				partner_name, pts, bonus_pct
+			]
+			card_vbox.add_child(chem_lbl)
+
+	card_vbox.add_child(HSeparator.new())
+
+	# --- 6. Equipment Controls (Existing Shared Warehouse APIs) ---
+	var eq_header := Label.new()
+	eq_header.text = "-- Perlengkapan Terpasang --"
+	card_vbox.add_child(eq_header)
+
+	var cur_gear_lbl := Label.new()
+	cur_gear_lbl.text = "Saat Ini: [Primary: %s | Secondary: %s | Armor: %s]" % [prim, sec, arm]
+	card_vbox.add_child(cur_gear_lbl)
+
+	if not is_battle:
+		# Primary Slot
 		var p_hbox := HBoxContainer.new()
 		card_vbox.add_child(p_hbox)
 		var p_label := Label.new()
@@ -467,7 +1046,7 @@ func _render_hero_roster(snapshot: GameStateSnapshot) -> void:
 		if prim != "NONE":
 			var btn_unequip_p := Button.new()
 			btn_unequip_p.text = "Lepas (%s)" % prim
-			btn_unequip_p.pressed.connect(func(hid=hero_id): _action_unequip_hero(hid, "PRIMARY"))
+			btn_unequip_p.pressed.connect(func(): _action_unequip_hero(hid, "PRIMARY"))
 			p_hbox.add_child(btn_unequip_p)
 		else:
 			for w_type in ["SWORD", "SPEAR", "BOW"]:
@@ -475,10 +1054,10 @@ func _render_hero_roster(snapshot: GameStateSnapshot) -> void:
 				var btn_equip := Button.new()
 				btn_equip.text = "+%s (%d)" % [w_type, stock_val]
 				btn_equip.disabled = (stock_val < 1)
-				btn_equip.pressed.connect(func(hid=hero_id, eq=w_type): _action_equip_hero(hid, "PRIMARY", eq))
+				btn_equip.pressed.connect(func(eq=w_type): _action_equip_hero(hid, "PRIMARY", eq))
 				p_hbox.add_child(btn_equip)
 
-		# 2. Secondary Slot
+		# Secondary Slot
 		var s_hbox := HBoxContainer.new()
 		card_vbox.add_child(s_hbox)
 		var s_label := Label.new()
@@ -488,17 +1067,17 @@ func _render_hero_roster(snapshot: GameStateSnapshot) -> void:
 		if sec != "NONE":
 			var btn_unequip_s := Button.new()
 			btn_unequip_s.text = "Lepas (%s)" % sec
-			btn_unequip_s.pressed.connect(func(hid=hero_id): _action_unequip_hero(hid, "SECONDARY"))
+			btn_unequip_s.pressed.connect(func(): _action_unequip_hero(hid, "SECONDARY"))
 			s_hbox.add_child(btn_unequip_s)
 		else:
 			var shield_stock: int = _get_warehouse_stock("SHIELD")
 			var btn_shield := Button.new()
 			btn_shield.text = "+SHIELD (%d)" % shield_stock
 			btn_shield.disabled = (shield_stock < 1 or prim == "SHIELD")
-			btn_shield.pressed.connect(func(hid=hero_id): _action_equip_hero(hid, "SECONDARY", "SHIELD"))
+			btn_shield.pressed.connect(func(): _action_equip_hero(hid, "SECONDARY", "SHIELD"))
 			s_hbox.add_child(btn_shield)
 
-		# 3. Armor Slot
+		# Armor Slot
 		var a_hbox := HBoxContainer.new()
 		card_vbox.add_child(a_hbox)
 		var a_label := Label.new()
@@ -508,15 +1087,113 @@ func _render_hero_roster(snapshot: GameStateSnapshot) -> void:
 		if arm != "NONE":
 			var btn_unequip_a := Button.new()
 			btn_unequip_a.text = "Lepas (%s)" % arm
-			btn_unequip_a.pressed.connect(func(hid=hero_id): _action_unequip_hero(hid, "ARMOR"))
+			btn_unequip_a.pressed.connect(func(): _action_unequip_hero(hid, "ARMOR"))
 			a_hbox.add_child(btn_unequip_a)
 		else:
 			var armor_stock: int = _get_warehouse_stock("HEAVY_ARMOR")
 			var btn_armor := Button.new()
 			btn_armor.text = "+ARMOR (%d)" % armor_stock
 			btn_armor.disabled = (armor_stock < 1)
-			btn_armor.pressed.connect(func(hid=hero_id): _action_equip_hero(hid, "ARMOR", "HEAVY_ARMOR"))
+			btn_armor.pressed.connect(func(): _action_equip_hero(hid, "ARMOR", "HEAVY_ARMOR"))
 			a_hbox.add_child(btn_armor)
+
+
+# ==============================================================================
+# PHASE 4G ACTION HANDLERS
+# ==============================================================================
+
+func _action_recruit_hero() -> void:
+	if controller == null:
+		return
+	if not controller.can_recruit_hero():
+		_set_feedback("[DITOLAK] Gagal merekrut: Kas tidak mencukupi (500 Gold) atau Battle Lock aktif.")
+		return
+	var new_hero = controller.recruit_hero(_selected_recruit_role)
+	if new_hero != null:
+		_selected_hero_id = new_hero.hero_id
+		_set_feedback("[REKRUTMEN] Berhasil merekrut pahlawan baru: %s (%s, 1★/3★) seharga 500 Gold." % [new_hero.hero_name, new_hero.role])
+	else:
+		_set_feedback("[DITOLAK] Gagal merekrut pahlawan baru.")
+
+
+func _action_ascend_hero(hero_id: String) -> void:
+	if controller == null:
+		return
+	var ok: bool = controller.ascend_hero(hero_id)
+	if ok:
+		_set_feedback("[ASCENSION] Pahlawan %s berhasil naik bintang (+1★)!" % hero_id)
+	else:
+		_set_feedback("[DITOLAK] Ascension %s ditolak: Syarat level cap / emas belum terpenuhi atau Battle Lock aktif." % hero_id)
+
+
+func _action_train_hero(hero_id: String) -> void:
+	if controller == null:
+		return
+	var ok: bool = controller.train_hero(hero_id)
+	if ok:
+		_set_feedback("[LATIHAN] Sesi latihan %s berhasil (+40 EXP, +15 Fatigue)." % hero_id)
+	else:
+		_set_feedback("[DITOLAK] Latihan %s ditolak: Sudah latihan pada gelombang ini, kelelahan melampaui batas, atau Battle Lock aktif." % hero_id)
+
+
+func _action_rest_hero(hero_id: String) -> void:
+	if controller == null:
+		return
+	var ok: bool = controller.rest_hero(hero_id)
+	if ok:
+		_set_feedback("[ISTIRAHAT] Pahlawan %s beristirahat (-25 Fatigue, +5 Morale)." % hero_id)
+	else:
+		_set_feedback("[DITOLAK] Istirahat %s ditolak: Battle Lock aktif." % hero_id)
+
+
+func _action_unlock_skill(hero_id: String, skill_id: String) -> void:
+	if controller == null:
+		return
+	var ok: bool = controller.unlock_hero_skill(hero_id, skill_id)
+	if ok:
+		_set_feedback("[SKILL] Berhasil membuka keahlian [%s] untuk pahlawan %s!" % [skill_id, hero_id])
+	else:
+		_set_feedback("[DITOLAK] Gagal membuka skill %s: Level belum memenuhi atau Battle Lock aktif." % skill_id)
+
+
+func _action_allocate_talent(hero_id: String, branch_id: String) -> void:
+	if controller == null:
+		return
+	var ok: bool = controller.allocate_hero_talent(hero_id, branch_id)
+	if ok:
+		_set_feedback("[BAKAT] Berhasil mengalokasikan 1 poin bakat ke cabang [%s] untuk %s!" % [branch_id, hero_id])
+	else:
+		_set_feedback("[DITOLAK] Gagal alokasi bakat %s: Poin tidak cukup, cabang sudah maksimal, atau Battle Lock aktif." % branch_id)
+
+
+func _action_assign_hero_to_party(hero_id: String, party_id: String) -> void:
+	if controller == null:
+		return
+	var ok: bool = controller.assign_hero_to_party(hero_id, party_id)
+	if ok:
+		_set_feedback("[REGU] Pahlawan %s berhasil ditugaskan ke [%s]." % [hero_id, party_id])
+	else:
+		_set_feedback("[DITOLAK] Penugasan %s ke %s ditolak: Regu penuh, pahlawan sudah berada di regu lain, atau Battle Lock aktif." % [hero_id, party_id])
+
+
+func _action_remove_hero_from_party(hero_id: String) -> void:
+	if controller == null:
+		return
+	var ok: bool = controller.remove_hero_from_party(hero_id)
+	if ok:
+		_set_feedback("[REGU] Pahlawan %s dikeluarkan dari regu (kembali ke RESERVE)." % hero_id)
+	else:
+		_set_feedback("[DITOLAK] Gagal mengeluarkan %s dari regu: Battle Lock aktif." % hero_id)
+
+
+func _action_set_party_leader(hero_id: String, party_id: String) -> void:
+	if controller == null:
+		return
+	var ok: bool = controller.set_party_leader(hero_id, party_id)
+	if ok:
+		_set_feedback("[LEADER] Pahlawan %s ditetapkan sebagai pemimpin [%s]." % [hero_id, party_id])
+	else:
+		_set_feedback("[DITOLAK] Gagal menetapkan pemimpin %s untuk %s: Bukan anggota regu atau Battle Lock aktif." % [hero_id, party_id])
 
 
 # ==============================================================================

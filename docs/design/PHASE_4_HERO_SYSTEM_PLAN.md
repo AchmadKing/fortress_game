@@ -596,6 +596,28 @@ Setiap sub-fase Phase 4 wajib menyertakan automated headless test suite:
   - Inventaris atau jenis perlengkapan baru (Dilarang).
   - Pixel art dan visual mobile final (Milik Phase 9).
 
+### 9. Batas Eksplisit Sub-Phase 4G (Hero Management UX) — IMPLEMENTED & VERIFIED
+- **DELIVERABLES FOR 4G (TELAH TERLAKSANA & TERVERIFIKASI):**
+  - Integrasi antarmuka Prototype/Debug View (`scripts/presentation/views/prototype_debug_view.gd`) yang fungsional, responsif, dan ringan tanpa polling `_process()`.
+  - Panel Rekrutmen Mercenary Guild: penampil biaya kanonikal (500 Gold mutlak) & kas emas, pemilih peran kandidat (Knight, Archer, Mage, Priest), dan penegakan proteksi Battle Lock serta validasi saldo kas.
+  - Panel Manajemen Regu: tampilan status Party 1 (Active Battle Party) & Party 2 (Management Reserve), anggota, dan cadangan (RESERVE) dengan tombol alokasi regu, pelepasan regu, serta penetapan pemimpin regu (*Leader*).
+  - Panel Roster Pahlawan: daftar pahlawan terdaftar dengan status identitas, peran, bintang/potensi, level, EXP saat ini/syarat, fatigue, morale, lifecycle state, status regu, dan indikator permadeath beserta seleksi pahlawan interaktif.
+  - Panel Detail Pahlawan Terpilih:
+    - Identitas & Combat Stats: HP dasar, ATK & DEF efektif beserta nilai dasar.
+    - Aksi Progresi: tombol Ascension (+1★ seharga kanonikal emas), tombol Latihan (+40 EXP, +15 Fatigue), dan tombol Istirahat (-25 Fatigue, +5 Morale).
+    - Katalog Keahlian Kanonikal: daftar skill peran dengan status terbuka/terkunci dan tombol pembukaan skill berbasis level minimum.
+    - Pohon Bakat: 3 cabang bakat (OFFENSE, DEFENSE, LEADERSHIP), poin bakat tersedia, multiplier aktif, dan tombol alokasi poin bakat (maksimal tingkat 3).
+    - Status Kemitraan (Chemistry): display-only interaktif menampilkan pasangan mitra tempur di Party 1, poin akumulasi (maks 50), dan bonus efektivitas (+0.5%/pt).
+    - Kontrol Perlengkapan: aksi pasang (equip) dan lepas (unequip) senjata primer, sekunder, dan zirah terintegrasi stok gudang bersama (Shared Warehouse).
+  - Penegakan Battle Lock menyeluruh: seluruh kontrol mutasi pahlawan dinonaktifkan secara ketat selama fase `BATTLE`.
+  - Delegasi GameController: penambahan 20 metode delegasi pada `GameController` menghubungkan presentasi ke `GameCoordinator`.
+  - Banner Umpan Balik (*Feedback Banner*): pesan konfirmasi yang jelas dan informatif untuk setiap aksi sukses atau penolakan transaksi.
+  - Test suite mandiri `tests/test_phase4g_hero_management_ux.gd` (60/60 PASS mencakup Group A s/d Group J).
+- **OUT OF SCOPE FOR 4G (DILARANG PADA 4G):**
+  - Eksekusi skill tempur aktif real-time (cooldown, targeting, mana, projectile) (Milik Phase 6/9).
+  - Aset visual final pixel-art, animasi karakter, shader visual, atau styling mobile khusus (Milik Phase 9).
+  - Perubahan aturan matematis formula EXP, Ascension cost, বা batasan domain Phase 4A–4F.
+
 ---
 
 ## X. Acceptance Criteria Phase 4
@@ -610,7 +632,7 @@ Phase 4 dinyatakan selesai hanya jika seluruh kriteria berikut terpenuhi:
 - [x] Invariant konservasi gudang bersama $\text{Total} = \text{USBL} + \text{DMGD} + \text{HERO} + \text{REGD}$ tetap valid 100%.
 - [x] Seluruh perlengkapan pahlawan permadeath kembali ke gudang bersama tepat 1 kali.
 - [x] Seluruh 134 baseline test existing tetap PASS 100%.
-- [x] Test suite baru untuk seluruh sub-fase Phase 4 lulus 100% (4A: 38, 4B: 47, 4C: 51, 4D: 54, 4E: 62, 4F: 68).
+- [x] Test suite baru untuk seluruh sub-fase Phase 4 lulus 100% (4A: 38, 4B: 47, 4C: 51, 4D: 54, 4E: 62, 4F: 68, 4G: 60).
 - [x] Scene Smoke Playtest terintegrasi lulus tanpa error di Godot Editor.
 
 ---

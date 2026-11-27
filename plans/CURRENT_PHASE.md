@@ -1,8 +1,8 @@
 # Current Development Phase
 
-## Phase 4 — Hero System (IN PROGRESS / SUB-PHASE 4F COMPLETED, VERIFIED & CLOSED)
+## Phase 4 — Hero System (IN PROGRESS / SUB-PHASE 4G COMPLETED & VERIFIED)
 
-Project saat ini berada pada tahap **Phase 4 — Hero System (Sub-Phase 4A: COMPLETED / VERIFIED; Sub-Phase 4B: COMPLETED / VERIFIED; Sub-Phase 4C: COMPLETED / VERIFIED / CLOSED; Sub-Phase 4D: COMPLETED / VERIFIED; Sub-Phase 4E: COMPLETED / VERIFIED; Sub-Phase 4F: COMPLETED / VERIFIED / CLOSED; Sub-Phase 4G: NEXT / LOCKED)**.
+Project saat ini berada pada tahap **Phase 4 — Hero System (Sub-Phase 4A: COMPLETED / VERIFIED; Sub-Phase 4B: COMPLETED / VERIFIED; Sub-Phase 4C: COMPLETED / VERIFIED / CLOSED; Sub-Phase 4D: COMPLETED / VERIFIED; Sub-Phase 4E: COMPLETED / VERIFIED; Sub-Phase 4F: COMPLETED / VERIFIED / CLOSED; Sub-Phase 4G: COMPLETED / VERIFIED; Sub-Phase 4H: NEXT / LOCKED)**.
 Phase 3 (Gameplay Prototype) telah resmi ditutup (**COMPLETED / CLOSED**) pada commit `e6c0c97`.
 
 Roadmap teknis dan spesifikasi arsitektur komprehensif Phase 4 tersedia di [docs/design/PHASE_4_HERO_SYSTEM_PLAN.md](file:///d:/fortress_game/docs/design/PHASE_4_HERO_SYSTEM_PLAN.md).
@@ -83,8 +83,24 @@ Roadmap teknis dan spesifikasi arsitektur komprehensif Phase 4 tersedia di [docs
     - Manajemen Regu di `GameCoordinator`: inisialisasi tepat 2 regu (`party_1` dan `party_2`), API kueri, alokasi/pelepasan hero menggunakan canonical domain method `hero.set_party_id(party.party_id)` dengan rollback atomik jika gagal, penetapan ketua regu, proteksi Battle Lock selama `STATE_BATTLE`, perutean tempur eksklusif Party 1 (kontribusi serangan, kelelahan tempur, dan EXP tempur hanya untuk Party 1), dan pembersihan komprehensif saat permadeath (pelepasan keanggotaan regu, penghapusan ketua regu, dan penghapusan referensi chemistry secara simetris).
     - Test Suite Phase 4F: **68/68 PASSED, 0 FAILED** ([tests/test_phase4f_hero_chemistry_party.gd](file:///d:/fortress_game/tests/test_phase4f_hero_chemistry_party.gd)).
     - Full Regression: **454 tests PASSED (134 baseline Phase 1-3 + 38 Phase 4A + 47 Phase 4B + 51 Phase 4C + 54 Phase 4D + 62 Phase 4E + 68 Phase 4F)** + Scene Smoke Playtest ALL PASS.
-  - Sub-Phase 4G — Hero Management UX: **NEXT / LOCKED** (Terkunci hingga tinjauan developer)
-  - Sub-Phase 4H — Hero System Integration & Verification: **PLANNED**
+  - **Sub-Phase 4G — Hero Management UX**: **COMPLETED / VERIFIED**
+    - Integrasi antarmuka Prototype/Debug View (`scripts/presentation/views/prototype_debug_view.gd`) yang fungsional, responsif, dan ringan tanpa polling `_process()`.
+    - Panel Rekrutmen Mercenary Guild: penampil biaya kanonikal (500 Gold mutlak) & kas emas, pemilih peran kandidat (Knight, Archer, Mage, Priest), dan penegakan proteksi Battle Lock serta validasi saldo kas.
+    - Panel Manajemen Regu: tampilan status Party 1 (Active Battle Party) & Party 2 (Management Reserve), anggota, dan cadangan (RESERVE) dengan tombol alokasi regu, pelepasan regu, serta penetapan pemimpin regu (*Leader*).
+    - Panel Roster Pahlawan: daftar pahlawan terdaftar dengan status identitas, peran, bintang/potensi, level, EXP saat ini/syarat, fatigue, morale, lifecycle state, status regu, dan indikator permadeath beserta seleksi pahlawan interaktif.
+    - Panel Detail Pahlawan Terpilih:
+      - Identitas & Combat Stats: HP dasar, ATK & DEF efektif beserta nilai dasar.
+      - Aksi Progresi: tombol Ascension (+1★ seharga kanonikal emas), tombol Latihan (+40 EXP, +15 Fatigue), dan tombol Istirahat (-25 Fatigue, +5 Morale).
+      - Katalog Keahlian Kanonikal: daftar skill peran dengan status terbuka/terkunci dan tombol pembukaan skill berbasis level minimum.
+      - Pohon Bakat: 3 cabang bakat (OFFENSE, DEFENSE, LEADERSHIP), poin bakat tersedia, multiplier aktif, dan tombol alokasi poin bakat (maksimal tingkat 3).
+      - Status Kemitraan (Chemistry): display-only interaktif menampilkan pasangan mitra tempur di Party 1, poin akumulasi (maks 50), dan bonus efektivitas (+0.5%/pt).
+      - Kontrol Perlengkapan: aksi pasang (equip) dan lepas (unequip) senjata primer, sekunder, dan zirah terintegrasi stok gudang bersama (Shared Warehouse).
+    - Penegakan Battle Lock menyeluruh: seluruh kontrol mutasi pahlawan dinonaktifkan secara ketat selama fase `BATTLE`.
+    - Delegasi GameController: penambahan 20 metode delegasi pada `GameController` menghubungkan presentasi ke `GameCoordinator`.
+    - Banner Umpan Balik (*Feedback Banner*): pesan konfirmasi yang jelas dan informatif untuk setiap aksi sukses atau penolakan transaksi.
+    - Test Suite Phase 4G: **60/60 PASSED, 0 FAILED** ([tests/test_phase4g_hero_management_ux.gd](file:///d:/fortress_game/tests/test_phase4g_hero_management_ux.gd)).
+    - Full Regression: **514 tests PASSED (134 baseline Phase 1-3 + 38 Phase 4A + 47 Phase 4B + 51 Phase 4C + 54 Phase 4D + 62 Phase 4E + 68 Phase 4F + 60 Phase 4G)** + Scene Smoke Playtest ALL PASS.
+  - Sub-Phase 4H — Hero System Integration & Verification: **NEXT / LOCKED** (Terkunci hingga tinjauan developer)
 - **Phase 5 — Fortress & Management Systems**: **LOCKED**
 - **Phase 6 — Tactical Battle & Battlefield Systems**: **LOCKED**
 

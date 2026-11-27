@@ -628,9 +628,33 @@ func ascend_hero(hero_id: String) -> bool:
 	return true
 
 
+## Memvalidasi apakah pahlawan memenuhi syarat untuk ascension bintang
+func can_ascend_hero(hero_id: String) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		return false
+	var hero := get_hero(hero_id)
+	if hero == null or not hero.is_alive or hero.lifecycle_state == HeroLifecycleState.PERMADEATH:
+		return false
+	if not hero.can_ascend():
+		return false
+	var cost: int = hero.get_ascension_cost()
+	if _economy == null or _economy.treasury_gold < cost:
+		return false
+	return true
+
+
 # ==============================================================================
 # PHASE 4C HERO RECRUITMENT & ROSTER MANAGEMENT
 # ==============================================================================
+
+## Memvalidasi apakah benteng dapat merekrut pahlawan baru (biaya 500 gold dan bukan fase BATTLE)
+func can_recruit_hero() -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		return false
+	if _economy == null or _economy.treasury_gold < HERO_RECRUITMENT_COST_DEFAULT:
+		return false
+	return true
+
 
 ## Mengembalikan biaya rekrutmen pahlawan standar kanonikal (500 Gold)
 func get_hero_recruitment_cost() -> int:
@@ -1492,6 +1516,7 @@ func _update_snapshot() -> void:
 				"lifecycle_state": hero.lifecycle_state,
 				"level": hero.level,
 				"current_exp": hero.current_exp,
+				"required_exp": hero.get_required_exp(hero.level),
 				"current_star": hero.current_star,
 				"potential_star": hero.potential_star,
 				"base_hp": hero.base_hp,
