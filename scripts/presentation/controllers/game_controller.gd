@@ -556,6 +556,46 @@ func proceed_from_result() -> bool:
 	return coordinator.proceed_from_result()
 
 
+# ==============================================================================
+# PHASE 6C: BATTLEFIELD FORMATIONS, PLACEMENT & AURA DELEGATIONS
+# ==============================================================================
+
+func set_deployment_zone(composition_id: String, zone: String) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.set_deployment_zone(composition_id, zone)
+
+
+func set_deployment_formation(composition_id: String, formation: String) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.set_deployment_formation(composition_id, formation)
+
+
+func set_party_zone(party_id: String, zone: String) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.set_party_zone(party_id, zone)
+
+
+func set_party_formation(party_id: String, formation: String) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.set_party_formation(party_id, formation)
+
+
+func get_active_battle_auras() -> Dictionary:
+	if coordinator == null:
+		return {}
+	return coordinator.get_active_battle_auras()
+
+
+func apply_battle_chemistry_gain() -> Dictionary:
+	if coordinator == null:
+		return {}
+	return coordinator.apply_battle_chemistry_gain()
+
+
 func restart_session() -> void:
 	if coordinator == null:
 		return

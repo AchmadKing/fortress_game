@@ -397,6 +397,117 @@ func reconfigure_deployment(old_composition_id: String, new_count: int, new_prim
 	return true
 
 
+# ==============================================================================
+# PHASE 6C: BATTLEFIELD FORMATIONS, PLACEMENT & AURA DELEGATION
+# ==============================================================================
+
+## Mengubah zona penempatan regu prajurit (Phase 6C).
+## Ditolak keras jika pertempuran aktif (Battle Lock) atau jika zona tidak sah/OUTER_FIELD.
+func set_deployment_zone(composition_id: String, zone: String) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		return false
+	var z: String = zone.to_upper().strip_edges()
+	if z == "OUTER_FIELD" or not BattlefieldZone.is_valid_zone(z):
+		return false
+	for comp in _active_deployments:
+		if comp is DeploymentComposition and (comp as DeploymentComposition).composition_id == composition_id:
+			var ok: bool = (comp as DeploymentComposition).set_zone(z)
+			if ok:
+				_update_snapshot()
+				state_changed.emit(_current_state.clone())
+			return ok
+	return false
+
+
+## Mengubah formasi taktis regu prajurit (Phase 6C).
+## Ditolak keras jika pertempuran aktif (Battle Lock) atau jika formasi tidak sah.
+func set_deployment_formation(composition_id: String, formation: String) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		return false
+	var f: String = formation.to_upper().strip_edges()
+	if not (f in DeploymentComposition.VALID_FORMATIONS):
+		return false
+	for comp in _active_deployments:
+		if comp is DeploymentComposition and (comp as DeploymentComposition).composition_id == composition_id:
+			var ok: bool = (comp as DeploymentComposition).set_formation(f)
+			if ok:
+				_update_snapshot()
+				state_changed.emit(_current_state.clone())
+			return ok
+	return false
+
+
+## Mengubah zona penempatan Party 1 di medan tempur (Phase 6C).
+## Hanya Party 1 yang diizinkan bertempur; Party 2 dan Reserve terisolasi penuh.
+func set_party_zone(party_id: String, zone: String) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		return false
+	if party_id.strip_edges().to_lower() != PartyModel.PARTY_1_ID:
+		return false
+	var z: String = zone.to_upper().strip_edges()
+	if z == "OUTER_FIELD" or not BattlefieldZone.is_valid_zone(z):
+		return false
+	var p: PartyModel = get_party(party_id)
+	if p != null:
+		var ok: bool = p.set_zone(z)
+		if ok:
+			_update_snapshot()
+			state_changed.emit(_current_state.clone())
+		return ok
+	return false
+
+
+## Mengubah formasi/posisi taktis Party 1 (Phase 6C).
+func set_party_formation(party_id: String, formation: String) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		return false
+	if party_id.strip_edges().to_lower() != PartyModel.PARTY_1_ID:
+		return false
+	var f: String = formation.to_upper().strip_edges()
+	if not (f in DeploymentComposition.VALID_FORMATIONS):
+		return false
+	var p: PartyModel = get_party(party_id)
+	if p != null:
+		var ok: bool = p.set_formation(f)
+		if ok:
+			_update_snapshot()
+			state_changed.emit(_current_state.clone())
+		return ok
+	return false
+
+
+## Mengambil telemetri perhitungan aura pasif Party 1 saat ini (Phase 6C).
+func get_active_battle_auras() -> Dictionary:
+	if _combat_engine == null:
+		return {}
+	return _combat_engine.calculate_party_auras(get_active_battle_heroes())
+
+
+## Menerapkan penambahan kemitraan (Chemistry) antar pahlawan Party 1 yang bertempur bersama (+2 poin, max 50).
+func apply_battle_chemistry_gain() -> Dictionary:
+	var living_heroes: Array = get_active_battle_heroes()
+	var pairs_updated: Array = []
+	for i in range(living_heroes.size()):
+		for j in range(i + 1, living_heroes.size()):
+			var h1: HeroModel = living_heroes[i] as HeroModel
+			var h2: HeroModel = living_heroes[j] as HeroModel
+			var prev_c: int = h1.get_chemistry_with(h2.hero_id)
+			h1.add_chemistry(h2.hero_id, 2)
+			h2.add_chemistry(h1.hero_id, 2)
+			pairs_updated.append({
+				"hero_1": h1.hero_id,
+				"hero_2": h2.hero_id,
+				"prev_chemistry": prev_c,
+				"new_chemistry": h1.get_chemistry_with(h2.hero_id)
+			})
+	_update_snapshot()
+	state_changed.emit(_current_state.clone())
+	return {
+		"pairs_count": pairs_updated.size(),
+		"pairs": pairs_updated
+	}
+
+
 func _deduct_warehouse_stock(eq_type: String, count: int) -> Array:
 	var deducted: Array = []
 	var remaining: int = count
@@ -1956,3 +2067,13 @@ func _update_snapshot() -> void:
 
 	_current_state.active_repair_data = _active_repair.duplicate(true)
 	_current_state.active_construction_data = _active_construction.duplicate(true)
+
+	# Phase 6C: Battle deployment data, battle party data, battle aura data
+	_current_state.battle_deployments_data = []
+	for comp in _active_deployments:
+		if comp is DeploymentComposition:
+			_current_state.battle_deployments_data.append((comp as DeploymentComposition).to_dictionary())
+	var p1: PartyModel = get_party(PartyModel.PARTY_1_ID)
+	_current_state.battle_party_data = p1.to_dictionary() if p1 != null else {}
+	_current_state.battle_aura_data = _combat_engine.calculate_party_auras(get_active_battle_heroes()) if _combat_engine != null else {}
+

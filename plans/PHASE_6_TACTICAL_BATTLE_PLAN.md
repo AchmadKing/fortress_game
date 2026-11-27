@@ -690,10 +690,11 @@ Untuk mencegah *scope creep* dan mematuhi prinsip kehati-hatian, Phase 6 dipecah
   - Test suite `tests/test_phase6a_battlefield_enemy_foundation.gd` (30/30 PASS).
 - **Sub-Phase 6B: Simulation Tick Loop & Pacing Controls** — [x] **COMPLETED / VERIFIED**
   - Implementasi loop tick simulasi deterministik pada `CombatEngine` dan kontrol tempo (Pause, 1x, 2x, 4x) pada `GameCoordinator` & `GameController`.
-  - Test suite `tests/test_phase6b_simulation_tick_pacing.gd` (32/32 PASS, 10.000-tick stress PASS).
-- **Sub-Phase 6C: Unit Formations, Party 1 & Aura Mechanics** — [ ] **NEXT / LOCKED**
-  - Integrasi penempatan Party 1 dan regu serdadu agregat ke zona, serta mekanika aura kepemimpinan.
-- **Sub-Phase 6D: Commander Commands Execution**
+  - Test suite `tests/test_phase6b_simulation_tick_pacing.gd` (33/33 PASS, 10.000-tick stress PASS).
+- **Sub-Phase 6C: Unit Formations, Party 1 & Aura Mechanics** — [x] **COMPLETED / VERIFIED**
+  - Integrasi penempatan Party 1 dan regu serdadu agregat ke zona, formasi taktis (Frontline, Backline, Support), serta mekanika aura pasif kepemimpinan & chemistry.
+  - Test suite `tests/test_phase6c_unit_formations_party_aura.gd` (37/37 PASS, 50-wave participation stress PASS).
+- **Sub-Phase 6D: Commander Commands Execution** — [ ] **NEXT / LOCKED**
   - Pengaktifan pipeline operasional 6 perintah taktis komandan.
 - **Sub-Phase 6E: Fortress Damage Routing & Casualty Resolution**
   - Integrasi kerusakan terarah ke Wall/Gate/Fortress dan resolusi korban serdadu/perlengkapan Phase 3D.
@@ -707,8 +708,8 @@ Untuk mencegah *scope creep* dan mematuhi prinsip kehati-hatian, Phase 6 dipecah
 Phase 6 dinyatakan selesai dan siap ditutup hanya jika memenuhi seluruh kriteria berikut:
 1. [x] Seluruh 7 zona battlefield berfungsi sesuai aturan ketetanggaan (Phase 6A VERIFIED).
 2. [x] 6 arketipe musuh muncul sesuai kurva gelombang dan bertindak deterministik (Phase 6A VERIFIED).
-3. [ ] Party 1 bertarung aktif; Party 2 dan cadangan terisolasi penuh dari bahaya.
-4. [ ] Serdadu agregat bertarung berdasarkan kuantitas, gear, dan moral tanpa instansiasi node per prajurit.
+3. [x] Party 1 bertarung aktif; Party 2 dan cadangan terisolasi penuh dari bahaya (Phase 6C VERIFIED).
+4. [x] Serdadu agregat bertarung berdasarkan kuantitas, gear, dan moral tanpa instansiasi node per prajurit (Phase 6C VERIFIED).
 5. [ ] 6 perintah komandan dapat dikirimkan dan memengaruhi pergerakan/efektivitas regu secara nyata.
 6. [x] Pertempuran dapat dijeda (*pause*) dan diatur kecepatannya (1x, 2x, 4x) (Phase 6B VERIFIED).
 7. [ ] Kerusakan struktur benteng terdistribusi bertingkat (Gate/Wall lalu Fortress).

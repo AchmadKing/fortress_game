@@ -4,6 +4,40 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.6.3] - Phase 6C: Unit Formations, Party 1 & Aura Mechanics
+
+### Added
+- **Soldier Deployment Battlefield Participation & Formations** (`scripts/domain/model/deployment_composition.gd`, `scripts/application/coordinators/game_coordinator.gd`, `scripts/presentation/controllers/game_controller.gd`):
+  - Model agregat prajurit berpartisipasi langsung pada pertempuran taktis tanpa instansiasi node per prajurit (*No Individual Soldier Entity*).
+  - Penempatan zona medan tempur kanonikal (`current_zone`): default `GATE` untuk Infanteri/Perisai dan `WALL` untuk Pemanah.
+  - Formasi taktis kanonikal (`formation`): `FRONTLINE`, `BACKLINE`, `SUPPORT` (`VALID_FORMATIONS`).
+  - Metode pengaturan `set_deployment_zone(composition_id, zone)` dan `set_deployment_formation(composition_id, formation)` pada `GameCoordinator` dan `GameController`.
+  - Penolakan ketat penempatan ke `OUTER_FIELD` dan string zona tidak sah.
+- **Party 1 Exclusive Battle Participation** (`scripts/domain/model/party_model.gd`, `scripts/application/coordinators/game_coordinator.gd`):
+  - Hanya Party 1 yang diizinkan bertempur secara aktif di medan laga (`get_active_battle_party()`).
+  - Party 2 dan Pahlawan Cadangan (Reserve) terisolasi penuh: tidak berpindah ke `BATTLE_ACTIVE`, tidak menerima aura musuh, dan tidak terpapar bahaya.
+  - Pahlawan gugur di Party 1 otomatis tereksklusi dari komputasi tempur aktif.
+  - Penempatan zona dan formasi Party 1 (`set_party_zone()`, `set_party_formation()`), default zona `GATE` dan formasi `FRONTLINE`.
+- **Party 1 Aura Foundation & Mechanics** (`scripts/simulation/combat_engine.gd`, `scripts/domain/model/hero_role.gd`, `scripts/domain/model/hero_model.gd`):
+  - Perhitungan pasif deterministik murni `calculate_party_auras(battle_heroes, target_zone)` tanpa mutasi stat dasar pahlawan (`base_hp`, `base_atk`, `base_def`).
+  - Bonus aura peran: Knight (+10% DEF, +5 Morale), Archer (+10% ATK), Mage (+15% ATK), Priest (+10% DEF, +5 Morale).
+  - Penskalaan bakat Leadership (Phase 4E): +1% ATK dan +1% DEF per tingkat bakat pemimpin regu.
+  - Integrasi Chemistry Party 1 (Phase 4F): kontribusi kemitraan +0.5% per poin chemistry antar pasangan pahlawan hidup.
+  - Getter kanonikal `get_chemistry_with(partner_hero_id)` pada `HeroModel`.
+  - Penambahan kemitraan pasca-tempur `apply_battle_chemistry_gain()` (+2 poin mutual, dibatasi maksimal 50) eksklusif untuk partisipan Party 1 hidup.
+- **Strict Battle Lock & Domain Protection**:
+  - Seluruh mutasi taktis (zona deployment, formasi deployment, zona Party 1, formasi Party 1) diblokir keras selama `STATE_BATTLE`.
+  - Proteksi penuh terhadap mutasi keanggotaan regu (`assign_hero_to_party`, `remove_hero_from_party`) dan perlengkapan (`equip_hero`, `unequip_hero`).
+- **Snapshot Integration & UI Telemetry** (`scripts/domain/state/game_state_snapshot.gd`, `scripts/application/coordinators/game_coordinator.gd`):
+  - Bidang snapshot baru: `battle_deployments_data`, `battle_party_data`, dan `battle_aura_data` terserialisasi penuh dengan isolasi memori kloning mendalam (*deep-copy*).
+- **Automated Verification Suite** (`tests/test_phase6c_unit_formations_party_aura.gd`):
+  - 37 automated tests komprehensif mencakup Group A (Soldier Formations), Group B (Party 1 Participation), Group C (Battlefield Placement), Group D (Formations), Group E (Aura Mechanics), Group F (Chemistry Integration), Group G (Determinism & Snapshot), Group H (Battle Lock & Conservation), dan Group I (Deterministic 50-Wave Participation & Stress Test).
+  - 50-wave participation stress test: PASS dengan pelestarian invarian konservasi serdadu dan determinisme aura.
+  - Full Regression Suite: 777/777 PASS (20 test suites).
+  - Prototype Scene Smoke Playtest: ALL PASS.
+
+---
+
 ## [0.6.2] - Phase 6B: Simulation Tick Loop & Pacing Controls
 
 ### Added

@@ -419,6 +419,11 @@ func add_chemistry(partner_hero_id: String, points: int = 2) -> void:
 	chemistry_map[p_id] = clampi(cur + points, 0, 50)
 
 
+func get_chemistry_with(partner_hero_id: String) -> int:
+	var p_id: String = partner_hero_id.strip_edges()
+	return int(chemistry_map.get(p_id, 0))
+
+
 func get_chemistry_bonus(party_hero_ids: Array) -> float:
 	var total_points: int = 0
 	for other_id in party_hero_ids:

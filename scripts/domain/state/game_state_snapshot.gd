@@ -44,6 +44,11 @@ var buildings_data: Array = []
 var active_repair_data: Dictionary = {}
 var active_construction_data: Dictionary = {}
 
+# Phase 6C Battlefield Participation & Aura Fields
+var battle_deployments_data: Array = []
+var battle_party_data: Dictionary = {}
+var battle_aura_data: Dictionary = {}
+
 
 func _init(p_tick: int = 0, p_session_id: String = "", p_state_name: String = "INITIAL", p_metadata: Dictionary = {}) -> void:
 	tick = p_tick
@@ -99,6 +104,9 @@ func clone() -> GameStateSnapshot:
 	copy.buildings_data = buildings_data.duplicate(true)
 	copy.active_repair_data = active_repair_data.duplicate(true)
 	copy.active_construction_data = active_construction_data.duplicate(true)
+	copy.battle_deployments_data = battle_deployments_data.duplicate(true)
+	copy.battle_party_data = battle_party_data.duplicate(true)
+	copy.battle_aura_data = battle_aura_data.duplicate(true)
 	return copy
 
 
@@ -130,7 +138,10 @@ func to_dictionary() -> Dictionary:
 		"worker_data": worker_data.duplicate(true),
 		"buildings_data": buildings_data.duplicate(true),
 		"active_repair_data": active_repair_data.duplicate(true),
-		"active_construction_data": active_construction_data.duplicate(true)
+		"active_construction_data": active_construction_data.duplicate(true),
+		"battle_deployments_data": battle_deployments_data.duplicate(true),
+		"battle_party_data": battle_party_data.duplicate(true),
+		"battle_aura_data": battle_aura_data.duplicate(true)
 	}
 
 
@@ -184,5 +195,12 @@ static func from_dictionary(data: Dictionary) -> GameStateSnapshot:
 		snapshot.active_repair_data = (data["active_repair_data"] as Dictionary).duplicate(true)
 	if data.has("active_construction_data") and data["active_construction_data"] is Dictionary:
 		snapshot.active_construction_data = (data["active_construction_data"] as Dictionary).duplicate(true)
+	
+	if data.has("battle_deployments_data") and data["battle_deployments_data"] is Array:
+		snapshot.battle_deployments_data = (data["battle_deployments_data"] as Array).duplicate(true)
+	if data.has("battle_party_data") and data["battle_party_data"] is Dictionary:
+		snapshot.battle_party_data = (data["battle_party_data"] as Dictionary).duplicate(true)
+	if data.has("battle_aura_data") and data["battle_aura_data"] is Dictionary:
+		snapshot.battle_aura_data = (data["battle_aura_data"] as Dictionary).duplicate(true)
 	
 	return snapshot

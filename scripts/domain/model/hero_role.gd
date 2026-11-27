@@ -99,3 +99,17 @@ static func is_equipment_compatible(role_name: String, slot: String, eq_type: St
 			return eq in get_allowed_armor_equipment(r)
 		_:
 			return false
+
+
+## Menentukan formasi/posisi taktis default untuk peran pahlawan (Phase 6C)
+static func resolve_default_formation(role_name: String) -> String:
+	var r: String = role_name.to_upper().strip_edges()
+	match r:
+		KNIGHT:
+			return "FRONTLINE"
+		ARCHER, MAGE:
+			return "BACKLINE"
+		PRIEST:
+			return "SUPPORT"
+		_:
+			return "SUPPORT"

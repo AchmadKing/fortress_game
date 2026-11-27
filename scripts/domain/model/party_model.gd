@@ -21,18 +21,44 @@ var party_name: String = ""
 var leader_hero_id: String = ""
 var member_hero_ids: Array = []
 var is_deployed_to_battle: bool = false
+var current_zone: String = "GATE"
+var formation: String = "FRONTLINE"
 
 
 func _init(
 	p_id: String = PARTY_1_ID,
 	p_name: String = "Party 1",
-	p_deployed: bool = false
+	p_deployed: bool = false,
+	p_zone: String = "GATE",
+	p_formation: String = "FRONTLINE"
 ) -> void:
 	party_id = p_id.strip_edges().to_lower()
 	party_name = p_name.strip_edges()
 	leader_hero_id = ""
 	member_hero_ids = []
 	is_deployed_to_battle = p_deployed
+	current_zone = p_zone.to_upper().strip_edges() if not p_zone.is_empty() else "GATE"
+	formation = p_formation.to_upper().strip_edges() if not p_formation.is_empty() else "FRONTLINE"
+
+
+func set_zone(new_zone: String) -> bool:
+	var z: String = new_zone.to_upper().strip_edges()
+	if z == "OUTER_FIELD" or z.is_empty():
+		return false
+	var valid_zones: Array[String] = ["LEFT_FLANK", "CENTER_APPROACH", "RIGHT_FLANK", "WALL", "GATE", "FORTRESS"]
+	if not (z in valid_zones):
+		return false
+	current_zone = z
+	return true
+
+
+func set_formation(new_formation: String) -> bool:
+	var f: String = new_formation.to_upper().strip_edges()
+	var valid_formations: Array[String] = ["FRONTLINE", "BACKLINE", "SUPPORT"]
+	if not (f in valid_formations):
+		return false
+	formation = f
+	return true
 
 
 ## Memeriksa apakah party_id valid secara kanonikal
@@ -114,9 +140,11 @@ func get_members() -> Array:
 
 ## Menduplikasi instance PartyModel (deep copy)
 func clone() -> PartyModel:
-	var p := PartyModel.new(party_id, party_name, is_deployed_to_battle)
+	var p := PartyModel.new(party_id, party_name, is_deployed_to_battle, current_zone, formation)
 	p.leader_hero_id = leader_hero_id
 	p.member_hero_ids = member_hero_ids.duplicate()
+	p.current_zone = current_zone
+	p.formation = formation
 	return p
 
 
@@ -138,6 +166,11 @@ func validate_invariants() -> bool:
 		return false
 	if party_id == PARTY_2_ID and is_deployed_to_battle:
 		return false
+	if current_zone == "OUTER_FIELD":
+		return false
+	var valid_formations: Array[String] = ["FRONTLINE", "BACKLINE", "SUPPORT"]
+	if not (formation in valid_formations):
+		return false
 	return true
 
 
@@ -151,5 +184,24 @@ func to_dictionary() -> Dictionary:
 		"member_count": get_member_count(),
 		"max_members": MAX_MEMBERS,
 		"is_full": is_full(),
-		"is_deployed_to_battle": is_deployed_to_battle
+		"is_deployed_to_battle": is_deployed_to_battle,
+		"current_zone": current_zone,
+		"formation": formation
 	}
+
+
+static func from_dictionary(data: Dictionary) -> PartyModel:
+	if data.is_empty():
+		return null
+	var pid: String = str(data.get("party_id", PARTY_1_ID))
+	var pname: String = str(data.get("party_name", "Party 1"))
+	var dep: bool = bool(data.get("is_deployed_to_battle", false))
+	var czone: String = str(data.get("current_zone", "GATE"))
+	var form: String = str(data.get("formation", "FRONTLINE"))
+
+	var p := PartyModel.new(pid, pname, dep, czone, form)
+	p.leader_hero_id = str(data.get("leader_hero_id", ""))
+	if data.has("member_hero_ids") and data["member_hero_ids"] is Array:
+		for m in data["member_hero_ids"]:
+			p.member_hero_ids.append(str(m))
+	return p

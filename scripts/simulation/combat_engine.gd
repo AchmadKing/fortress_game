@@ -36,6 +36,86 @@ func step_simulation_tick(current_tick: int, _battle_context: Dictionary = {}) -
 	}
 
 
+## Menghitung modifier aura pasif dari pahlawan Party 1 yang hidup di medan tempur (Phase 6C).
+## Murni fondasi pasif deterministik: tidak memutasi statistik dasar HeroModel.
+func calculate_party_auras(battle_heroes: Array, target_zone: String = "") -> Dictionary:
+	var total_atk_bonus: float = 0.0
+	var total_def_bonus: float = 0.0
+	var total_morale_bonus: float = 0.0
+	var aura_breakdown: Array = []
+
+	var living_heroes: Array = []
+	for h in battle_heroes:
+		if h != null and h.get("is_alive") == true:
+			var ls: String = str(h.get("lifecycle_state"))
+			if ls != "PERMADEATH":
+				living_heroes.append(h)
+
+	for h in living_heroes:
+		var role: String = str(h.get("role")).to_upper().strip_edges()
+		var hero_atk_mod: float = 0.0
+		var hero_def_mod: float = 0.0
+		var hero_morale_mod: float = 0.0
+
+		match role:
+			"KNIGHT":
+				hero_def_mod += 0.10
+				hero_morale_mod += 5.0
+			"ARCHER":
+				hero_atk_mod += 0.10
+			"MAGE":
+				hero_atk_mod += 0.15
+			"PRIEST":
+				hero_def_mod += 0.10
+				hero_morale_mod += 5.0
+
+		# Bonus Bakat Cabang LEADERSHIP (Phase 4E): +1% ATK & +1% DEF per tingkat bakat
+		var talents: Dictionary = h.get("allocated_talents") if h.get("allocated_talents") is Dictionary else {}
+		var lead_level: int = int(talents.get("LEADERSHIP", 0))
+		if lead_level > 0:
+			hero_atk_mod += float(lead_level) * 0.01
+			hero_def_mod += float(lead_level) * 0.01
+
+		total_atk_bonus += hero_atk_mod
+		total_def_bonus += hero_def_mod
+		total_morale_bonus += hero_morale_mod
+
+		aura_breakdown.append({
+			"hero_id": str(h.get("hero_id")),
+			"role": role,
+			"atk_bonus": hero_atk_mod,
+			"def_bonus": hero_def_mod,
+			"morale_bonus": hero_morale_mod
+		})
+
+	# Chemistry Bonus antar pahlawan hidup di Party 1 (Phase 4F): +0.5% kontribusi per poin chemistry
+	var chemistry_bonus: float = 0.0
+	for i in range(living_heroes.size()):
+		for j in range(i + 1, living_heroes.size()):
+			var h1 = living_heroes[i]
+			var h2 = living_heroes[j]
+			var chem: int = 0
+			if h1.has_method("get_chemistry_with"):
+				chem = h1.get_chemistry_with(str(h2.get("hero_id")))
+			if chem > 0:
+				chemistry_bonus += float(chem) * 0.005
+
+	total_atk_bonus += chemistry_bonus
+
+	return {
+		"target_zone": target_zone,
+		"atk_multiplier": 1.0 + total_atk_bonus,
+		"def_multiplier": 1.0 + total_def_bonus,
+		"total_atk_bonus": total_atk_bonus,
+		"total_def_bonus": total_def_bonus,
+		"total_morale_bonus": total_morale_bonus,
+		"chemistry_bonus": chemistry_bonus,
+		"contributing_heroes_count": living_heroes.size(),
+		"aura_breakdown": aura_breakdown
+	}
+
+
+
 func simulate_battle(population: PopulationModel, heroes: Array, warehouse_equipment: Array, fortress: FortressModel, wave: Dictionary, seed_val: int = 42) -> Dictionary:
 	assert(population != null, "population tidak boleh null")
 	assert(fortress != null, "fortress tidak boleh null")

@@ -5,8 +5,8 @@
 ### Status Sub-Fase
 - **Phase 6A — Battlefield Zones & Enemy Foundation**: **COMPLETED / VERIFIED**
 - **Phase 6B — Simulation Tick Loop & Pacing Controls**: **COMPLETED / VERIFIED**
-- **Phase 6C — Unit Formations, Party 1 & Aura Mechanics**: **NEXT / LOCKED** (Menunggu persetujuan eksplisit developer)
-- **Phase 6D — Commander Commands Execution**: **LOCKED**
+- **Phase 6C — Unit Formations, Party 1 & Aura Mechanics**: **COMPLETED / VERIFIED**
+- **Phase 6D — Commander Commands Execution**: **NEXT / LOCKED** (Menunggu persetujuan eksplisit developer)
 - **Phase 6E — Fortress Damage Routing & Casualty Resolution**: **LOCKED**
 - **Phase 6F — Tactical Battle UI & Verification Gate**: **LOCKED**
 - **Phase 7+**: **LOCKED**
@@ -42,11 +42,24 @@ Dokumen perencanaan teknis dan arsitektur komprehensif Phase 6 tersedia di [plan
     - Validasi State Ketat: Simulasi tick hanya diizinkan pada `STATE_BATTLE` (ditolak pada `PREPARATION`, `WAVE_PREVIEW`, `RESULT`, `RECOVERY`, `GAME_OVER`).
     - Proteksi Battle Lock: Mutasi hero, equipment, party, pekerja, dan konstruksi tetap terblokir selama battle aktif.
     - Integrasi Snapshot Read-Model: `battle_tick`, `battle_paused`, `battle_speed` terserialisasi ke `GameStateSnapshot`.
-    - Unit Tests Phase 6B: 32/32 PASS (`tests/test_phase6b_simulation_tick_pacing.gd`).
+    - Unit Tests Phase 6B: 33/33 PASS (`tests/test_phase6b_simulation_tick_pacing.gd`).
     - Deterministic 10,000-Tick Stress Simulation: PASS tanpa kebocoran, crash, atau angka negatif.
-    - Full Regression Suite: 739/739 PASS (19 test suites).
+    - Full Regression Suite: 740/740 PASS (19 test suites).
     - Prototype Scene Smoke Playtest: ALL PASS.
-  - **Phase 6C — Unit Formations, Party 1 & Aura Mechanics**: **NEXT / LOCKED**
+  - **Phase 6C — Unit Formations, Party 1 & Aura Mechanics**: **COMPLETED / VERIFIED**
+    - Penempatan Medan Tempur Regu Serdadu Agregat: penempatan zona medan perang kanonikal (`GATE`, `WALL`, `CENTER_APPROACH`, `LEFT_FLANK`, `RIGHT_FLANK`, `FORTRESS`) dan formasi taktis (`FRONTLINE`, `BACKLINE`, `SUPPORT`) pada model `DeploymentComposition` tanpa instansiasi node individual.
+    - Partisipasi Pertempuran Party 1 Eksklusif: hanya Party 1 yang berpartisipasi dalam pertempuran taktis. Pahlawan Party 2 dan Reserve terisolasi penuh dari bahaya medan perang, tidak bertransisi ke `BATTLE_ACTIVE`, dan tidak memicu aura. Pahlawan gugur di Party 1 otomatis tereksklusi.
+    - Penempatan Taktis Party 1: posisi zona default `GATE` dan formasi default `FRONTLINE`. Penempatan ke `OUTER_FIELD` dan zona non-kanonikal ditolak secara ketat.
+    - Fondasi Formasi & Resolver Peran: resolusi otomatis Knight $\to$ `FRONTLINE`, Archer/Mage $\to$ `BACKLINE`, Priest $\to$ `SUPPORT`.
+    - Fondasi Mekanika Aura Party 1: perhitungan pasif murni tanpa mutasi basis stat (`base_hp`, `base_atk`, `base_def`). Bonus peran pasif (Knight +10% DEF/+5 morale, Archer +10% ATK, Mage +15% ATK, Priest +10% DEF/+5 morale), penskalaan bakat Leadership (+1% ATK/DEF per level), dan kontribusi Chemistry (+0.5% efektivitas per poin kemitraan).
+    - Integrasi Kemitraan (Chemistry): kenaikan kemitraan mutual (+2 poin per pertempuran, batas 50) hanya diberikan kepada pahlawan Party 1 yang bertarung bersama dalam keadaan hidup.
+    - Penegakan Battle Lock: seluruh perubahan zona penempatan serdadu, formasi serdadu, zona Party 1, dan formasi Party 1 ditolak keras selama `STATE_BATTLE`.
+    - Integrasi Snapshot Read-Model: kolom `battle_deployments_data`, `battle_party_data`, dan `battle_aura_data` terserialisasi penuh dengan isolasi kloning deep-copy pada `GameStateSnapshot`.
+    - Unit Tests Phase 6C: 37/37 PASS (`tests/test_phase6c_unit_formations_party_aura.gd`).
+    - Deterministic 50-Wave Participation & Stress Test: PASS tanpa degradasi, kebocoran, atau inkonsistensi konservasi prajurit.
+    - Full Regression Suite: 777/777 PASS (20 test suites).
+    - Prototype Scene Smoke Playtest: ALL PASS.
+  - **Phase 6D — Commander Commands Execution**: **NEXT / LOCKED**
 - **Phase 7 — Economy & Progression**: **LOCKED**
 - **Phase 8 — Content Implementation**: **LOCKED**
 - **Phase 9 — Visual / UI / Pixel Art Integration**: **LOCKED**
@@ -57,6 +70,6 @@ Dokumen perencanaan teknis dan arsitektur komprehensif Phase 6 tersedia di [plan
 ### Aturan & Batasan Saat Ini
 
 > [!IMPORTANT]
-> **PHASE 6B TELAH SELESAI DAN TERVERIFIKASI (COMPLETED & VERIFIED).**
-> **PHASE 6C MASIH TERKUNCI (LOCKED)**: DILARANG memulai implementasi formasi unit, penempatan Party 1, atau aura kepemimpinan sebelum developer memberikan izin/arahan eksplisit (*explicit developer approval*).
+> **PHASE 6C TELAH SELESAI DAN TERVERIFIKASI (COMPLETED & VERIFIED).**
+> **PHASE 6D MASIH TERKUNCI (LOCKED)**: DILARANG memulai implementasi eksekusi perintah komandan (Commander Commands) sebelum developer memberikan izin/arahan eksplisit (*explicit developer approval*).
 > **PHASE 7+ TETAP LOCKED**: Seluruh fase lanjut tetap terkunci.
