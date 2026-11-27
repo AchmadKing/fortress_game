@@ -20,6 +20,12 @@ func _ready() -> void:
 	_ensure_timer()
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		if _battle_timer != null and not _battle_timer.is_inside_tree():
+			_battle_timer.free()
+
+
 func _ensure_timer() -> void:
 	if _battle_timer == null:
 		_battle_timer = Timer.new()
@@ -469,23 +475,71 @@ func send_commander_command(command_type: String, target_group: String = "ALL", 
 func toggle_pause() -> void:
 	if coordinator == null:
 		return
-	var snapshot: GameStateSnapshot = coordinator.get_current_state()
-	var new_paused: bool = not snapshot.battle_paused
-	coordinator.set_battle_paused(new_paused)
-	if _battle_timer != null and _battle_timer.is_inside_tree():
-		_battle_timer.paused = new_paused
-		if not new_paused and _battle_timer.is_stopped() and snapshot.game_phase == "BATTLE":
-			_schedule_next_battle_step()
+	if coordinator.is_battle_paused():
+		resume_battle()
+	else:
+		pause_battle()
 
 
-func set_speed(speed: float) -> void:
+func pause_battle() -> bool:
 	if coordinator == null:
-		return
-	coordinator.set_battle_speed(speed)
+		return false
+	var ok: bool = coordinator.pause_battle()
+	if ok and _battle_timer != null and _battle_timer.is_inside_tree():
+		_battle_timer.paused = true
+	return ok
+
+
+func resume_battle() -> bool:
+	if coordinator == null:
+		return false
+	var ok: bool = coordinator.resume_battle()
+	if ok and _battle_timer != null and _battle_timer.is_inside_tree():
+		_battle_timer.paused = false
+		if _battle_timer.is_stopped() and coordinator.get_current_state().game_phase == "BATTLE":
+			_schedule_next_battle_step()
+	return ok
+
+
+func set_speed(speed: float) -> bool:
+	if coordinator == null:
+		return false
+	var ok: bool = coordinator.set_battle_speed(speed)
 	# Sesuaikan sisa waktu timer jika timer aktif
-	if _battle_timer != null and _battle_timer.is_inside_tree() and not _battle_timer.is_stopped() and not _battle_timer.paused:
+	if ok and _battle_timer != null and _battle_timer.is_inside_tree() and not _battle_timer.is_stopped() and not _battle_timer.paused:
 		var base_delay: float = 1.0 / maxf(0.5, speed)
 		_battle_timer.start(base_delay)
+	return ok
+
+
+func step_simulation() -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.step_simulation()
+
+
+func advance_simulation_time(delta_seconds: float) -> int:
+	if coordinator == null:
+		return 0
+	return coordinator.advance_simulation_time(delta_seconds)
+
+
+func get_battle_tick() -> int:
+	if coordinator == null:
+		return 0
+	return coordinator.get_battle_tick()
+
+
+func is_battle_paused() -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.is_battle_paused()
+
+
+func get_battle_speed() -> float:
+	if coordinator == null:
+		return 1.0
+	return coordinator.get_battle_speed()
 
 
 func resolve_battle_immediately() -> Dictionary:

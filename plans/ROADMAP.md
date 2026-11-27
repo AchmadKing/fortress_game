@@ -106,8 +106,14 @@ High-level roadmap pengembangan proyek `fortress_game`.
   - Verifikasi: 82/82 tests PASS (inklusif 100-cycle management stress test), 677/677 Full Regression PASS across 17 suites, Scene Smoke Playtest ALL PASS.
 
 ## Phase 6 — Tactical Battle & Battlefield Systems
-- **Status**: ARCHITECTURE PLANNING ONLY (DO NOT IMPLEMENT YET)
+- **Status**: IN PROGRESS
 - **Tujuan**: Membangun sistem simulasi pertempuran taktis real-time yang dapat diamati dan diarahkan (Football Manager style) berbasis 7 zona medan perang, 6 perintah taktis komandan, dan integrasi penuh integritas benteng, pahlawan Party 1, serdadu agregat, perlengkapan gudang bersama, dan 6 arketipe musuh deterministik. Spesifikasi teknis: [plans/PHASE_6_TACTICAL_BATTLE_PLAN.md](file:///d:/fortress_game/plans/PHASE_6_TACTICAL_BATTLE_PLAN.md).
+  - **Phase 6A — Battlefield Zones & Enemy Foundation**: COMPLETED / VERIFIED (Commit `bd75c12`, 30 tests PASS).
+  - **Phase 6B — Simulation Tick Loop & Pacing Controls**: COMPLETED / VERIFIED (32 tests PASS, 10.000-tick stress PASS).
+  - **Phase 6C — Unit Formations, Party 1 & Aura Mechanics**: NEXT / LOCKED
+  - **Phase 6D — Commander Commands Execution**: LOCKED
+  - **Phase 6E — Fortress Damage Routing & Casualty Resolution**: LOCKED
+  - **Phase 6F — Tactical Battle UI & Verification Gate**: LOCKED
   - Topologi medan perang 7 zona kanonikal (`OUTER_FIELD`, `LEFT_FLANK`, `CENTER_APPROACH`, `RIGHT_FLANK`, `WALL`, `GATE`, `FORTRESS`).
   - Loop simulasi real-time berbasis tick deterministik dengan kontrol tempo (Pause, 1x, 2x, 4x) ringan tanpa physics engine.
   - Penempatan serdadu agregat (bukan unit individual) dan integrasi Party 1 pahlawan aktif.

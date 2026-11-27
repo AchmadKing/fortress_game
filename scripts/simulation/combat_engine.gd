@@ -14,6 +14,27 @@ const FortressModelScript = preload("res://scripts/domain/model/fortress_model.g
 const HeroModelScript = preload("res://scripts/domain/model/hero_model.gd")
 const EquipmentModelScript = preload("res://scripts/domain/model/equipment_model.gd")
 
+# Phase 6B: Canonical Simulation Speed Constants
+const SPEED_1X: float = 1.0
+const SPEED_2X: float = 2.0
+const SPEED_4X: float = 4.0
+const VALID_SPEEDS: Array[float] = [SPEED_1X, SPEED_2X, SPEED_4X]
+
+
+static func is_valid_speed(speed: float) -> bool:
+	return is_equal_approx(speed, SPEED_1X) or is_equal_approx(speed, SPEED_2X) or is_equal_approx(speed, SPEED_4X)
+
+
+## Menjalankan 1 tick simulasi taktis headless deterministik (Phase 6B).
+## Mengembalikan tick baru tanpa mutasi fisik (clock-only advance).
+func step_simulation_tick(current_tick: int, _battle_context: Dictionary = {}) -> Dictionary:
+	assert(current_tick >= 0, "current_tick tidak boleh negatif")
+	var next_tick: int = current_tick + 1
+	return {
+		"tick": next_tick,
+		"events": []
+	}
+
 
 func simulate_battle(population: PopulationModel, heroes: Array, warehouse_equipment: Array, fortress: FortressModel, wave: Dictionary, seed_val: int = 42) -> Dictionary:
 	assert(population != null, "population tidak boleh null")

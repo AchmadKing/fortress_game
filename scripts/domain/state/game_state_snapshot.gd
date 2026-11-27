@@ -30,6 +30,7 @@ var last_commander_command: Dictionary = {}
 var battle_speed: float = 1.0
 var battle_paused: bool = false
 var battle_phase_name: String = ""
+var battle_tick: int = 0
 
 # Phase 3B Temporary Soldier Deployment Fields
 var active_deployments_data: Array = []
@@ -89,6 +90,7 @@ func clone() -> GameStateSnapshot:
 	copy.battle_speed = battle_speed
 	copy.battle_paused = battle_paused
 	copy.battle_phase_name = battle_phase_name
+	copy.battle_tick = battle_tick
 	copy.active_deployments_data = active_deployments_data.duplicate(true)
 	copy.available_soldiers_count = available_soldiers_count
 	copy.total_living_soldiers_count = total_living_soldiers_count
@@ -120,6 +122,7 @@ func to_dictionary() -> Dictionary:
 		"battle_speed": battle_speed,
 		"battle_paused": battle_paused,
 		"battle_phase_name": battle_phase_name,
+		"battle_tick": battle_tick,
 		"active_deployments_data": active_deployments_data.duplicate(true),
 		"available_soldiers_count": available_soldiers_count,
 		"total_living_soldiers_count": total_living_soldiers_count,
@@ -165,6 +168,7 @@ static func from_dictionary(data: Dictionary) -> GameStateSnapshot:
 	snapshot.battle_speed = float(data.get("battle_speed", 1.0))
 	snapshot.battle_paused = bool(data.get("battle_paused", false))
 	snapshot.battle_phase_name = str(data.get("battle_phase_name", ""))
+	snapshot.battle_tick = int(data.get("battle_tick", 0))
 	
 	if data.has("active_deployments_data") and data["active_deployments_data"] is Array:
 		snapshot.active_deployments_data = (data["active_deployments_data"] as Array).duplicate(true)

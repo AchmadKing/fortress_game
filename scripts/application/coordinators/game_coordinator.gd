@@ -61,6 +61,9 @@ var _last_battle_result: Dictionary = {}
 var _last_command: CommanderCommand = null
 var _battle_speed: float = 1.0
 var _battle_paused: bool = false
+var _battle_tick: int = 0
+var _time_accumulator: float = 0.0
+const BASE_TICK_DURATION: float = 1.0
 var _session_seed: int = 12345
 var _hero_id_counter: int = 1
 var _hero_training_wave_tracker: Dictionary = {} # hero_id (String) -> wave_num (int)
@@ -126,6 +129,8 @@ func start_new_session(session_id: String = "session_proto", seed_val: int = 123
 	_current_wave_num = 1
 	_battle_speed = 1.0
 	_battle_paused = false
+	_battle_tick = 0
+	_time_accumulator = 0.0
 	_last_command = null
 	_last_battle_result = {}
 	_hero_training_wave_tracker.clear()
@@ -1222,6 +1227,9 @@ func start_battle() -> bool:
 		return false
 	if not _state_machine.transition_to(GameplayStateMachine.STATE_BATTLE):
 		return false
+	_battle_tick = 0
+	_time_accumulator = 0.0
+	_battle_paused = false
 	_current_state.battle_phase_name = "RANGED_VOLLEY"
 
 	# Transisi status pahlawan aktif di Party 1 ke BATTLE_ACTIVE
@@ -1297,17 +1305,91 @@ func send_commander_command(command: CommanderCommand) -> bool:
 
 
 ## Mengatur kecepatan simulasi pertempuran (1x, 2x, 4x)
-func set_battle_speed(speed: float) -> void:
-	_battle_speed = clampf(speed, 0.5, 4.0)
+func set_battle_speed(speed: float) -> bool:
+	if not CombatEngine.is_valid_speed(speed):
+		return false
+	_battle_speed = speed
 	_current_state.battle_speed = _battle_speed
+	_update_snapshot()
 	state_changed.emit(_current_state.clone())
+	return true
 
 
 ## Menjeda atau melanjutkan pertempuran
 func set_battle_paused(paused: bool) -> void:
 	_battle_paused = paused
 	_current_state.battle_paused = _battle_paused
+	_update_snapshot()
 	state_changed.emit(_current_state.clone())
+
+
+## Menjeda pertempuran (Phase 6B)
+func pause_battle() -> bool:
+	_battle_paused = true
+	_current_state.battle_paused = true
+	_update_snapshot()
+	state_changed.emit(_current_state.clone())
+	return true
+
+
+## Melanjutkan pertempuran (Phase 6B)
+func resume_battle() -> bool:
+	_battle_paused = false
+	_current_state.battle_paused = false
+	_update_snapshot()
+	state_changed.emit(_current_state.clone())
+	return true
+
+
+func get_battle_tick() -> int:
+	return _battle_tick
+
+
+func is_battle_paused() -> bool:
+	return _battle_paused
+
+
+func get_battle_speed() -> float:
+	return _battle_speed
+
+
+func can_step_simulation() -> bool:
+	if _state_machine.current_state != GameplayStateMachine.STATE_BATTLE:
+		return false
+	if _battle_paused:
+		return false
+	return true
+
+
+## Menjalankan 1 tick simulasi taktis deterministik (Phase 6B).
+func step_simulation() -> bool:
+	if not can_step_simulation():
+		return false
+	_battle_tick += 1
+	_current_state.battle_tick = _battle_tick
+	if _combat_engine != null:
+		_combat_engine.step_simulation_tick(_battle_tick - 1)
+	_update_snapshot()
+	state_changed.emit(_current_state.clone())
+	return true
+
+
+## Akumulator waktu deterministik berbasis delta waktu nyata (Phase 6B).
+## Menjalankan N langkah simulasi secara proporsional terhadap battle_speed tanpa ketergantungan FPS.
+func advance_simulation_time(delta_seconds: float) -> int:
+	if not can_step_simulation():
+		return 0
+	if delta_seconds <= 0.0:
+		return 0
+	_time_accumulator += delta_seconds * _battle_speed
+	var steps_taken: int = 0
+	while _time_accumulator >= BASE_TICK_DURATION:
+		if not can_step_simulation():
+			break
+		step_simulation()
+		_time_accumulator -= BASE_TICK_DURATION
+		steps_taken += 1
+	return steps_taken
 
 
 ## Melanjutkan alur dari RESULT:
@@ -1752,6 +1834,7 @@ func _update_snapshot() -> void:
 	_current_state.current_wave = _current_wave_num
 	_current_state.battle_speed = _battle_speed
 	_current_state.battle_paused = _battle_paused
+	_current_state.battle_tick = _battle_tick
 
 	if _fortress != null:
 		_current_state.fortress_data = {

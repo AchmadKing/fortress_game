@@ -4,6 +4,35 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.6.2] - Phase 6B: Simulation Tick Loop & Pacing Controls
+
+### Added
+- **Deterministic Simulation Tick Counter** (`scripts/application/coordinators/game_coordinator.gd`, `scripts/simulation/combat_engine.gd`):
+  - Pelacak waktu diskrit monotonik kanonikal: `battle_tick` (integer, dimulai dari 0 saat pertempuran dimulai, tidak pernah negatif).
+  - Eksekusi deterministik `step_simulation()`: memajukan `battle_tick` tepat 1 unit per pemanggilan tunggal.
+  - Metode `CombatEngine.step_simulation_tick(current_tick)` untuk fondasi komputasi tick headless.
+- **Pacing & Speed Controls (1x / 2x / 4x)** (`scripts/simulation/combat_engine.gd`, `scripts/application/coordinators/game_coordinator.gd`, `scripts/presentation/controllers/game_controller.gd`):
+  - Konstanta kanonikal: `SPEED_1X` (1.0), `SPEED_2X` (2.0), `SPEED_4X` (4.0).
+  - Validasi ketat `CombatEngine.is_valid_speed(speed)`: menolak nilai non-kanonikal (seperti 0.5x, 3.0x, 5.0x, negatif) tanpa mengubah speed saat ini.
+  - Akumulator waktu deterministik `advance_simulation_time(delta_seconds)`: mengonversi akumulasi delta detik menjadi langkah simulasi diskrit proporsional kecepatan tanpa ketergantungan frame rate FPS.
+- **Pause & Resume Controls** (`scripts/application/coordinators/game_coordinator.gd`, `scripts/presentation/controllers/game_controller.gd`):
+  - Metode kanonikal `pause_battle()` dan `resume_battle()` beserta backward-compatibility wrapper `set_battle_paused()`.
+  - Saat dijeda (*paused*): eksekusi langkah simulasi diblokir (`can_step_simulation() == false`), `battle_tick` tidak berubah, dan tidak ada state domain yang termutasi.
+  - Status jeda tidak mereset nilai tick, speed, maupun posisi/kondisi musuh di medan tempur.
+- **State Machine Validation & Battle Lock Integrity**:
+  - Validasi ketat: simulasi tick hanya diizinkan pada `GameplayStateMachine.STATE_BATTLE`. Ditolak keras pada fase `BOOT`, `PREPARATION`, `WAVE_PREVIEW`, `RESULT`, `RECOVERY`, dan `GAME_OVER`.
+  - Pelestarian Battle Lock penuh: mutasi hero, peralatan, party, pekerja, perbaikan, dan konstruksi tetap terblokir selama fase pertempuran.
+- **Snapshot Integration & UI Telemetry** (`scripts/domain/state/game_state_snapshot.gd`, `scripts/presentation/views/prototype_debug_view.gd`):
+  - Kolom snapshot read-model: `battle_tick`, `battle_paused`, `battle_speed` terserialisasi penuh pada isolasi kloning deep-copy.
+  - Penampil status HUD antarmuka prototipe menampilkan tick waktu nyata: `Speed: %.1fx (%s) | Tick: %d`.
+- **Automated Verification Suite** (`tests/test_phase6b_simulation_tick_pacing.gd`):
+  - 32 automated tests komprehensif mencakup Group A (Tick), Group B (Pause/Resume), Group C (Speed 1x/2x/4x), Group D (State Machine), Group E (Determinism), Group F (Battle Lock & Integrity), dan Group G (Deterministic 10,000-Tick Stress Simulation).
+  - Stress test 10.000 tick: PASS tanpa kebocoran memori, tanpa crash, dan tanpa angka negatif.
+  - Full Regression Suite: 739/739 PASS (19 test suites).
+  - Prototype Scene Smoke Playtest: ALL PASS.
+
+---
+
 ## [0.6.1] - Phase 6A: Battlefield Zones & Enemy Foundation
 
 ### Added

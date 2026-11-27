@@ -485,7 +485,7 @@ func _on_state_changed(snapshot: GameStateSnapshot) -> void:
 	_lbl_state_badge.text = "[STATE: %s]" % snapshot.game_phase
 	_lbl_wave_indicator.text = "Wave: %d / 100" % snapshot.current_wave
 	var pause_str: String = "PAUSED" if snapshot.battle_paused else "Active"
-	_lbl_speed_pause.text = "Speed: %.1fx (%s)" % [snapshot.battle_speed, pause_str]
+	_lbl_speed_pause.text = "Speed: %.1fx (%s) | Tick: %d" % [snapshot.battle_speed, pause_str, snapshot.battle_tick]
 
 	# Phase Guidance Banner
 	_lbl_phase_guidance.text = _get_phase_guidance_text(snapshot.game_phase)
