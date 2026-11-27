@@ -4,6 +4,48 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.5.7] - Phase 4F: Hero Chemistry & Party Management (Implemented & Verified)
+
+### Added
+- **Canonical PartyModel Pure Domain Model** (`scripts/domain/model/party_model.gd`):
+  - Model data murni `PartyModel` (`class_name PartyModel extends RefCounted`) dengan konstanta id kanonikal `PARTY_1_ID = "party_1"`, `PARTY_2_ID = "party_2"`, `MAX_PARTIES = 2`, dan `MAX_MEMBERS = 3`.
+  - Operasi keanggotaan regu: `add_member()`, `remove_member()`, `has_member()`, `is_full()`, `get_member_count()`, `get_members()`.
+  - Operasi kepemimpinan regu (*Party Leader*): `set_leader()`, `get_leader_id()`, `has_leader()`, `clear_leader()`.
+  - Kloning mendalam (`clone()`) dan validasi invarian ketat (`validate_invariants()`).
+- **HeroModel Party Assignment & Chemistry Protection** (`scripts/domain/model/hero_model.gd`):
+  - Properti `party_id: String = ""` ("" merepresentasikan status RESERVE; sah untuk `party_1` dan `party_2`).
+  - Metode pembantu domain: `is_in_party()`, `get_party_id()`, `set_party_id()`, dan `clear_party_assignment()`.
+  - Sinkronisasi invarian lifecycle: pahlawan mati/gugur dilarang memiliki `party_id` non-kosong, pembersihan otomatis `clear_party_assignment()` saat `mark_dead()`, serta kloning mendalam `party_id` di `clone()`.
+  - Perlindungan invarian chemistry: `add_chemistry()` menolak penambahan chemistry ke diri sendiri (`p_id == hero_id`) atau ID kosong.
+- **Single Canonical Chemistry Gain Path** (`scripts/simulation/combat_engine.gd`):
+  - Menghapus kenaikan chemistry spekulatif dari perulangan melee Phase 3.
+  - Memusatkan kenaikan chemistry pada satu-satunya jalur resmi di Fase 5 pasca-kelangsungan hidup pertempuran: $+2$ poin per pasang hero hidup yang bertarung bersama di Party 1 (`surviving_heroes`), dibatasi maksimal 50 poin, dan bersifat simetris mutlak (`h1` dan `h2` saling memperoleh poin identik).
+- **Snapshot Telemetry Serialization for Parties** (`scripts/domain/state/game_state_snapshot.gd`, `scripts/application/coordinators/game_coordinator.gd`):
+  - Penambahan properti `parties_data: Array` pada `GameStateSnapshot` dengan dukungan penuh pada `_init`, `clone()`, `to_dictionary()`, dan `from_dictionary()`.
+  - Serialisasi `party_id` di setiap entri `heroes_data`.
+- **Coordinator Party Orchestration & Lifecycle Security** (`scripts/application/coordinators/game_coordinator.gd`):
+  - Koleksi regu benteng: `_parties = []` dengan inisialisasi tepat 2 regu (`party_1` sebagai regu tempur aktif utama, `party_2` sebagai regu cadangan/manajemen).
+  - Kueri regu: `get_party()`, `get_parties()`, `get_party_members()`, `get_hero_party_id()`, `is_hero_in_party()`, `get_active_battle_party()`, `get_active_battle_hero_ids()`, `get_active_battle_heroes()`.
+  - Mutasi keanggotaan dan kepemimpinan: `can_assign_hero_to_party()`, `assign_hero_to_party()`, `can_remove_hero_from_party()`, `remove_hero_from_party()`, `can_set_party_leader()`, `set_party_leader()`.
+  - Proteksi Battle Lock: mutasi anggota regu dan penetapan ketua regu dilarang keras saat state `BATTLE`.
+  - Perutean tempur aktif: hanya pahlawan Party 1 yang dikirim ke `CombatEngine.simulate_battle()`; Party 2 dan hero cadangan tidak berkontribusi serangan, tidak menerima kelelahan tempur, dan tidak memperoleh EXP tempur.
+  - Pembersihan permadeath komprehensif pada `proceed_from_result()`: pahlawan gugur dilepas dari regu, status kepemimpinan regu dibersihkan, dan referensi chemistry pada pahlawan lain dihapus secara simetris tanpa merusak integritas gudang bersama.
+- **Phase 4F Automated Test Suite** (`tests/test_phase4f_hero_chemistry_party.gd`):
+  - 66 pengujian headless mencakup:
+    - Group A: PartyModel Pure Domain & Invariant Tests (1-12)
+    - Group B: HeroModel Party Attributes & Invariant Tests (13-24)
+    - Group C: GameCoordinator Party Lifecycle & Battle Lock Tests (25-38)
+    - Group D: Chemistry Progression & Rules Tests (39-50)
+    - Group E: Combat Integration & Party 1 vs Party 2 Tests (51-60)
+    - Group F: Permadeath Cleanup, Snapshot & 20-Wave Stress Tests (61-66)
+
+### Verified
+- **Phase 4F Test Suite**: 66/66 PASSED (100%).
+- **Full Automated Regression Suite**: 452/452 PASSED across 14 test suites (Phase 1 s/d Phase 4F) with 0 regressions.
+- **Scene Smoke Playtest**: ALL PASS (0 errors) on Godot SceneTree.
+
+---
+
 ## [0.5.6] - Phase 4E: Hero Skills & Talent Foundation (Implemented & Verified)
 
 ### Added

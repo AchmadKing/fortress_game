@@ -19,6 +19,7 @@ var game_phase: String = "BOOT"
 var fortress_data: Dictionary = {}
 var population_data: Dictionary = {}
 var heroes_data: Array = []
+var parties_data: Array = []
 var warehouse_data: Array = []
 var economy_data: Dictionary = {}
 var current_wave_data: Dictionary = {}
@@ -45,6 +46,7 @@ func _init(p_tick: int = 0, p_session_id: String = "", p_state_name: String = "I
 	fortress_data = {}
 	population_data = {}
 	heroes_data = []
+	parties_data = []
 	warehouse_data = []
 	economy_data = {}
 	current_wave_data = {}
@@ -66,6 +68,7 @@ func clone() -> GameStateSnapshot:
 	copy.fortress_data = fortress_data.duplicate(true)
 	copy.population_data = population_data.duplicate(true)
 	copy.heroes_data = heroes_data.duplicate(true)
+	copy.parties_data = parties_data.duplicate(true)
 	copy.warehouse_data = warehouse_data.duplicate(true)
 	copy.economy_data = economy_data.duplicate(true)
 	copy.current_wave_data = current_wave_data.duplicate(true)
@@ -92,6 +95,7 @@ func to_dictionary() -> Dictionary:
 		"fortress_data": fortress_data.duplicate(true),
 		"population_data": population_data.duplicate(true),
 		"heroes_data": heroes_data.duplicate(true),
+		"parties_data": parties_data.duplicate(true),
 		"warehouse_data": warehouse_data.duplicate(true),
 		"economy_data": economy_data.duplicate(true),
 		"current_wave_data": current_wave_data.duplicate(true),
@@ -125,6 +129,8 @@ static func from_dictionary(data: Dictionary) -> GameStateSnapshot:
 		snapshot.population_data = (data["population_data"] as Dictionary).duplicate(true)
 	if data.has("heroes_data") and data["heroes_data"] is Array:
 		snapshot.heroes_data = (data["heroes_data"] as Array).duplicate(true)
+	if data.has("parties_data") and data["parties_data"] is Array:
+		snapshot.parties_data = (data["parties_data"] as Array).duplicate(true)
 	if data.has("warehouse_data") and data["warehouse_data"] is Array:
 		snapshot.warehouse_data = (data["warehouse_data"] as Array).duplicate(true)
 	if data.has("economy_data") and data["economy_data"] is Dictionary:

@@ -46,6 +46,9 @@ var morale: int = 100         # 0 - 150
 var is_alive: bool = true
 var chemistry_map: Dictionary = {} # other_hero_id (String) -> chemistry points (int)
 
+# Phase 4F Party Membership ("" = RESERVE, "party_1", "party_2")
+var party_id: String = ""
+
 # Phase 4E Hero Skills & Talents
 var unlocked_skills: Array = []
 var talent_points: int = 0
@@ -81,6 +84,7 @@ func _init(
 	morale = 100
 	is_alive = (lifecycle_state != STATE_PERMADEATH)
 	chemistry_map = {}
+	party_id = ""
 	unlocked_skills = []
 	talent_points = 0
 	allocated_talents = {
@@ -148,6 +152,39 @@ func transition_lifecycle_state(new_state: String) -> bool:
 	return true
 
 
+# ==============================================================================
+# PHASE 4F PARTY MEMBERSHIP DOMAIN METHODS
+# ==============================================================================
+
+## Memeriksa apakah hero ditugaskan ke dalam regu tertentu atau sembarang regu
+func is_in_party(target_party_id: String = "") -> bool:
+	var p: String = target_party_id.strip_edges().to_lower()
+	if p.is_empty():
+		return not party_id.strip_edges().is_empty()
+	return party_id == p
+
+
+## Mengembalikan ID regu tempat hero ditugaskan ("" jika RESERVE)
+func get_party_id() -> String:
+	return party_id
+
+
+## Menetapkan penugasan regu pahlawan secara aman ("party_1", "party_2", atau "" untuk RESERVE)
+func set_party_id(new_party_id: String) -> bool:
+	var p: String = new_party_id.strip_edges().to_lower()
+	if (not is_alive or lifecycle_state == STATE_PERMADEATH) and not p.is_empty():
+		return false
+	if not p.is_empty() and p != "party_1" and p != "party_2":
+		return false
+	party_id = p
+	return true
+
+
+## Mengosongkan penugasan regu pahlawan (kembali ke RESERVE)
+func clear_party_assignment() -> void:
+	party_id = ""
+
+
 func is_equipment_compatible(slot: String, eq_type: String) -> bool:
 	return HeroRoleScript.is_equipment_compatible(role, slot, eq_type)
 
@@ -173,6 +210,16 @@ func validate_invariants() -> bool:
 		return false
 	if not is_alive and lifecycle_state != STATE_PERMADEATH:
 		return false
+	if not party_id.is_empty() and party_id != "party_1" and party_id != "party_2":
+		return false
+	if (not is_alive or lifecycle_state == STATE_PERMADEATH) and not party_id.is_empty():
+		return false
+	if party_id.is_empty():
+		if lifecycle_state == STATE_IN_PARTY:
+			return false
+	else:
+		if lifecycle_state != STATE_IN_PARTY and lifecycle_state != STATE_BATTLE_ACTIVE:
+			return false
 	if talent_points < 0:
 		return false
 	for branch in [TALENT_BRANCH_OFFENSE, TALENT_BRANCH_DEFENSE, TALENT_BRANCH_LEADERSHIP]:
@@ -365,8 +412,11 @@ func train(exp_yield: int = 40, fatigue_cost: int = 15) -> int:
 
 
 func add_chemistry(partner_hero_id: String, points: int = 2) -> void:
-	var cur: int = int(chemistry_map.get(partner_hero_id, 0))
-	chemistry_map[partner_hero_id] = clampi(cur + points, 0, 50)
+	var p_id: String = partner_hero_id.strip_edges()
+	if p_id.is_empty() or p_id == hero_id:
+		return
+	var cur: int = int(chemistry_map.get(p_id, 0))
+	chemistry_map[p_id] = clampi(cur + points, 0, 50)
 
 
 func get_chemistry_bonus(party_hero_ids: Array) -> float:
@@ -551,6 +601,7 @@ func get_talent_def_multiplier() -> float:
 func mark_dead() -> void:
 	is_alive = false
 	lifecycle_state = STATE_PERMADEATH
+	party_id = ""
 
 
 func clone() -> HeroModel:
@@ -563,6 +614,7 @@ func clone() -> HeroModel:
 	h.fatigue = fatigue
 	h.morale = morale
 	h.is_alive = is_alive
+	h.party_id = party_id
 	h.chemistry_map = chemistry_map.duplicate(true)
 	h.unlocked_skills = unlocked_skills.duplicate()
 	h.talent_points = talent_points

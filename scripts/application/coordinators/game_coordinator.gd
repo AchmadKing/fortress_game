@@ -21,6 +21,7 @@ const HeroRole = preload("res://scripts/domain/model/hero_role.gd")
 const HeroLifecycleState = preload("res://scripts/domain/model/hero_lifecycle_state.gd")
 const EquipmentModel = preload("res://scripts/domain/model/equipment_model.gd")
 const DeploymentComposition = preload("res://scripts/domain/model/deployment_composition.gd")
+const PartyModel = preload("res://scripts/domain/model/party_model.gd")
 const EconomyManager = preload("res://scripts/simulation/economy_manager.gd")
 const WaveGenerator = preload("res://scripts/simulation/wave_generator.gd")
 const CombatEngine = preload("res://scripts/simulation/combat_engine.gd")
@@ -38,6 +39,7 @@ var _economy: EconomyManager
 var _wave_gen: WaveGenerator
 var _combat_engine: CombatEngine
 var _heroes: Array = []       # Array[HeroModel]
+var _parties: Array = []      # Array[PartyModel]
 var _warehouse: Array = []    # Array[EquipmentModel]
 
 # Phase 3B Temporary Soldier Deployment
@@ -697,6 +699,8 @@ func dismiss_hero(hero_id: String) -> bool:
 	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
 		push_warning("dismiss_hero dilarang pada fase BATTLE (Battle Lock)")
 		return false
+	if is_hero_in_party(hero_id):
+		return false
 	var target_idx: int = -1
 	var target_hero: HeroModel = null
 	for i in range(_heroes.size()):
@@ -922,6 +926,222 @@ func allocate_hero_talent(hero_id: String, branch_id: String) -> bool:
 	return success
 
 
+# ==============================================================================
+# PHASE 4F HERO PARTY & CHEMISTRY MANAGEMENT
+# ==============================================================================
+
+## Mengambil instance PartyModel berdasarkan ID regu ("party_1" atau "party_2")
+func get_party(party_id: String) -> PartyModel:
+	var p_id: String = party_id.strip_edges().to_lower()
+	for p in _parties:
+		if p is PartyModel and (p as PartyModel).party_id == p_id:
+			return p as PartyModel
+	return null
+
+
+## Mengembalikan salinan daftar seluruh regu benteng
+func get_parties() -> Array:
+	return _parties.duplicate()
+
+
+## Mengembalikan daftar instance HeroModel yang terdaftar dalam regu tertentu
+func get_party_members(party_id: String) -> Array:
+	var p := get_party(party_id)
+	if p == null:
+		return []
+	var members: Array = []
+	for m_id in p.member_hero_ids:
+		var h := get_hero(str(m_id))
+		if h != null:
+			members.append(h)
+	return members
+
+
+## Mengembalikan ID regu tempat hero bernaung ("" jika RESERVE)
+func get_hero_party_id(hero_id: String) -> String:
+	var hero := get_hero(hero_id)
+	if hero == null:
+		return ""
+	return hero.party_id
+
+
+## Memeriksa apakah hero terdaftar dalam salah satu regu
+func is_hero_in_party(hero_id: String) -> bool:
+	return not get_hero_party_id(hero_id).is_empty()
+
+
+## Mengembalikan regu tempur aktif benteng (Party 1 pada Phase 4)
+func get_active_battle_party() -> PartyModel:
+	return get_party(PartyModel.PARTY_1_ID)
+
+
+## Mengembalikan daftar ID pahlawan hidup pada Party 1 yang siap diterjunkan ke medan laga
+func get_active_battle_hero_ids() -> Array:
+	var p := get_active_battle_party()
+	if p == null:
+		return []
+	var active_ids: Array = []
+	for m_id in p.member_hero_ids:
+		var h := get_hero(str(m_id))
+		if h != null and h.is_alive and h.lifecycle_state != HeroLifecycleState.PERMADEATH:
+			active_ids.append(h.hero_id)
+	return active_ids
+
+
+## Mengembalikan daftar instance HeroModel hidup pada Party 1 yang siap bertempur
+func get_active_battle_heroes() -> Array:
+	var ids := get_active_battle_hero_ids()
+	var heroes_list: Array = []
+	for id in ids:
+		var h := get_hero(str(id))
+		if h != null:
+			heroes_list.append(h)
+	return heroes_list
+
+
+## Memvalidasi kelayakan penugasan pahlawan ke dalam regu tertentu
+func can_assign_hero_to_party(hero_id: String, party_id: String) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		return false
+	if _state_machine.current_state != GameplayStateMachine.STATE_PREPARATION and _state_machine.current_state != GameplayStateMachine.STATE_WAVE_PREVIEW:
+		return false
+
+	var hero := get_hero(hero_id)
+	if hero == null or not hero.is_alive or hero.lifecycle_state == HeroLifecycleState.PERMADEATH:
+		return false
+
+	var party := get_party(party_id)
+	if party == null:
+		return false
+
+	if party.is_full():
+		return false
+
+	# Hero tidak boleh sudah berada di party lain atau di party yang sama
+	if hero.is_in_party() or not hero.party_id.is_empty():
+		return false
+	for p in _parties:
+		if p is PartyModel and (p as PartyModel).has_member(hero.hero_id):
+			return false
+
+	# Status siklus hidup harus ROSTER_ACTIVE untuk dapat masuk party
+	if hero.lifecycle_state != HeroLifecycleState.ROSTER_ACTIVE:
+		return false
+
+	return true
+
+
+## Menugaskan pahlawan ke dalam regu secara atomik
+func assign_hero_to_party(hero_id: String, party_id: String) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		push_warning("assign_hero_to_party dilarang pada fase BATTLE (Battle Lock)")
+		return false
+
+	if not can_assign_hero_to_party(hero_id, party_id):
+		return false
+
+	var hero := get_hero(hero_id)
+	var party := get_party(party_id)
+
+	var prev_party_id: String = hero.party_id
+	var prev_lifecycle: String = hero.lifecycle_state
+
+	hero.party_id = party.party_id
+	var trans_ok: bool = hero.transition_lifecycle_state(HeroLifecycleState.IN_PARTY)
+	var add_ok: bool = party.add_member(hero.hero_id)
+
+	if not trans_ok or not add_ok:
+		# Rollback atomik
+		hero.party_id = prev_party_id
+		hero.lifecycle_state = prev_lifecycle
+		party.remove_member(hero.hero_id)
+		return false
+
+	_update_snapshot()
+	state_changed.emit(_current_state.clone())
+	return true
+
+
+## Memvalidasi kelayakan pelepasan pahlawan dari regu
+func can_remove_hero_from_party(hero_id: String) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		return false
+
+	var hero := get_hero(hero_id)
+	if hero == null:
+		return false
+
+	if not hero.is_in_party() or hero.party_id.is_empty():
+		return false
+
+	var party := get_party(hero.party_id)
+	if party == null or not party.has_member(hero.hero_id):
+		return false
+
+	return true
+
+
+## Mengeluarkan pahlawan dari regu secara atomik (kembali ke RESERVE / ROSTER_ACTIVE)
+func remove_hero_from_party(hero_id: String) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		push_warning("remove_hero_from_party dilarang pada fase BATTLE (Battle Lock)")
+		return false
+
+	if not can_remove_hero_from_party(hero_id):
+		return false
+
+	var hero := get_hero(hero_id)
+	var party := get_party(hero.party_id)
+
+	party.remove_member(hero.hero_id)
+	hero.clear_party_assignment()
+	hero.transition_lifecycle_state(HeroLifecycleState.ROSTER_ACTIVE)
+
+	_update_snapshot()
+	state_changed.emit(_current_state.clone())
+	return true
+
+
+## Memvalidasi kelayakan penunjukan pemimpin regu
+func can_set_party_leader(hero_id: String, party_id: String) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		return false
+
+	var party := get_party(party_id)
+	if party == null:
+		return false
+
+	# Mengosongkan pemimpin selalu diizinkan jika bukan saat battle
+	if hero_id.strip_edges().is_empty():
+		return true
+
+	var hero := get_hero(hero_id)
+	if hero == null or not hero.is_alive or hero.lifecycle_state == HeroLifecycleState.PERMADEATH:
+		return false
+
+	if not party.has_member(hero.hero_id):
+		return false
+
+	return true
+
+
+## Menunjuk pahlawan sebagai pemimpin regu
+func set_party_leader(hero_id: String, party_id: String) -> bool:
+	if _state_machine.current_state == GameplayStateMachine.STATE_BATTLE:
+		push_warning("set_party_leader dilarang pada fase BATTLE (Battle Lock)")
+		return false
+
+	if not can_set_party_leader(hero_id, party_id):
+		return false
+
+	var party := get_party(party_id)
+	var ok: bool = party.set_leader(hero_id)
+	if ok:
+		_update_snapshot()
+		state_changed.emit(_current_state.clone())
+	return ok
+
+
 ## Inspeksi gelombang ancaman berikutnya (transisi PREPARATION -> WAVE_PREVIEW)
 func inspect_wave() -> bool:
 	if _state_machine.current_state != GameplayStateMachine.STATE_PREPARATION:
@@ -952,6 +1172,15 @@ func start_battle() -> bool:
 	if not _state_machine.transition_to(GameplayStateMachine.STATE_BATTLE):
 		return false
 	_current_state.battle_phase_name = "RANGED_VOLLEY"
+
+	# Transisi status pahlawan aktif di Party 1 ke BATTLE_ACTIVE
+	var active_party := get_active_battle_party()
+	if active_party != null:
+		for m_id in active_party.member_hero_ids:
+			var h := get_hero(str(m_id))
+			if h != null and h.is_alive and h.lifecycle_state == HeroLifecycleState.IN_PARTY:
+				h.transition_lifecycle_state(HeroLifecycleState.BATTLE_ACTIVE)
+
 	_update_snapshot()
 	state_changed.emit(_current_state.clone())
 	return true
@@ -986,9 +1215,10 @@ func execute_battle(seed_val: int = 42) -> Dictionary:
 			if eq is EquipmentModel:
 				deployment_equipment_snapshot.append((eq as EquipmentModel).clone())
 
+	var battle_heroes: Array = get_active_battle_heroes()
 	var result: Dictionary = _simulation_runner.run_battle(
 		battle_population,
-		_heroes,
+		battle_heroes,
 		deployment_equipment_snapshot,
 		_fortress,
 		_current_wave_data,
@@ -1065,13 +1295,30 @@ func proceed_from_result() -> bool:
 				if hero_obj.fatigue >= 30:
 					hero_obj.rest(20)
 
-		# 3b. Hero permadeath equipment return to shared warehouse (Phase 3C)
+		# 3b. Pasca-tempur pahlawan: transisi survivor kembali ke IN_PARTY dan permadeath cleanup
 		for h in _heroes:
-			if h is HeroModel and not (h as HeroModel).is_alive:
-				var dead_hero_items: Array = (h as HeroModel).clear_equipment()
-				for item in dead_hero_items:
-					if item is EquipmentModel:
-						_return_equipment_to_warehouse(item as EquipmentModel)
+			if h is HeroModel:
+				var hero_obj: HeroModel = h as HeroModel
+				if hero_obj.is_alive and hero_obj.lifecycle_state == HeroLifecycleState.BATTLE_ACTIVE:
+					hero_obj.transition_lifecycle_state(HeroLifecycleState.IN_PARTY)
+				elif not hero_obj.is_alive:
+					# Permadeath cleanup:
+					# 1. Kembalikan seluruh perlengkapan ke gudang bersama tepat 1x
+					var dead_hero_items: Array = hero_obj.clear_equipment()
+					for item in dead_hero_items:
+						if item is EquipmentModel:
+							_return_equipment_to_warehouse(item as EquipmentModel)
+					# 2. Hapus keanggotaan regu dan kosongkan leader jika almarhum adalah leader
+					for p in _parties:
+						if p is PartyModel:
+							(p as PartyModel).remove_member(hero_obj.hero_id)
+					hero_obj.clear_party_assignment()
+					hero_obj.lifecycle_state = HeroLifecycleState.PERMADEATH
+					# 3. Hapus catatan kemitraan (chemistry) referensi almarhum dari semua hero hidup
+					for other in _heroes:
+						if other is HeroModel and (other as HeroModel).hero_id != hero_obj.hero_id:
+							(other as HeroModel).chemistry_map.erase(hero_obj.hero_id)
+					hero_obj.chemistry_map.clear()
 					
 		# 4. Pertumbuhan alami populasi via existing PopulationModel.grow_population()
 		_population.grow_population(0.08)
@@ -1156,6 +1403,12 @@ func _init_default_domain_models() -> void:
 	_heroes.append(h1)
 	_heroes.append(h2)
 
+	_parties = []
+	var p1 := PartyModel.new(PartyModel.PARTY_1_ID, "Party 1", true)
+	var p2 := PartyModel.new(PartyModel.PARTY_2_ID, "Party 2", false)
+	_parties.append(p1)
+	_parties.append(p2)
+
 	_warehouse = []
 	_warehouse.append(EquipmentModel.new("SWORD", 1, 100, 10))
 	_warehouse.append(EquipmentModel.new("SHIELD", 1, 100, 10))
@@ -1239,6 +1492,7 @@ func _update_snapshot() -> void:
 				"chemistry_map": hero.chemistry_map.duplicate(true),
 				"effective_atk": hero.get_effective_atk(),
 				"effective_def": hero.get_effective_def(),
+				"party_id": hero.party_id,
 				"unlocked_skills": hero.get_unlocked_skills(),
 				"talent_points": hero.talent_points,
 				"allocated_talents": hero.allocated_talents.duplicate(true),
@@ -1248,6 +1502,11 @@ func _update_snapshot() -> void:
 				"secondary_equipment": hero.secondary_equipment.role_type if hero.secondary_equipment != null else "NONE",
 				"armor_equipment": hero.armor_equipment.role_type if hero.armor_equipment != null else "NONE"
 			})
+
+	_current_state.parties_data = []
+	for p in _parties:
+		if p is PartyModel:
+			_current_state.parties_data.append((p as PartyModel).to_dictionary())
 
 	_current_state.warehouse_data = []
 	for item in _warehouse:

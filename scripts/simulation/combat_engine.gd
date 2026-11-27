@@ -80,10 +80,6 @@ func simulate_battle(population: PopulationModel, heroes: Array, warehouse_equip
 			var hero_obj: HeroModel = h as HeroModel
 			hero_total_atk += float(hero_obj.get_effective_atk(party_hero_ids))
 			hero_obj.add_fatigue(15) # Menambah kelelahan per battle
-			# Tingkatkan chemistry antar hero aktif di party
-			for other_id in party_hero_ids:
-				if str(other_id) != hero_obj.hero_id:
-					hero_obj.add_chemistry(str(other_id), 2)
 					
 	var melee_total_power: float = sword_power + heavy_power + merc_power + hero_total_atk
 	
@@ -149,8 +145,16 @@ func simulate_battle(population: PopulationModel, heroes: Array, warehouse_equip
 			surviving_heroes.append(h as HeroModel)
 	var exp_distribution: Dictionary = distribute_battle_exp(total_battle_exp, surviving_heroes)
 	var exp_gained_per_hero: int = total_battle_exp / maxi(1, surviving_heroes.size()) if not surviving_heroes.is_empty() else 0
+
+	# 5.D: Kemitraan (Chemistry) antar pahlawan yang selamat bertarung bersama (tepat 1x per pasangan)
+	for i in range(surviving_heroes.size()):
+		var h_a: HeroModel = surviving_heroes[i] as HeroModel
+		for j in range(i + 1, surviving_heroes.size()):
+			var h_b: HeroModel = surviving_heroes[j] as HeroModel
+			h_a.add_chemistry(h_b.hero_id, 2)
+			h_b.add_chemistry(h_a.hero_id, 2)
 			
-	# 5.D: Hasil Pertempuran & Loot Emas
+	# 5.E: Hasil Pertempuran & Loot Emas
 	var is_victory: bool = not fortress.is_destroyed() and (breach_threat <= int(fortress.max_hp * 0.40))
 	var loot_gold: int = 0
 	if is_victory:
