@@ -1556,7 +1556,7 @@ func _render_stage_actions(snapshot: GameStateSnapshot) -> void:
 			var cmd_hbox := HBoxContainer.new()
 			_panel_stage_actions.add_child(cmd_hbox)
 
-			var commands := ["HOLD", "ADVANCE", "RETREAT", "PROTECT", "FOCUS", "FOLLOW"]
+			var commands := ["HOLD", "ADVANCE", "MOVE", "RETREAT", "PROTECT", "FOCUS", "FOLLOW"]
 			for cmd in commands:
 				var btn_cmd := Button.new()
 				btn_cmd.text = cmd
@@ -2083,9 +2083,30 @@ func _action_start_battle() -> void:
 func _send_command(cmd_type: String) -> void:
 	if controller == null:
 		return
-	var ok: bool = controller.send_commander_command(cmd_type)
+	var ok: bool = false
+	match cmd_type:
+		"ADVANCE":
+			ok = controller.command_advance("party_1", "CENTER_APPROACH")
+		"MOVE":
+			ok = controller.command_move("party_1", "WALL")
+		"HOLD":
+			ok = controller.command_hold("party_1")
+		"RETREAT":
+			ok = controller.command_retreat("party_1")
+		"PROTECT":
+			ok = controller.command_protect("party_1", "FORTRESS")
+		"FOCUS":
+			ok = controller.command_focus_target("party_1", "ORC_FRONTLINE")
+		"FOLLOW":
+			var depls = controller.coordinator.get_active_deployments() if controller.coordinator else []
+			var t_id = depls[0].composition_id if depls.size() > 0 else "party_1"
+			ok = controller.command_follow("party_1", t_id) if t_id != "party_1" else controller.command_hold("party_1")
+		_:
+			ok = controller.send_commander_command(cmd_type)
 	if ok:
-		_set_feedback("[COMMAND] Commander Command dikirim: [%s] (Pipeline logged)." % cmd_type)
+		_set_feedback("[COMMAND] Commander Command dieksekusi: [%s]." % cmd_type)
+	else:
+		_set_feedback("[COMMAND DITOLAK] Commander Command [%s] tidak sah untuk situasi saat ini." % cmd_type)
 
 
 func _set_feedback(msg: String) -> void:

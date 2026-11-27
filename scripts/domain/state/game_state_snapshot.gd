@@ -49,6 +49,10 @@ var battle_deployments_data: Array = []
 var battle_party_data: Dictionary = {}
 var battle_aura_data: Dictionary = {}
 
+# Phase 6D Commander Commands Execution Fields
+var command_history: Array = []
+var active_commander_intents: Dictionary = {}
+
 
 func _init(p_tick: int = 0, p_session_id: String = "", p_state_name: String = "INITIAL", p_metadata: Dictionary = {}) -> void:
 	tick = p_tick
@@ -107,6 +111,8 @@ func clone() -> GameStateSnapshot:
 	copy.battle_deployments_data = battle_deployments_data.duplicate(true)
 	copy.battle_party_data = battle_party_data.duplicate(true)
 	copy.battle_aura_data = battle_aura_data.duplicate(true)
+	copy.command_history = command_history.duplicate(true)
+	copy.active_commander_intents = active_commander_intents.duplicate(true)
 	return copy
 
 
@@ -141,7 +147,9 @@ func to_dictionary() -> Dictionary:
 		"active_construction_data": active_construction_data.duplicate(true),
 		"battle_deployments_data": battle_deployments_data.duplicate(true),
 		"battle_party_data": battle_party_data.duplicate(true),
-		"battle_aura_data": battle_aura_data.duplicate(true)
+		"battle_aura_data": battle_aura_data.duplicate(true),
+		"command_history": command_history.duplicate(true),
+		"active_commander_intents": active_commander_intents.duplicate(true)
 	}
 
 
@@ -202,5 +210,9 @@ static func from_dictionary(data: Dictionary) -> GameStateSnapshot:
 		snapshot.battle_party_data = (data["battle_party_data"] as Dictionary).duplicate(true)
 	if data.has("battle_aura_data") and data["battle_aura_data"] is Dictionary:
 		snapshot.battle_aura_data = (data["battle_aura_data"] as Dictionary).duplicate(true)
+	if data.has("command_history") and data["command_history"] is Array:
+		snapshot.command_history = (data["command_history"] as Array).duplicate(true)
+	if data.has("active_commander_intents") and data["active_commander_intents"] is Dictionary:
+		snapshot.active_commander_intents = (data["active_commander_intents"] as Dictionary).duplicate(true)
 	
 	return snapshot

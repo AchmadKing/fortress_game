@@ -465,11 +465,67 @@ func start_battle() -> bool:
 	return ok
 
 
-func send_commander_command(command_type: String, target_group: String = "ALL", target_id: String = "") -> bool:
+func send_commander_command(command_type: String, target_group: String = "ALL", target_id: String = "", target_zone: String = "", target_enemy: String = "", target_entity: String = "") -> bool:
 	if coordinator == null:
 		return false
-	var cmd := CommanderCommand.new(command_type, target_group, target_id)
+	var cmd := CommanderCommand.new(command_type, target_group, target_id, 0, target_zone, target_enemy, target_entity)
 	return coordinator.send_commander_command(cmd)
+
+
+# ==============================================================================
+# PHASE 6D: COMMANDER COMMANDS CONVENIENCE METHODS
+# ==============================================================================
+
+func command_advance(source_id: String = "party_1", target_zone: String = "") -> bool:
+	return send_commander_command(CommanderCommand.TYPE_ADVANCE, source_id, target_zone, target_zone)
+
+
+func command_move(source_id: String = "party_1", target_zone: String = "") -> bool:
+	return send_commander_command(CommanderCommand.TYPE_MOVE, source_id, target_zone, target_zone)
+
+
+func command_hold(source_id: String = "party_1") -> bool:
+	return send_commander_command(CommanderCommand.TYPE_HOLD_POSITION, source_id)
+
+
+func command_retreat(source_id: String = "party_1") -> bool:
+	return send_commander_command(CommanderCommand.TYPE_RETREAT, source_id)
+
+
+func command_protect(source_id: String = "party_1", target: String = "FORTRESS") -> bool:
+	return send_commander_command(CommanderCommand.TYPE_PROTECT, source_id, target, "", "", target)
+
+
+func command_focus_target(source_id: String = "party_1", enemy_target: String = "") -> bool:
+	return send_commander_command(CommanderCommand.TYPE_FOCUS_TARGET, source_id, enemy_target, "", enemy_target)
+
+
+func command_follow(source_id: String = "party_1", friendly_target: String = "") -> bool:
+	return send_commander_command(CommanderCommand.TYPE_FOLLOW, source_id, friendly_target, "", "", friendly_target)
+
+
+func get_last_commander_command() -> CommanderCommand:
+	if coordinator == null:
+		return null
+	return coordinator.get_last_commander_command()
+
+
+func get_command_history() -> Array:
+	if coordinator == null:
+		return []
+	return coordinator.get_command_history()
+
+
+func get_active_commander_intents() -> Dictionary:
+	if coordinator == null:
+		return {}
+	return coordinator.get_active_commander_intents()
+
+
+func get_retreat_target_zone(current_zone: String) -> String:
+	if coordinator == null:
+		return "FORTRESS"
+	return coordinator.get_retreat_target_zone(current_zone)
 
 
 func toggle_pause() -> void:

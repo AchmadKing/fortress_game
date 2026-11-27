@@ -694,9 +694,10 @@ Untuk mencegah *scope creep* dan mematuhi prinsip kehati-hatian, Phase 6 dipecah
 - **Sub-Phase 6C: Unit Formations, Party 1 & Aura Mechanics** — [x] **COMPLETED / VERIFIED**
   - Integrasi penempatan Party 1 dan regu serdadu agregat ke zona, formasi taktis (Frontline, Backline, Support), serta mekanika aura pasif kepemimpinan & chemistry.
   - Test suite `tests/test_phase6c_unit_formations_party_aura.gd` (37/37 PASS, 50-wave participation stress PASS).
-- **Sub-Phase 6D: Commander Commands Execution** — [ ] **NEXT / LOCKED**
-  - Pengaktifan pipeline operasional 6 perintah taktis komandan.
-- **Sub-Phase 6E: Fortress Damage Routing & Casualty Resolution**
+- **Sub-Phase 6D: Commander Commands Execution** — [x] **COMPLETED / VERIFIED**
+  - Pengaktifan pipeline operasional 7 perintah taktis komandan (ADVANCE, MOVE, HOLD_POSITION, RETREAT, PROTECT, FOCUS_TARGET, FOLLOW).
+  - Test suite `tests/test_phase6d_commander_commands.gd` (50/50 PASS, 1.000-command stress simulation PASS).
+- **Sub-Phase 6E: Fortress Damage Routing & Casualty Resolution** — [ ] **NEXT / LOCKED**
   - Integrasi kerusakan terarah ke Wall/Gate/Fortress dan resolusi korban serdadu/perlengkapan Phase 3D.
 - **Sub-Phase 6F: Tactical Battle UI & Verification Gate**
   - Integrasi tampilan medan perang pada `PrototypeDebugView`, full test suite (85+ tests), 50-wave stress test, full regression (18 suites), dan Scene Smoke Playtest.
@@ -710,7 +711,7 @@ Phase 6 dinyatakan selesai dan siap ditutup hanya jika memenuhi seluruh kriteria
 2. [x] 6 arketipe musuh muncul sesuai kurva gelombang dan bertindak deterministik (Phase 6A VERIFIED).
 3. [x] Party 1 bertarung aktif; Party 2 dan cadangan terisolasi penuh dari bahaya (Phase 6C VERIFIED).
 4. [x] Serdadu agregat bertarung berdasarkan kuantitas, gear, dan moral tanpa instansiasi node per prajurit (Phase 6C VERIFIED).
-5. [ ] 6 perintah komandan dapat dikirimkan dan memengaruhi pergerakan/efektivitas regu secara nyata.
+5. [x] 6 perintah komandan dapat dikirimkan dan memengaruhi pergerakan/efektivitas regu secara nyata (Phase 6D VERIFIED).
 6. [x] Pertempuran dapat dijeda (*pause*) dan diatur kecepatannya (1x, 2x, 4x) (Phase 6B VERIFIED).
 7. [ ] Kerusakan struktur benteng terdistribusi bertingkat (Gate/Wall lalu Fortress).
 8. [ ] Aturan korban prajurit ($35\%$ hancur, $65\%$ rusak) dan kembalinya gear pahlawan permadeath bekerja presisi.

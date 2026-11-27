@@ -4,6 +4,42 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.6.4] - Phase 6D: Commander Commands Execution
+
+### Added
+- **Commander Command DTO & Canonical Types** (`scripts/domain/command/commander_command.gd`):
+  - 7 perintah taktis kanonikal: `ADVANCE`, `MOVE`, `HOLD_POSITION`, `RETREAT`, `PROTECT`, `FOCUS_TARGET`, `FOLLOW`, beserta alias kanonikal `HOLD` dan `FOCUS`.
+  - Normalisasi deterministik `CommanderCommand.normalize_type()` dan validasi `is_valid_type()`.
+  - Bidang DTO komprehensif: `command_type`, `source_id`, `target_zone`, `target_enemy_id`, `target_enemy_type`, `target_entity_id`, `target_id`, `issued_at_battle_tick`, `issued_at_tick`, `sequence_id`, `status`.
+  - Serialisasi round-trip `to_dictionary()` dan `from_dictionary()` serta duplikasi mendalam `clone()`.
+- **Domain Tactical Intent State** (`scripts/domain/model/party_model.gd`, `scripts/domain/model/deployment_composition.gd`):
+  - Bidang intensi taktis pada model `PartyModel` dan `DeploymentComposition`: `tactical_intent`, `protected_target`, `focus_target`, `following_target`.
+  - Metode domain `set_tactical_intent()` dan `reset_tactical_intent()`.
+  - Dukungan serialisasi dan kloning penuh.
+- **Commander Command Pipeline & Orchestration** (`scripts/application/coordinators/game_coordinator.gd`, `scripts/presentation/controllers/game_controller.gd`):
+  - Metode `send_commander_command(command)` pada `GameCoordinator` dengan validasi ketat:
+    - Perintah hanya diizinkan saat `GameplayStateMachine.STATE_BATTLE`.
+    - Resolusi entitas asal: `party_1` atau ID regu `DeploymentComposition` yang valid.
+    - Isolasi total Party 2: perintah yang melibatkan `party_2` ditolak keras.
+    - Validasi topologi perpindahan: `MOVE` dan `ADVANCE` harus menuju zona bertetangga kanonikal (`BattlefieldZone.CANONICAL_ADJACENCY`), dilarang melompat zona, dilarang masuk ke `OUTER_FIELD`, dan dilarang berpindah ke zona yang sama.
+    - Aturan mundur terarah kanonikal (`get_retreat_target_zone`): `CENTER_APPROACH -> GATE`, `LEFT_FLANK -> WALL`, `RIGHT_FLANK -> WALL`, `GATE -> FORTRESS`, `WALL -> FORTRESS`, `FORTRESS -> FORTRESS`, `OUTER_FIELD -> GATE`.
+    - Perintah `HOLD_POSITION`: menetapkan intensi bertahan pada zona saat ini tanpa mengubah zona.
+    - Perintah `PROTECT`: menetapkan target perlindungan kawan (zona atau entitas) tanpa memutasi zona.
+    - Perintah `FOCUS_TARGET`: menetapkan fokus prioritas arketipe atau kelompok musuh.
+    - Perintah `FOLLOW`: menetapkan target kawalan entitas kawan yang sah, menolak menargetkan diri sendiri.
+  - Logging urutan eksekusi berstempel `battle_tick` dan penomoran ID sekuensial monotonik.
+  - Helper methods pada `GameController`: `command_advance()`, `command_move()`, `command_hold()`, `command_retreat()`, `command_protect()`, `command_focus_target()`, `command_follow()`.
+- **Snapshot Integration & UI Telemetry** (`scripts/domain/state/game_state_snapshot.gd`, `scripts/presentation/views/prototype_debug_view.gd`):
+  - Penambahan `command_history` (riwayat perintah berstempel waktu) dan `active_commander_intents` (pemetaan intensi aktif per entitas kawan) ke dalam `GameStateSnapshot`.
+  - Tombol aksi `MOVE` ditambahkan pada panel perintah `PrototypeDebugView`.
+- **Automated Verification Suite** (`tests/test_phase6d_commander_commands.gd`):
+  - 50 automated tests komprehensif mencakup Group A (Command Creation & DTO), Group B (Validation & Rejection), Group C (State Machine & Battle Phase Enforcement), Group D (Move & Advance Execution), Group E (Retreat Rule & Topology), Group F (Hold Position), Group G (Protect Intent), Group H (Focus Target Intent), Group I (Follow Intent), Group J (Domain Integrity & Battle Lock), Group K (Simulation Tick Ordering & Pacing), Group L (Snapshot & Telemetry), Group M (Determinism & Monotonicity), dan Group N (1.000-Command / Tick Stress Simulation).
+  - 1.000-command/tick stress simulation: PASS tanpa desinkronisasi atau inkonsistensi.
+  - Full Regression Suite: 827/827 PASS across 21 test suites.
+  - Prototype Scene Smoke Playtest: ALL PASS.
+
+---
+
 ## [0.6.3] - Phase 6C: Unit Formations, Party 1 & Aura Mechanics
 
 ### Added

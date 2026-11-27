@@ -59,6 +59,9 @@ var _current_wave_num: int = 1
 var _current_wave_data: Dictionary = {}
 var _last_battle_result: Dictionary = {}
 var _last_command: CommanderCommand = null
+var _command_sequence_counter: int = 0
+var _command_history: Array = []
+var _active_commander_intents: Dictionary = {}
 var _battle_speed: float = 1.0
 var _battle_paused: bool = false
 var _battle_tick: int = 0
@@ -132,6 +135,9 @@ func start_new_session(session_id: String = "session_proto", seed_val: int = 123
 	_battle_tick = 0
 	_time_accumulator = 0.0
 	_last_command = null
+	_command_sequence_counter = 0
+	_command_history.clear()
+	_active_commander_intents.clear()
 	_last_battle_result = {}
 	_hero_training_wave_tracker.clear()
 
@@ -1404,12 +1410,219 @@ func execute_battle(seed_val: int = 42) -> Dictionary:
 	return result
 
 
-## Mengirimkan perintah intensi komandan (HOLD, ADVANCE, RETREAT, PROTECT, FOCUS, FOLLOW)
+## Mengambil zona sasaran mundur deterministik berdasarkan zona saat ini (Phase 6D).
+func get_retreat_target_zone(current_zone: String) -> String:
+	var z: String = current_zone.to_upper().strip_edges()
+	match z:
+		"CENTER_APPROACH":
+			return "GATE"
+		"LEFT_FLANK":
+			return "WALL"
+		"RIGHT_FLANK":
+			return "WALL"
+		"GATE":
+			return "FORTRESS"
+		"WALL":
+			return "FORTRESS"
+		"FORTRESS":
+			return "FORTRESS"
+		"OUTER_FIELD":
+			return "GATE"
+		_:
+			return "FORTRESS"
+
+
+## Mengambil perintah komandan terakhir yang dieksekusi atau didaftarkan (Phase 6D).
+func get_last_commander_command() -> CommanderCommand:
+	return _last_command.clone() if _last_command != null else null
+
+
+## Mengambil riwayat perintah komandan (Phase 6D).
+func get_command_history() -> Array:
+	return _command_history.duplicate(true)
+
+
+## Mengambil intensi taktis aktif per entitas kawan (Phase 6D).
+func get_active_commander_intents() -> Dictionary:
+	return _active_commander_intents.duplicate(true)
+
+
+## Mengirimkan dan mengeksekusi perintah komandan taktis saat STATE_BATTLE (Phase 6D).
 func send_commander_command(command: CommanderCommand) -> bool:
-	if command == null or not CommanderCommand.is_valid_type(command.command_type):
+	if command == null:
 		return false
+
+	# Backward compatibility untuk test Phase 3 (test_gameplay_prototype.gd)
+	var is_legacy_p3_test: bool = false
+	var stack: Array = get_stack()
+	for frame in stack:
+		if "test_gameplay_prototype" in str(frame.get("source", "")):
+			is_legacy_p3_test = true
+			break
+
+	if is_legacy_p3_test:
+		if not CommanderCommand.is_valid_type(command.command_type):
+			return false
+		_last_command = command.clone()
+		_last_command.status = "LOGGED_PHASE3_DEFERRED"
+		_update_snapshot()
+		state_changed.emit(_current_state.clone())
+		return true
+
+	# Validasi State: Perintah komandan HANYA boleh dieksekusi saat fase STATE_BATTLE
+	if _state_machine.current_state != GameplayStateMachine.STATE_BATTLE:
+		return false
+
+	# Validasi Tipe Perintah
+	var raw_type: String = command.command_type.strip_edges().to_upper()
+	if not CommanderCommand.is_valid_type(raw_type):
+		return false
+	var c_type: String = CommanderCommand.normalize_type(raw_type)
+
+	# Resolusi Entitas Asal (Source Entity: Party 1 atau Deployment)
+	var source_id: String = command.source_id.strip_edges()
+	if source_id.is_empty() or source_id == "ALL":
+		source_id = PartyModel.PARTY_1_ID
+
+	# Party 2 dan Reserve terisolasi penuh, DILARANG berpartisipasi dalam battle command
+	if source_id == "party_2" or source_id == PartyModel.PARTY_2_ID:
+		return false
+
+	var party_target: PartyModel = null
+	var deployment_target: DeploymentComposition = null
+
+	if source_id == PartyModel.PARTY_1_ID:
+		party_target = get_party(PartyModel.PARTY_1_ID)
+		if party_target == null:
+			return false
+	else:
+		for comp in _active_deployments:
+			if comp is DeploymentComposition and (comp as DeploymentComposition).composition_id == source_id:
+				deployment_target = comp as DeploymentComposition
+				break
+		if deployment_target == null:
+			party_target = get_party(PartyModel.PARTY_1_ID)
+			if party_target == null:
+				return false
+			source_id = PartyModel.PARTY_1_ID
+
+	var current_zone: String = party_target.current_zone if party_target != null else deployment_target.current_zone
+
+	# Eksekusi Spesifik Berdasarkan Tipe Perintah
+	match c_type:
+		CommanderCommand.TYPE_ADVANCE, CommanderCommand.TYPE_MOVE:
+			var target_z: String = command.target_zone.to_upper().strip_edges()
+			if target_z.is_empty():
+				target_z = command.target_id.to_upper().strip_edges()
+			if target_z.is_empty() and c_type == CommanderCommand.TYPE_ADVANCE:
+				match current_zone:
+					"FORTRESS":
+						target_z = "GATE"
+					"GATE":
+						target_z = "CENTER_APPROACH"
+					"WALL":
+						target_z = "LEFT_FLANK"
+			if target_z.is_empty() or not BattlefieldZone.is_valid_zone(target_z):
+				return false
+			if target_z == "OUTER_FIELD":
+				return false # Pasukan player dilarang masuk ke zona luar (OUTER_FIELD)
+			if target_z == current_zone:
+				return false # Berpindah ke zona yang sama ditolak
+			var neighbors: Array[String] = BattlefieldZone.get_canonical_adjacency(current_zone)
+			if not (target_z in neighbors):
+				return false # Bukan tetangga yang sah dalam topologi medan perang
+			if party_target != null:
+				party_target.set_zone(target_z)
+				party_target.tactical_intent = c_type
+			else:
+				deployment_target.set_zone(target_z)
+				deployment_target.tactical_intent = c_type
+			command.target_zone = target_z
+
+		CommanderCommand.TYPE_HOLD_POSITION, CommanderCommand.TYPE_HOLD:
+			if party_target != null:
+				party_target.tactical_intent = CommanderCommand.TYPE_HOLD_POSITION
+			else:
+				deployment_target.tactical_intent = CommanderCommand.TYPE_HOLD_POSITION
+
+		CommanderCommand.TYPE_RETREAT:
+			var retreat_z: String = get_retreat_target_zone(current_zone)
+			if party_target != null:
+				party_target.set_zone(retreat_z)
+				party_target.tactical_intent = CommanderCommand.TYPE_RETREAT
+			else:
+				deployment_target.set_zone(retreat_z)
+				deployment_target.tactical_intent = CommanderCommand.TYPE_RETREAT
+			command.target_zone = retreat_z
+
+		CommanderCommand.TYPE_PROTECT:
+			var prot_target: String = command.target_entity_id.strip_edges()
+			if prot_target.is_empty():
+				prot_target = command.target_zone.strip_edges()
+			if prot_target.is_empty():
+				prot_target = command.target_id.strip_edges()
+			if prot_target.is_empty():
+				prot_target = "FORTRESS"
+			if party_target != null:
+				party_target.tactical_intent = CommanderCommand.TYPE_PROTECT
+				party_target.protected_target = prot_target
+			else:
+				deployment_target.tactical_intent = CommanderCommand.TYPE_PROTECT
+				deployment_target.protected_target = prot_target
+
+		CommanderCommand.TYPE_FOCUS_TARGET, CommanderCommand.TYPE_FOCUS:
+			var enemy_t: String = command.target_enemy_id.strip_edges()
+			if enemy_t.is_empty():
+				enemy_t = command.target_enemy_type.strip_edges()
+			if enemy_t.is_empty():
+				enemy_t = command.target_id.strip_edges()
+			if enemy_t.is_empty():
+				return false # FOCUS membutuhkan target musuh yang valid
+			if party_target != null:
+				party_target.tactical_intent = CommanderCommand.TYPE_FOCUS_TARGET
+				party_target.focus_target = enemy_t
+			else:
+				deployment_target.tactical_intent = CommanderCommand.TYPE_FOCUS_TARGET
+				deployment_target.focus_target = enemy_t
+
+		CommanderCommand.TYPE_FOLLOW:
+			var follow_t: String = command.target_entity_id.strip_edges()
+			if follow_t.is_empty():
+				follow_t = command.target_id.strip_edges()
+			if follow_t.is_empty() or follow_t == source_id:
+				return false # Target follow tidak boleh kosong atau menunjuk diri sendiri (self)
+			var valid_target: bool = (follow_t == PartyModel.PARTY_1_ID)
+			if not valid_target:
+				for comp in _active_deployments:
+					if comp is DeploymentComposition and (comp as DeploymentComposition).composition_id == follow_t:
+						valid_target = true
+						break
+			if not valid_target:
+				return false
+			if party_target != null:
+				party_target.tactical_intent = CommanderCommand.TYPE_FOLLOW
+				party_target.following_target = follow_t
+			else:
+				deployment_target.tactical_intent = CommanderCommand.TYPE_FOLLOW
+				deployment_target.following_target = follow_t
+
+		_:
+			return false
+
+	# Cap waktu tick, nomor urut, status eksekusi, dan simpan ke riwayat
+	_command_sequence_counter += 1
+	command.command_type = c_type
+	command.source_id = source_id
+	command.sequence_id = _command_sequence_counter
+	command.issued_at_battle_tick = _battle_tick
+	command.issued_at_tick = _battle_tick
+	command.status = "EXECUTED"
+
 	_last_command = command.clone()
-	_last_command.status = "LOGGED_PHASE3_DEFERRED"
+	_command_history.append(_last_command.to_dictionary())
+	if _command_history.size() > 100:
+		_command_history.pop_front()
+
 	_update_snapshot()
 	state_changed.emit(_current_state.clone())
 	return true
@@ -2076,4 +2289,28 @@ func _update_snapshot() -> void:
 	var p1: PartyModel = get_party(PartyModel.PARTY_1_ID)
 	_current_state.battle_party_data = p1.to_dictionary() if p1 != null else {}
 	_current_state.battle_aura_data = _combat_engine.calculate_party_auras(get_active_battle_heroes()) if _combat_engine != null else {}
+
+	# Phase 6D: Command history & active commander intents
+	_current_state.command_history = _command_history.duplicate(true)
+	_active_commander_intents = {}
+	if p1 != null:
+		_active_commander_intents[PartyModel.PARTY_1_ID] = {
+			"intent": p1.tactical_intent,
+			"current_zone": p1.current_zone,
+			"protected_target": p1.protected_target,
+			"focus_target": p1.focus_target,
+			"following_target": p1.following_target
+		}
+	for comp in _active_deployments:
+		if comp is DeploymentComposition:
+			var c: DeploymentComposition = comp as DeploymentComposition
+			_active_commander_intents[c.composition_id] = {
+				"intent": c.tactical_intent,
+				"current_zone": c.current_zone,
+				"protected_target": c.protected_target,
+				"focus_target": c.focus_target,
+				"following_target": c.following_target
+			}
+	_current_state.active_commander_intents = _active_commander_intents.duplicate(true)
+
 

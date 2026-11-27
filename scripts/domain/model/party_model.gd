@@ -23,6 +23,28 @@ var member_hero_ids: Array = []
 var is_deployed_to_battle: bool = false
 var current_zone: String = "GATE"
 var formation: String = "FRONTLINE"
+var tactical_intent: String = "HOLD_POSITION"
+var protected_target: String = ""
+var focus_target: String = ""
+var following_target: String = ""
+
+
+func set_tactical_intent(intent: String, target: String = "") -> void:
+	tactical_intent = intent.strip_edges().to_upper()
+	match tactical_intent:
+		"PROTECT":
+			protected_target = target.strip_edges()
+		"FOCUS", "FOCUS_TARGET":
+			focus_target = target.strip_edges()
+		"FOLLOW":
+			following_target = target.strip_edges()
+
+
+func reset_tactical_intent() -> void:
+	tactical_intent = "HOLD_POSITION"
+	protected_target = ""
+	focus_target = ""
+	following_target = ""
 
 
 func _init(
@@ -145,6 +167,10 @@ func clone() -> PartyModel:
 	p.member_hero_ids = member_hero_ids.duplicate()
 	p.current_zone = current_zone
 	p.formation = formation
+	p.tactical_intent = tactical_intent
+	p.protected_target = protected_target
+	p.focus_target = focus_target
+	p.following_target = following_target
 	return p
 
 
@@ -186,7 +212,11 @@ func to_dictionary() -> Dictionary:
 		"is_full": is_full(),
 		"is_deployed_to_battle": is_deployed_to_battle,
 		"current_zone": current_zone,
-		"formation": formation
+		"formation": formation,
+		"tactical_intent": tactical_intent,
+		"protected_target": protected_target,
+		"focus_target": focus_target,
+		"following_target": following_target
 	}
 
 
@@ -201,6 +231,10 @@ static func from_dictionary(data: Dictionary) -> PartyModel:
 
 	var p := PartyModel.new(pid, pname, dep, czone, form)
 	p.leader_hero_id = str(data.get("leader_hero_id", ""))
+	p.tactical_intent = str(data.get("tactical_intent", "HOLD_POSITION"))
+	p.protected_target = str(data.get("protected_target", ""))
+	p.focus_target = str(data.get("focus_target", ""))
+	p.following_target = str(data.get("following_target", ""))
 	if data.has("member_hero_ids") and data["member_hero_ids"] is Array:
 		for m in data["member_hero_ids"]:
 			p.member_hero_ids.append(str(m))

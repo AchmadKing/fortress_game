@@ -111,8 +111,8 @@ High-level roadmap pengembangan proyek `fortress_game`.
   - **Phase 6A — Battlefield Zones & Enemy Foundation**: COMPLETED / VERIFIED (Commit `bd75c12`, 30 tests PASS).
   - **Phase 6B — Simulation Tick Loop & Pacing Controls**: COMPLETED / VERIFIED (33 tests PASS, 10.000-tick stress PASS).
   - **Phase 6C — Unit Formations, Party 1 & Aura Mechanics**: COMPLETED / VERIFIED (37 tests PASS, 50-wave participation stress PASS).
-  - **Phase 6D — Commander Commands Execution**: NEXT / LOCKED
-  - **Phase 6E — Fortress Damage Routing & Casualty Resolution**: LOCKED
+  - **Phase 6D — Commander Commands Execution**: COMPLETED / VERIFIED (50 tests PASS, 1.000-command stress test PASS).
+  - **Phase 6E — Fortress Damage Routing & Casualty Resolution**: NEXT / LOCKED
   - **Phase 6F — Tactical Battle UI & Verification Gate**: LOCKED
   - Topologi medan perang 7 zona kanonikal (`OUTER_FIELD`, `LEFT_FLANK`, `CENTER_APPROACH`, `RIGHT_FLANK`, `WALL`, `GATE`, `FORTRESS`).
   - Loop simulasi real-time berbasis tick deterministik dengan kontrol tempo (Pause, 1x, 2x, 4x) ringan tanpa physics engine.

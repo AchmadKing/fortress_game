@@ -27,6 +27,28 @@ var resolved_role: String = "SWORDSMAN" # Derived role for CombatEngine
 var reserved_equipment: Array = []      # Array[EquipmentModel] instances reserved for this group
 var current_zone: String = "GATE"       # Canonical battlefield zone (Phase 6C)
 var formation: String = FORMATION_FRONTLINE # Canonical tactical stance (Phase 6C)
+var tactical_intent: String = "HOLD_POSITION" # Canonical commander intent (Phase 6D)
+var protected_target: String = ""
+var focus_target: String = ""
+var following_target: String = ""
+
+
+func set_tactical_intent(intent: String, target: String = "") -> void:
+	tactical_intent = intent.strip_edges().to_upper()
+	match tactical_intent:
+		"PROTECT":
+			protected_target = target.strip_edges()
+		"FOCUS", "FOCUS_TARGET":
+			focus_target = target.strip_edges()
+		"FOLLOW":
+			following_target = target.strip_edges()
+
+
+func reset_tactical_intent() -> void:
+	tactical_intent = "HOLD_POSITION"
+	protected_target = ""
+	focus_target = ""
+	following_target = ""
 
 
 func _init(
@@ -125,6 +147,10 @@ func clone() -> RefCounted:
 	copy.resolved_role = resolved_role
 	copy.current_zone = current_zone
 	copy.formation = formation
+	copy.tactical_intent = tactical_intent
+	copy.protected_target = protected_target
+	copy.focus_target = focus_target
+	copy.following_target = following_target
 	copy.reserved_equipment = []
 	for eq in reserved_equipment:
 		if eq != null and eq.has_method("clone"):
@@ -153,6 +179,10 @@ func to_dictionary() -> Dictionary:
 		"resolved_role": resolved_role,
 		"current_zone": current_zone,
 		"formation": formation,
+		"tactical_intent": tactical_intent,
+		"protected_target": protected_target,
+		"focus_target": focus_target,
+		"following_target": following_target,
 		"reserved_equipment": reserved_data
 	}
 
@@ -171,6 +201,10 @@ static func from_dictionary(data: Dictionary) -> RefCounted:
 	comp.resolved_role = str(data.get("resolved_role", comp.resolved_role))
 	comp.current_zone = p_zone
 	comp.formation = p_formation
+	comp.tactical_intent = str(data.get("tactical_intent", "HOLD_POSITION"))
+	comp.protected_target = str(data.get("protected_target", ""))
+	comp.focus_target = str(data.get("focus_target", ""))
+	comp.following_target = str(data.get("following_target", ""))
 	
 	if data.has("reserved_equipment") and data["reserved_equipment"] is Array:
 		var EquipmentModelScript = preload("res://scripts/domain/model/equipment_model.gd")

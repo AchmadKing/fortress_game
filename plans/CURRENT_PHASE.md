@@ -6,8 +6,8 @@
 - **Phase 6A — Battlefield Zones & Enemy Foundation**: **COMPLETED / VERIFIED**
 - **Phase 6B — Simulation Tick Loop & Pacing Controls**: **COMPLETED / VERIFIED**
 - **Phase 6C — Unit Formations, Party 1 & Aura Mechanics**: **COMPLETED / VERIFIED**
-- **Phase 6D — Commander Commands Execution**: **NEXT / LOCKED** (Menunggu persetujuan eksplisit developer)
-- **Phase 6E — Fortress Damage Routing & Casualty Resolution**: **LOCKED**
+- **Phase 6D — Commander Commands Execution**: **COMPLETED / VERIFIED**
+- **Phase 6E — Fortress Damage Routing & Casualty Resolution**: **NEXT / LOCKED** (Menunggu persetujuan eksplisit developer)
 - **Phase 6F — Tactical Battle UI & Verification Gate**: **LOCKED**
 - **Phase 7+**: **LOCKED**
 
@@ -59,7 +59,18 @@ Dokumen perencanaan teknis dan arsitektur komprehensif Phase 6 tersedia di [plan
     - Deterministic 50-Wave Participation & Stress Test: PASS tanpa degradasi, kebocoran, atau inkonsistensi konservasi prajurit.
     - Full Regression Suite: 777/777 PASS (20 test suites).
     - Prototype Scene Smoke Playtest: ALL PASS.
-  - **Phase 6D — Commander Commands Execution**: **NEXT / LOCKED**
+  - **Phase 6D — Commander Commands Execution**: **COMPLETED / VERIFIED**
+    - 7 Perintah Taktis Kanonikal: `ADVANCE`, `MOVE`, `HOLD_POSITION`, `RETREAT`, `PROTECT`, `FOCUS_TARGET`, `FOLLOW`, beserta alias kanonikal (`HOLD`, `FOCUS`) via `CommanderCommand`.
+    - Aturan Mundur Kanonikal Deterministik (`get_retreat_target_zone`): `CENTER_APPROACH -> GATE`, `LEFT_FLANK -> WALL`, `RIGHT_FLANK -> WALL`, `GATE -> FORTRESS`, `WALL -> FORTRESS`, `FORTRESS -> FORTRESS`, `OUTER_FIELD -> GATE`.
+    - Validasi Topologi Pergerakan: Perintah `MOVE` dan `ADVANCE` mematuhi graf ketetanggaan `BattlefieldZone.CANONICAL_ADJACENCY`, penolakan pergerakan melompat, penolakan pindah ke zona yang sama, dan larangan mutlak masuk zona musuh `OUTER_FIELD`.
+    - Validasi State Ketat: Perintah komandan HANYA boleh dieksekusi saat fase `STATE_BATTLE`. Ditolak keras pada fase `BOOT`, `PREPARATION`, `WAVE_PREVIEW`, `RESULT`, `RECOVERY`, dan `GAME_OVER`.
+    - Isolasi Penuh Party 2: Seluruh perintah komandan yang menargetkan atau bersumber dari Party 2 ditolak keras.
+    - Pelestarian Battle Lock & Invarian Konservasi: Eksekusi perintah komandan tidak mengubah status penguncian peralatan, tidak memutasi populasi, tidak mengubah HP benteng, dan tidak menimbulkan korban serdadu atau jarahan.
+    - Integrasi Snapshot Read-Model: Riwayat urutan perintah berstempel `battle_tick` monotonik (`command_history`) dan pemetaan intensi aktif kawan (`active_commander_intents`) terserialisasi penuh pada `GameStateSnapshot`.
+    - Unit Tests Phase 6D: 50/50 PASS (`tests/test_phase6d_commander_commands.gd`), termasuk determinisme eksekusi dan simulasi stres 1.000 perintah/tick.
+    - Full Regression Suite: 827/827 PASS across 21 test suites.
+    - Prototype Scene Smoke Playtest: ALL PASS.
+  - **Phase 6E — Fortress Damage Routing & Casualty Resolution**: **NEXT / LOCKED**
 - **Phase 7 — Economy & Progression**: **LOCKED**
 - **Phase 8 — Content Implementation**: **LOCKED**
 - **Phase 9 — Visual / UI / Pixel Art Integration**: **LOCKED**
@@ -70,6 +81,6 @@ Dokumen perencanaan teknis dan arsitektur komprehensif Phase 6 tersedia di [plan
 ### Aturan & Batasan Saat Ini
 
 > [!IMPORTANT]
-> **PHASE 6C TELAH SELESAI DAN TERVERIFIKASI (COMPLETED & VERIFIED).**
-> **PHASE 6D MASIH TERKUNCI (LOCKED)**: DILARANG memulai implementasi eksekusi perintah komandan (Commander Commands) sebelum developer memberikan izin/arahan eksplisit (*explicit developer approval*).
+> **PHASE 6D TELAH SELESAI DAN TERVERIFIKASI (COMPLETED & VERIFIED).**
+> **PHASE 6E MASIH TERKUNCI (LOCKED)**: DILARANG memulai implementasi perutean kerusakan benteng dan resolusi korban (Damage Routing & Casualty Resolution) sebelum developer memberikan izin/arahan eksplisit (*explicit developer approval*).
 > **PHASE 7+ TETAP LOCKED**: Seluruh fase lanjut tetap terkunci.
