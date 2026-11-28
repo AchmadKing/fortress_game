@@ -124,15 +124,15 @@ High-level roadmap pengembangan proyek `fortress_game`.
   - Verifikasi komprehensif: 300 tests total Phase 6 (30 + 33 + 37 + 50 + 75 + 75), 977 tests Full Regression suite, Scene Smoke Playtest PASS.
 
 ## Phase 7 — Economy & Progression
-- **Status**: PLANNED / READY FOR IMPLEMENTATION (Menunggu persetujuan eksplisit developer)
+- **Status**: IN PROGRESS
 - **Tujuan**: Membangun sistem perbendaharaan benteng terpadu (*single source of truth*), 5 sumber daya kanonikal (Gold, Monster Core, Monster Material, Basic Material, Rare Material), reward settlement loop deterministik, beban operasional & upah, sistem pedagang (*Supply Depot*), serta integrasi progresi fasilitas dan pahlawan. Spesifikasi teknis: [plans/PHASE_7_ECONOMY_PROGRESSION_PLAN.md](file:///d:/fortress_game/plans/PHASE_7_ECONOMY_PROGRESSION_PLAN.md).
-  - **Phase 7A — Resource Authority & Economy Domain Model**: PLANNED / PENDING APPROVAL (Otoritas perbendaharaan terpadu, pencegahan saldo negatif, serialisasi snapshot).
-  - **Phase 7B — Battle Reward Settlement & Loot Engine**: PLANNED (DTO BattleResult, kredit jarahan saat victory, isolasi kekalahan & pembekuan game over).
-  - **Phase 7C — Expense Normalization & Dynamic Sinks**: PLANNED (Upkeep gaji sipil/serdadu, reparasi fisik/equipment, resolusi defisit moral tanpa crash).
-  - **Phase 7D — Merchant & Supply Depot System**: PLANNED (Pedagang 4–6 slot, beli/jual material, rotasi stok deterministik berbasis seed).
-  - **Phase 7E — Fortress & Hero Progression Economy**: PLANNED (Upgrade fasilitas Level 1–5 dengan material/emas, pembukaan kapasitas barak, syarat ascension bintang 4–5).
-  - **Phase 7F — Economy & Merchant UX Integration**: PLANNED (Kartu perbendaharaan, tab pedagang, telemetri upah, target sentuh mobile $\ge 44 \times 44$ px pada `PrototypeDebugView`).
-  - **Phase 7G — Full Economy Verification & Exit Gate**: PLANNED (Suite pengujian $\ge 100$ tests, simulasi stres ekonomi 50 gelombang, Full Regression 25 suites PASS).
+  - **Phase 7A — Resource Authority & Economy Domain Model**: COMPLETED / VERIFIED (27/27 tests PASS; model domain murni `ResourceLedger`, 5 sumber daya kanonikal, transaksi atomik rollback ketat, integrasi `GameCoordinator`, `GameController`, delegasi zero-desync `EconomyManager`, dan serialisasi `GameStateSnapshot`).
+  - **Phase 7B — Battle Reward Settlement & Loot Engine**: NEXT / LOCKED (DTO BattleResult, kredit jarahan saat victory, isolasi kekalahan & pembekuan game over).
+  - **Phase 7C — Expense Normalization & Dynamic Sinks**: PLANNED / LOCKED (Upkeep gaji sipil/serdadu, reparasi fisik/equipment, resolusi defisit moral tanpa crash).
+  - **Phase 7D — Merchant & Supply Depot System**: PLANNED / LOCKED (Pedagang 4–6 slot, beli/jual material, rotasi stok deterministik berbasis seed).
+  - **Phase 7E — Fortress & Hero Progression Economy**: PLANNED / LOCKED (Upgrade fasilitas Level 1–5 dengan material/emas, pembukaan kapasitas barak, syarat ascension bintang 4–5).
+  - **Phase 7F — Economy & Merchant UX Integration**: PLANNED / LOCKED (Kartu perbendaharaan, tab pedagang, telemetri upah, target sentuh mobile $\ge 44 \times 44$ px pada `PrototypeDebugView`).
+  - **Phase 7G — Full Economy Verification & Exit Gate**: PLANNED / LOCKED (Suite pengujian $\ge 100$ tests, simulasi stres ekonomi 50 gelombang, Full Regression 25 suites PASS).
 
 ## Phase 8 — Content Implementation
 - **Status**: LOCKED

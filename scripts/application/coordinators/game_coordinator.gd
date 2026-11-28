@@ -30,6 +30,7 @@ const BuildingModel = preload("res://scripts/domain/model/building_model.gd")
 const BattlefieldZone = preload("res://scripts/domain/model/battlefield_zone.gd")
 const EnemyArchetype = preload("res://scripts/domain/model/enemy_archetype.gd")
 const EnemyGroup = preload("res://scripts/domain/model/enemy_group.gd")
+const ResourceLedger = preload("res://scripts/domain/model/resource_ledger.gd")
 
 const HERO_RECRUITMENT_COST_DEFAULT: int = 500
 
@@ -40,6 +41,7 @@ var _state_machine: GameplayStateMachine
 # Active Domain Models & Simulation Subsystems
 var _population: PopulationModel
 var _fortress: FortressModel
+var _resource_ledger: ResourceLedger
 var _economy: EconomyManager
 var _wave_gen: WaveGenerator
 var _combat_engine: CombatEngine
@@ -559,6 +561,131 @@ func _return_equipment_to_warehouse(item: EquipmentModel) -> void:
 
 
 # ==============================================================================
+# PHASE 7A RESOURCE AUTHORITY & ECONOMY DOMAIN MODEL
+# ==============================================================================
+
+func is_game_over() -> bool:
+	return _state_machine != null and _state_machine.current_state == GameplayStateMachine.STATE_GAME_OVER
+
+
+func get_resource_ledger() -> ResourceLedger:
+	return _resource_ledger
+
+
+func get_resource(resource_id: String) -> int:
+	if _resource_ledger == null:
+		return 0
+	return _resource_ledger.get_resource(resource_id)
+
+
+func get_all_resources() -> Dictionary:
+	if _resource_ledger == null:
+		return {}
+	return _resource_ledger.get_all_resources()
+
+
+func get_monster_cores() -> int:
+	if _resource_ledger == null:
+		return 0
+	return _resource_ledger.get_monster_cores()
+
+
+func get_monster_materials() -> int:
+	if _resource_ledger == null:
+		return 0
+	return _resource_ledger.get_monster_materials()
+
+
+func get_basic_materials() -> int:
+	if _resource_ledger == null:
+		return 0
+	return _resource_ledger.get_basic_materials()
+
+
+func get_rare_materials() -> int:
+	if _resource_ledger == null:
+		return 0
+	return _resource_ledger.get_rare_materials()
+
+
+func can_afford_resource(resource_id: String, amount: int) -> bool:
+	if _resource_ledger == null:
+		return false
+	return _resource_ledger.can_afford(resource_id, amount)
+
+
+func can_afford_resources(cost_dict: Dictionary) -> bool:
+	if _resource_ledger == null:
+		return false
+	return _resource_ledger.can_afford_resources(cost_dict)
+
+
+func set_resource(resource_id: String, amount: int) -> bool:
+	if is_game_over():
+		push_warning("Resource operation rejected: Game is in GAME_OVER state.")
+		return false
+	if _resource_ledger == null:
+		return false
+	var success: bool = _resource_ledger.set_resource(resource_id, amount)
+	if success:
+		_update_snapshot()
+		state_changed.emit(_current_state.clone())
+	return success
+
+
+func add_resource(resource_id: String, amount: int) -> bool:
+	if is_game_over():
+		push_warning("Resource operation rejected: Game is in GAME_OVER state.")
+		return false
+	if _resource_ledger == null:
+		return false
+	var success: bool = _resource_ledger.add_resource(resource_id, amount)
+	if success:
+		_update_snapshot()
+		state_changed.emit(_current_state.clone())
+	return success
+
+
+func add_resources(credit_dict: Dictionary) -> bool:
+	if is_game_over():
+		push_warning("Resource operation rejected: Game is in GAME_OVER state.")
+		return false
+	if _resource_ledger == null:
+		return false
+	var success: bool = _resource_ledger.add_resources(credit_dict)
+	if success:
+		_update_snapshot()
+		state_changed.emit(_current_state.clone())
+	return success
+
+
+func spend_resource(resource_id: String, amount: int) -> bool:
+	if is_game_over():
+		push_warning("Resource operation rejected: Game is in GAME_OVER state.")
+		return false
+	if _resource_ledger == null:
+		return false
+	var success: bool = _resource_ledger.spend_resource(resource_id, amount)
+	if success:
+		_update_snapshot()
+		state_changed.emit(_current_state.clone())
+	return success
+
+
+func spend_resources(cost_dict: Dictionary) -> bool:
+	if is_game_over():
+		push_warning("Resource operation rejected: Game is in GAME_OVER state.")
+		return false
+	if _resource_ledger == null:
+		return false
+	var success: bool = _resource_ledger.spend_resources(cost_dict)
+	if success:
+		_update_snapshot()
+		state_changed.emit(_current_state.clone())
+	return success
+
+
+# ==============================================================================
 # BLACKSMITH REPAIR (PHASE 3D CORRECTION)
 # ==============================================================================
 
@@ -567,6 +694,9 @@ func get_treasury_gold() -> int:
 
 
 func set_treasury_gold(amount: int) -> void:
+	if is_game_over():
+		push_warning("Treasury gold modification rejected: Game is in GAME_OVER state.")
+		return
 	if _economy != null:
 		_economy.treasury_gold = maxi(0, amount)
 		_update_snapshot()
@@ -2189,7 +2319,11 @@ func _init_default_domain_models() -> void:
 	_hero_id_counter = 1
 	_population = PopulationModel.new(18, 30, 100)
 	_fortress = FortressModel.new(1000, 40)
-	_economy = EconomyManager.new(150)
+	if _current_state != null and not _current_state.resources_data.is_empty():
+		_resource_ledger = ResourceLedger.from_dictionary(_current_state.resources_data)
+	else:
+		_resource_ledger = ResourceLedger.new(150)
+	_economy = EconomyManager.new(150, _resource_ledger)
 	_wave_gen = WaveGenerator.new()
 	_combat_engine = CombatEngine.new()
 
@@ -2277,6 +2411,9 @@ func _update_snapshot() -> void:
 			"soldier_count": _population.get_soldier_count()
 		}
 
+	if _resource_ledger != null:
+		_current_state.resources_data = _resource_ledger.to_dictionary()
+
 	if _economy != null:
 		_current_state.economy_data = {
 			"treasury_gold": _economy.treasury_gold,
@@ -2285,7 +2422,12 @@ func _update_snapshot() -> void:
 			"construction_workers": _economy.construction_workers,
 			"idle_workers": _economy.idle_workers,
 			"worker_salary": _economy.worker_salary,
-			"soldier_salaries": _economy.soldier_salaries.duplicate(true)
+			"soldier_salaries": _economy.soldier_salaries.duplicate(true),
+			"monster_cores": _resource_ledger.get_monster_cores() if _resource_ledger != null else 0,
+			"monster_materials": _resource_ledger.get_monster_materials() if _resource_ledger != null else 0,
+			"basic_materials": _resource_ledger.get_basic_materials() if _resource_ledger != null else 0,
+			"rare_materials": _resource_ledger.get_rare_materials() if _resource_ledger != null else 0,
+			"resources": _current_state.resources_data.duplicate(true)
 		}
 
 	_current_state.heroes_data = []

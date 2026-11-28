@@ -4,6 +4,42 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.7.1] - Phase 7A: Resource Authority & Economy Domain Model
+
+### Added
+- **Resource Authority Domain Model** (`scripts/domain/model/resource_ledger.gd`):
+  - Model domain murni `ResourceLedger` (turunan `RefCounted`) sebagai *Single Source of Truth* saldo perbendaharaan benteng.
+  - 5 Sumber Daya Kanonikal: `GOLD` (kas awal default 150), `MONSTER_CORE`, `MONSTER_MATERIAL`, `BASIC_MATERIAL`, `RARE_MATERIAL`.
+  - Normalisasi otomatis alias kanonikal (`TREASURY_GOLD`, `MONSTER_CORES`, `MONSTER_MATERIALS`, `BASIC_MATERIALS`, `RARE_MATERIALS`).
+  - Penegakan invarian non-negatif mutlak dan penolakan saldo negatif pada operasi mutasi.
+  - Operasi multi-resource atomik (`can_afford_resources`, `spend_resources`, `add_resources`) dengan *strict rollback* (seluruh saldo tidak terpotong bila 1 item defisit).
+  - Serialisasi `to_dictionary()` dan deserialisasi `from_dictionary()` dengan integritas penuh.
+- **Resource Authority Coordination** (`scripts/application/coordinators/game_coordinator.gd`):
+  - Kepemilikan otoritatif instance `_resource_ledger` di dalam `GameCoordinator`.
+  - API otoritas perbendaharaan: `get_resource`, `get_all_resources`, `get_monster_cores`, `get_monster_materials`, `get_basic_materials`, `get_rare_materials`, `can_afford_resource`, `can_afford_resources`, `set_resource`, `add_resource`, `add_resources`, `spend_resource`, `spend_resources`.
+  - Penegakan kunci transaksi saat Game Over (`is_game_over()`): seluruh mutasi sumber daya ditolak dan saldo dibekukan saat state `GAME_OVER`.
+  - Pemutakhiran reaktif snapshot state dan pancaran sinyal `state_changed` pada setiap mutasi sumber daya yang berhasil.
+- **EconomyManager Property Delegation Zero-Desync** (`scripts/simulation/economy_manager.gd`):
+  - Integrasi referensi `ledger: ResourceLedger` ke dalam `EconomyManager`.
+  - Property GDScript 4 `treasury_gold` getter/setter yang mendelegasikan langsung ke `ledger.get_gold()` dan `ledger.set_resource(RESOURCE_GOLD, ...)`.
+  - Menghilangkan potensi desinkronisasi antara kas bendahara `EconomyManager` dan otoritas perbendaharaan benteng.
+- **Telemetry & Snapshot Integration** (`scripts/domain/state/game_state_snapshot.gd`):
+  - Field domain baru `resources_data: Dictionary` pada `GameStateSnapshot`.
+  - Integrasi pada `clone()`, `to_dictionary()`, dan `from_dictionary()` dengan isolasi deep-copy lengkap.
+  - Pembaruan `economy_data` snapshot yang tetap menyediakan `treasury_gold`, `monster_cores`, `monster_materials`, `basic_materials`, `rare_materials`, dan `resources` untuk backward-compatibility 100%.
+- **GameController Resource Authority Delegation** (`scripts/presentation/controllers/game_controller.gd`):
+  - Metode delegasi transparan: `get_resource`, `get_all_resources`, `get_monster_cores`, `get_monster_materials`, `get_basic_materials`, `get_rare_materials`, `can_afford_resource`, `can_afford_resources`, `add_resource`, `add_resources`, `spend_resource`, `spend_resources`.
+- **Dedicated Phase 7A Test Suite** (`tests/test_phase7a_resource_authority.gd`):
+  - 27 pengujian komprehensif mencakup Group A (Ledger Domain Invariants), Group B (Boundary, Invariants & Serialization), Group C (Coordinator Authority & Integration), Group D (Snapshot Synchronization & Isolation), dan Group E (Controller Delegation & Sinks Compatibility).
+  - 100-transaction deterministic stress simulation memvalidasi stabilitas transaksi campuran dan invarian non-negatif.
+
+### Verified
+- **Test Suite Phase 7A**: 27/27 tests PASS.
+- **Full Regression Test Suite**: 25/25 suites PASS (total $\ge 1.004$ tests).
+- **Prototype Scene Smoke Playtest**: ALL PASS, 0 ERRORS.
+
+---
+
 ## [0.7.0-plan] - Phase 7 Architecture & Implementation Planning
 
 ### Planned

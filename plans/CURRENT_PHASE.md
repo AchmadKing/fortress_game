@@ -5,14 +5,14 @@
 ### Status Fase & Sub-Fase
 - **Phase 0–5**: **COMPLETED / CLOSED**
 - **Phase 6 — Tactical Battle & Battlefield Systems**: **COMPLETED / CLOSED**
-- **Phase 7 — Economy & Progression**: **PLANNED / READY FOR IMPLEMENTATION**
-  - **Sub-Phase 7A — Resource Authority & Economy Domain Model**: **PLANNED / PENDING APPROVAL**
-  - **Sub-Phase 7B — Battle Reward Settlement & Loot Engine**: **PLANNED**
-  - **Sub-Phase 7C — Expense Normalization & Dynamic Sinks**: **PLANNED**
-  - **Sub-Phase 7D — Merchant & Supply Depot System**: **PLANNED**
-  - **Sub-Phase 7E — Fortress & Hero Progression Economy**: **PLANNED**
-  - **Sub-Phase 7F — Economy & Merchant UX Integration**: **PLANNED**
-  - **Sub-Phase 7G — Full Economy Verification & Phase 7 Exit Gate**: **PLANNED**
+- **Phase 7 — Economy & Progression**: **IN PROGRESS**
+  - **Sub-Phase 7A — Resource Authority & Economy Domain Model**: **COMPLETED / VERIFIED** (27/27 tests PASS).
+  - **Sub-Phase 7B — Battle Reward Settlement & Loot Engine**: **NEXT / LOCKED (PENDING APPROVAL)**
+  - **Sub-Phase 7C — Expense Normalization & Dynamic Sinks**: **PLANNED / LOCKED**
+  - **Sub-Phase 7D — Merchant & Supply Depot System**: **PLANNED / LOCKED**
+  - **Sub-Phase 7E — Fortress & Hero Progression Economy**: **PLANNED / LOCKED**
+  - **Sub-Phase 7F — Economy & Merchant UX Integration**: **PLANNED / LOCKED**
+  - **Sub-Phase 7G — Full Economy Verification & Phase 7 Exit Gate**: **PLANNED / LOCKED**
 - **Phase 8 — Content Implementation**: **LOCKED**
 - **Phase 9 — Visual / UI / Pixel Art Integration**: **LOCKED**
 - **Phase 10 — Save/Load, Mobile Optimization & Polish**: **LOCKED**
@@ -37,7 +37,9 @@ Dokumen perencanaan Phase 6 tersedia di [plans/PHASE_6_TACTICAL_BATTLE_PLAN.md](
   - **Phase 6D — Commander Commands Execution**: **COMPLETED / VERIFIED** (50/50 tests PASS).
   - **Phase 6E — Fortress Damage Routing & Casualty Resolution**: **COMPLETED / VERIFIED** (75/75 tests PASS).
   - **Phase 6F — Tactical Battle UI & Verification Gate**: **COMPLETED / VERIFIED** (75/75 tests PASS, 977/977 Full Regression across 24 suites, Scene Smoke Playtest PASS).
-- **Phase 7 — Economy & Progression**: **PLANNED / READY FOR IMPLEMENTATION**
+- **Phase 7 — Economy & Progression**: **IN PROGRESS**
+  - **Phase 7A — Resource Authority & Economy Domain Model**: **COMPLETED / VERIFIED** (27/27 tests PASS, 25 suites Full Regression PASS).
+  - **Phase 7B s/d 7G**: **PLANNED / LOCKED**
 - **Phase 8 — Content Implementation**: **LOCKED**
 - **Phase 9 — Visual / UI / Pixel Art Integration**: **LOCKED**
 - **Phase 10 — Save/Load, Mobile Optimization & Polish**: **LOCKED**
@@ -47,9 +49,8 @@ Dokumen perencanaan Phase 6 tersedia di [plans/PHASE_6_TACTICAL_BATTLE_PLAN.md](
 ### Aturan & Batasan Saat Ini
 
 > [!IMPORTANT]
-> **PHASE 6 TELAH SELESAI, TERVERIFIKASI, DAN DITUTUP RESMI (COMPLETED / CLOSED).**
-> **PHASE 7 (Economy & Progression) TELAH DIRENCANAKAN PENUH (PLANNED / READY FOR IMPLEMENTATION).**
-> **DILARANG KERAS memulai implementasi kode sub-fase 7A sebelum ada persetujuan eksplisit dari developer.**
-> **PHASE 8, 9, 10 TETAP BERSTATUS LOCKED.**
-> **PHASE 6F MASIH TERKUNCI (LOCKED)**: DILARANG memulai implementasi Tactical Battle UI sebelum developer memberikan izin/arahan eksplisit (*explicit developer approval*).
-> **PHASE 7+ TETAP LOCKED**: Seluruh fase lanjut tetap terkunci.
+> **SUB-FASE 7A TELAH SELESAI DAN TERVERIFIKASI (COMPLETED / VERIFIED).**
+> **SUB-FASE 7B (Battle Reward Settlement & Loot Engine) BERSTATUS NEXT / LOCKED.**
+> **DILARANG KERAS memulai implementasi kode Sub-Fase 7B sebelum ada persetujuan eksplisit dari developer (*explicit developer approval*).**
+> **PHASE 7C s/d 7G serta PHASE 8, 9, 10 TETAP BERSTATUS LOCKED.**
+> **Single Source of Truth `ResourceLedger` wajib dipatuhi tanpa menduplikasi sistem ekonomi atau gudang.**

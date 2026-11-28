@@ -65,6 +65,9 @@ var battle_heroes_killed: Array = []
 var battle_is_finished: bool = false
 var battle_victory: bool = false
 
+# Phase 7A Resource Authority & Economy Domain Model Fields
+var resources_data: Dictionary = {}
+
 
 func _init(p_tick: int = 0, p_session_id: String = "", p_state_name: String = "INITIAL", p_metadata: Dictionary = {}) -> void:
 	tick = p_tick
@@ -93,6 +96,13 @@ func _init(p_tick: int = 0, p_session_id: String = "", p_state_name: String = "I
 	buildings_data = []
 	active_repair_data = {}
 	active_construction_data = {}
+	resources_data = {
+		"GOLD": 150,
+		"MONSTER_CORE": 0,
+		"MONSTER_MATERIAL": 0,
+		"BASIC_MATERIAL": 0,
+		"RARE_MATERIAL": 0
+	}
 
 
 func clone() -> GameStateSnapshot:
@@ -135,6 +145,7 @@ func clone() -> GameStateSnapshot:
 	copy.battle_heroes_killed = battle_heroes_killed.duplicate(true)
 	copy.battle_is_finished = battle_is_finished
 	copy.battle_victory = battle_victory
+	copy.resources_data = resources_data.duplicate(true)
 	return copy
 
 
@@ -181,7 +192,8 @@ func to_dictionary() -> Dictionary:
 		"fortress_hp": fortress_hp,
 		"battle_heroes_killed": battle_heroes_killed.duplicate(true),
 		"battle_is_finished": battle_is_finished,
-		"battle_victory": battle_victory
+		"battle_victory": battle_victory,
+		"resources_data": resources_data.duplicate(true)
 	}
 
 
@@ -262,5 +274,7 @@ static func from_dictionary(data: Dictionary) -> GameStateSnapshot:
 		snapshot.battle_heroes_killed = (data["battle_heroes_killed"] as Array).duplicate(true)
 	snapshot.battle_is_finished = bool(data.get("battle_is_finished", false))
 	snapshot.battle_victory = bool(data.get("battle_victory", false))
+	if data.has("resources_data") and data["resources_data"] is Dictionary:
+		snapshot.resources_data = (data["resources_data"] as Dictionary).duplicate(true)
 	
 	return snapshot

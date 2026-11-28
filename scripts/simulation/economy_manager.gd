@@ -10,8 +10,17 @@ extends RefCounted
 const EquipmentModelScript = preload("res://scripts/domain/model/equipment_model.gd")
 const PopulationModelScript = preload("res://scripts/domain/model/population_model.gd")
 const FortressModelScript = preload("res://scripts/domain/model/fortress_model.gd")
+const ResourceLedger = preload("res://scripts/domain/model/resource_ledger.gd")
 
-var treasury_gold: int = 150
+var ledger: ResourceLedger = null
+
+var treasury_gold: int:
+	get:
+		return ledger.get_gold() if ledger != null else 0
+	set(value):
+		if ledger != null:
+			ledger.set_resource(ResourceLedger.RESOURCE_GOLD, maxi(0, value))
+
 var blacksmith_workers: int = 0
 var repair_workers: int = 0
 var construction_workers: int = 0
@@ -32,8 +41,15 @@ var soldier_salaries: Dictionary = {
 var mercenary_salary: int = 18
 
 
-func _init(p_initial_gold: int = 150) -> void:
-	treasury_gold = maxi(0, p_initial_gold)
+func _init(p_initial_gold: int = 150, p_ledger: ResourceLedger = null) -> void:
+	if p_ledger != null:
+		ledger = p_ledger
+	else:
+		ledger = ResourceLedger.new(p_initial_gold)
+
+
+func get_ledger() -> ResourceLedger:
+	return ledger
 
 
 func set_worker_allocation(rep: int, smith: int, constr: int, total_civilians: int) -> bool:

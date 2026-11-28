@@ -780,3 +780,79 @@ func _on_battle_timer_timeout() -> void:
 	else:
 		if _battle_timer != null and _battle_timer.is_inside_tree():
 			_battle_timer.stop()
+
+
+# ==============================================================================
+# PHASE 7A RESOURCE AUTHORITY DELEGATION
+# ==============================================================================
+
+func get_resource(resource_id: String) -> int:
+	if coordinator == null:
+		return 0
+	return coordinator.get_resource(resource_id)
+
+
+func get_all_resources() -> Dictionary:
+	if coordinator == null:
+		return {}
+	return coordinator.get_all_resources()
+
+
+func get_monster_cores() -> int:
+	if coordinator == null:
+		return 0
+	return coordinator.get_monster_cores()
+
+
+func get_monster_materials() -> int:
+	if coordinator == null:
+		return 0
+	return coordinator.get_monster_materials()
+
+
+func get_basic_materials() -> int:
+	if coordinator == null:
+		return 0
+	return coordinator.get_basic_materials()
+
+
+func get_rare_materials() -> int:
+	if coordinator == null:
+		return 0
+	return coordinator.get_rare_materials()
+
+
+func can_afford_resource(resource_id: String, amount: int) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.can_afford_resource(resource_id, amount)
+
+
+func can_afford_resources(cost_dict: Dictionary) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.can_afford_resources(cost_dict)
+
+
+func add_resource(resource_id: String, amount: int) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.add_resource(resource_id, amount)
+
+
+func add_resources(credit_dict: Dictionary) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.add_resources(credit_dict)
+
+
+func spend_resource(resource_id: String, amount: int) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.spend_resource(resource_id, amount)
+
+
+func spend_resources(cost_dict: Dictionary) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.spend_resources(cost_dict)
