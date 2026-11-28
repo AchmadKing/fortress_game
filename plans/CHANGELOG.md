@@ -4,6 +4,23 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.7.0-plan] - Phase 7 Architecture & Implementation Planning
+
+### Planned
+- **Technical Architecture & Implementation Blueprint** (`plans/PHASE_7_ECONOMY_PROGRESSION_PLAN.md`):
+  - Perencanaan arsitektur terpadu ekonomi dan progresi benteng (*single source of truth*) di bawah koordinasi `GameCoordinator`.
+  - Audit menyeluruh nilai ekonomi eksisting: modal awal 150 Gold, biaya rekrutmen hero 500 Gold, ascension `current_star * 150`, biaya reparasi struktur $0.15 \text{ Gold/HP}$, biaya reparasi perlengkapan tier 1–5, formula loot kemenangan battle, dan pembekuan state game over.
+  - Perumusan 5 sumber daya kanonikal terarah (*No 30+ resources*): Gold, Monster Core, Monster Material, Basic Merchant Material, Rare Merchant Material.
+  - Alur kontrak hadiah deterministik: kredit Emas, Core, dan Material saat Victory; isolasi 0 jarahan saat Defeat; pembekuan mutlak saat Game Over.
+  - Neraca pengeluaran terstandarisasi: siklus gaji sipil & serdadu, biaya reparasi, amortisasi defisit upah dengan penalti moral terkontrol tanpa *game crash*.
+  - Desain sistem pedagang (*Supply Depot / Wandering Merchant*): 4–6 slot penawaran, jual-beli material, rotasi stok deterministik per gelombang berbasis seed, dan penyegaran manual berbayar.
+  - Integrasi progresi fasilitas benteng (Level 1–5) terhubung dengan konsumsi Emas/Material, pembukaan kapasitas barak, efisiensi pandai besi, serta syarat ascension pahlawan bintang tinggi.
+  - Rencana pemecahan 7 sub-fase: 7A (Resource Authority), 7B (Reward Settlement), 7C (Expense Sinks), 7D (Merchant System), 7E (Progression Linkage), 7F (UX Integration), 7G (Full Verification & Exit Gate).
+  - Target pengujian: $\ge 100$ tests Phase 7, 50-wave economic simulation stress test, Full Regression 25 suites PASS, Scene Smoke Playtest PASS.
+  - Konfirmasi mutlak: Phase 8, 9, 10 tetap **LOCKED**. Tidak ada penulisan kode atau mutasi domain/UI sebelum persetujuan eksplisit developer.
+
+---
+
 ## [0.6.6] - Phase 6F: Tactical Battle UI & Verification Gate
 
 ### Added
