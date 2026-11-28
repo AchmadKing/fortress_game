@@ -856,3 +856,25 @@ func spend_resources(cost_dict: Dictionary) -> bool:
 	if coordinator == null:
 		return false
 	return coordinator.spend_resources(cost_dict)
+
+
+# ==============================================================================
+# PHASE 7B BATTLE REWARD SETTLEMENT & LOOT ENGINE DELEGATION
+# ==============================================================================
+
+func settle_battle_rewards(custom_result: Dictionary = {}) -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.settle_battle_rewards(custom_result)
+
+
+func is_battle_result_settled(settlement_id: String = "") -> bool:
+	if coordinator == null:
+		return false
+	return coordinator.is_battle_result_settled(settlement_id)
+
+
+func get_last_battle_result() -> Dictionary:
+	if coordinator == null:
+		return {}
+	return coordinator.get_last_battle_result()

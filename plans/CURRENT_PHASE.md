@@ -7,8 +7,8 @@
 - **Phase 6 — Tactical Battle & Battlefield Systems**: **COMPLETED / CLOSED**
 - **Phase 7 — Economy & Progression**: **IN PROGRESS**
   - **Sub-Phase 7A — Resource Authority & Economy Domain Model**: **COMPLETED / VERIFIED** (27/27 tests PASS).
-  - **Sub-Phase 7B — Battle Reward Settlement & Loot Engine**: **NEXT / LOCKED (PENDING APPROVAL)**
-  - **Sub-Phase 7C — Expense Normalization & Dynamic Sinks**: **PLANNED / LOCKED**
+  - **Sub-Phase 7B — Battle Reward Settlement & Loot Engine**: **COMPLETED / VERIFIED** (35/35 tests PASS).
+  - **Sub-Phase 7C — Expense Normalization & Dynamic Sinks**: **NEXT / LOCKED (PENDING APPROVAL)**
   - **Sub-Phase 7D — Merchant & Supply Depot System**: **PLANNED / LOCKED**
   - **Sub-Phase 7E — Fortress & Hero Progression Economy**: **PLANNED / LOCKED**
   - **Sub-Phase 7F — Economy & Merchant UX Integration**: **PLANNED / LOCKED**
@@ -39,7 +39,8 @@ Dokumen perencanaan Phase 6 tersedia di [plans/PHASE_6_TACTICAL_BATTLE_PLAN.md](
   - **Phase 6F — Tactical Battle UI & Verification Gate**: **COMPLETED / VERIFIED** (75/75 tests PASS, 977/977 Full Regression across 24 suites, Scene Smoke Playtest PASS).
 - **Phase 7 — Economy & Progression**: **IN PROGRESS**
   - **Phase 7A — Resource Authority & Economy Domain Model**: **COMPLETED / VERIFIED** (27/27 tests PASS, 25 suites Full Regression PASS).
-  - **Phase 7B s/d 7G**: **PLANNED / LOCKED**
+  - **Phase 7B — Battle Reward Settlement & Loot Engine**: **COMPLETED / VERIFIED** (35/35 tests PASS, 26 suites Full Regression PASS, Smoke Playtest PASS).
+  - **Phase 7C s/d 7G**: **PLANNED / LOCKED**
 - **Phase 8 — Content Implementation**: **LOCKED**
 - **Phase 9 — Visual / UI / Pixel Art Integration**: **LOCKED**
 - **Phase 10 — Save/Load, Mobile Optimization & Polish**: **LOCKED**
@@ -49,8 +50,8 @@ Dokumen perencanaan Phase 6 tersedia di [plans/PHASE_6_TACTICAL_BATTLE_PLAN.md](
 ### Aturan & Batasan Saat Ini
 
 > [!IMPORTANT]
-> **SUB-FASE 7A TELAH SELESAI DAN TERVERIFIKASI (COMPLETED / VERIFIED).**
-> **SUB-FASE 7B (Battle Reward Settlement & Loot Engine) BERSTATUS NEXT / LOCKED.**
-> **DILARANG KERAS memulai implementasi kode Sub-Fase 7B sebelum ada persetujuan eksplisit dari developer (*explicit developer approval*).**
-> **PHASE 7C s/d 7G serta PHASE 8, 9, 10 TETAP BERSTATUS LOCKED.**
+> **SUB-FASE 7B TELAH SELESAI DAN TERVERIFIKASI (COMPLETED / VERIFIED).**
+> **SUB-FASE 7C (Expense Normalization & Dynamic Sinks) BERSTATUS NEXT / LOCKED.**
+> **DILARANG KERAS memulai implementasi kode Sub-Fase 7C sebelum ada persetujuan eksplisit dari developer (*explicit developer approval*).**
+> **PHASE 7D s/d 7G serta PHASE 8, 9, 10 TETAP BERSTATUS LOCKED.**
 > **Single Source of Truth `ResourceLedger` wajib dipatuhi tanpa menduplikasi sistem ekonomi atau gudang.**

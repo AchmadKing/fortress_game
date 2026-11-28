@@ -4,6 +4,34 @@ Semua perubahan pada proyek dicatat dalam dokumen ini. Format mengacu pada prins
 
 ---
 
+## [0.7.2] - Phase 7B: Battle Reward Settlement & Loot Engine
+
+### Added
+- **Battle Reward Calculation & Loot Engine** (`scripts/simulation/combat_engine.gd`):
+  - Integrasi konstanta kanonikal dan nilai provisi: `GOLD_LOOT_MULTIPLIER` ($1.30$), `PROVISIONAL_CORE_PER_BOSS` ($2$), `PROVISIONAL_CORE_PER_SIEGE` ($1$), `PROVISIONAL_CORE_PER_TANK` ($1$), `PROVISIONAL_MATERIAL_DROP_RATE` ($0.50$).
+  - Fungsi kalkulasi murni `calculate_battle_rewards(threat_budget, enemies_defeated, is_victory, is_game_over)` yang menghasilkan `loot_gold`, `loot_monster_core`, `loot_monster_material`, dan `reward_eligibility`.
+  - Kontrak `BattleResult` diperluas dengan field: `victory`, `defeat`, `game_over`, `wave`, `threat_budget`, `enemy_casualties`, `enemies_defeated_total`, `reward_eligibility`, `loot_gold`, `loot_monster_core`, `loot_monster_material`, `settlement_id`, `is_settled`.
+  - Isolasi kekalahan (Defeat) & Game Over: mengembalikan 0 untuk seluruh jarahan jika benteng hancur atau pertempuran kalah.
+- **Atomic Reward Settlement & Duplicate Protection** (`scripts/application/coordinators/game_coordinator.gd`):
+  - Registri settlement pertempuran: `_settled_battle_ids: Dictionary` untuk mencegah kredit ganda (*duplicate settlement protection*).
+  - Metode `settle_battle_rewards(custom_result)` yang memvalidasi `victory`, menolak status `GAME_OVER`, memeriksa `settlement_id`, memvalidasi non-negativitas, dan mengkreditkan seluruh sumber daya secara atomik via `add_resources`.
+  - Metode query: `is_battle_result_settled(settlement_id)` dan `get_last_battle_result()`.
+  - Integrasi siklus `proceed_from_result()`: mengeksekusi settlement hadiah secara otomatis sebelum siklus ekonomi pemotongan gaji/reparasi.
+- **GameController Delegation** (`scripts/presentation/controllers/game_controller.gd`):
+  - Metode delegasi: `settle_battle_rewards()`, `is_battle_result_settled()`, `get_last_battle_result()`.
+- **View Telemetry & Result Overlay** (`scripts/presentation/views/prototype_debug_view.gd`):
+  - Header kas bendahara menampilkan rincian: `Treasury: X Gold | Y Cores | Z Materials`.
+  - Dialog overlay hasil pertempuran menampilkan rincian jarahan: `+X Gold | +Y Core | +Z Material | +W EXP per Hero`.
+- **Dedicated Phase 7B Test Suite** (`tests/test_phase7b_battle_reward_settlement.gd`):
+  - 35 pengujian otomatis mencakup Group A (Gold Calculation), Group B (Monster Core Loot), Group C (Monster Material Loot), Group D (Settlement Authority & Invariants), Group E (Duplicate Settlement Protection), Group F (Snapshot & View Integration), Group G (Flow & Conservation Integration), dan Group H (Determinism & 50-wave Stress Test).
+
+### Verified
+- **Test Suite Phase 7B**: 35/35 tests PASS.
+- **Full Regression Test Suite**: 26/26 suites PASS (total $\ge 1.039$ tests).
+- **Prototype Scene Smoke Playtest**: ALL PASS, 0 ERRORS.
+
+---
+
 ## [0.7.1] - Phase 7A: Resource Authority & Economy Domain Model
 
 ### Added

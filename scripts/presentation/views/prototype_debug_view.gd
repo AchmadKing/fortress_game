@@ -569,7 +569,12 @@ func _on_state_changed(snapshot: GameStateSnapshot) -> void:
 
 	var e_data: Dictionary = snapshot.economy_data
 	var p_data: Dictionary = snapshot.population_data
-	_lbl_treasury.text = "Treasury: %d Gold" % int(e_data.get("treasury_gold", 0))
+	var r_data: Dictionary = snapshot.resources_data
+	_lbl_treasury.text = "Treasury: %d Gold | %d Cores | %d Materials" % [
+		int(r_data.get("GOLD", e_data.get("treasury_gold", 0))),
+		int(r_data.get("MONSTER_CORE", 0)),
+		int(r_data.get("MONSTER_MATERIAL", 0))
+	]
 	_lbl_civilians.text = "Civilians: %d / %d | Morale: %d" % [
 		int(p_data.get("civilians", 0)),
 		int(p_data.get("housing_capacity", 30)),
@@ -2891,12 +2896,14 @@ func _render_battle_result_ui(snapshot: GameStateSnapshot) -> void:
 	var eq_lost: int = int(res.get("equipment_lost", 0))
 	var eq_dmg: int = int(res.get("equipment_damaged", 0))
 	var loot_gold: int = int(res.get("loot_gold", 0))
+	var loot_core: int = int(res.get("loot_monster_core", 0))
+	var loot_mat: int = int(res.get("loot_monster_material", 0))
 	var exp_val: int = int(res.get("exp_per_hero", 0))
 
 	_lbl_result_body = Label.new()
 	_lbl_result_body.name = "LblResultBody"
-	_lbl_result_body.text = "• Kerusakan Benteng: %d (Sisa HP: %d / %d)\n• Korban Serdadu: %d prajurit gugur permanen\n• Perlengkapan: %d hancur permanen | %d rusak berat (-40 dur)\n• Hadiah: +%d Gold | +%d EXP per Hero" % [
-		dmg_taken, cur_hp, max_hp, dead_s, eq_lost, eq_dmg, loot_gold, exp_val
+	_lbl_result_body.text = "• Kerusakan Benteng: %d (Sisa HP: %d / %d)\n• Korban Serdadu: %d prajurit gugur permanen\n• Perlengkapan: %d hancur permanen | %d rusak berat (-40 dur)\n• Hadiah: +%d Gold | +%d Core | +%d Material | +%d EXP per Hero" % [
+		dmg_taken, cur_hp, max_hp, dead_s, eq_lost, eq_dmg, loot_gold, loot_core, loot_mat, exp_val
 	]
 	vbox.add_child(_lbl_result_body)
 

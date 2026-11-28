@@ -47,8 +47,13 @@ Tujuan tahap ini adalah membuat proyek mudah dikembangkan, mudah dipahami AI, mu
       - Transaksi atomik multi-resource dengan *strict rollback* saat saldo tidak mencukupi.
       - Penegakan kunci transaksi saat `GAME_OVER` (*freeze* mutlak).
       - Sinkronisasi nol desinkronisasi antara `GameCoordinator`, `EconomyManager`, dan `GameStateSnapshot`.
-    - `Sub-Phase 7B — Battle Reward Settlement & Loot Engine`: **PLANNED / LOCKED**
-    - `Sub-Phase 7C — Expense Normalization & Dynamic Sinks`: **PLANNED / LOCKED**
+    - `Sub-Phase 7B — Battle Reward Settlement & Loot Engine`: **COMPLETED / VERIFIED** (35/35 tests PASS).
+      - Kontrak `BattleResult` deterministik (Gold kanonikal $\text{floor}(B \times 1.30)$, Monster Core provisi, Monster Material provisi).
+      - Settlement atomik multi-resource ke `ResourceLedger` benteng saat status Victory.
+      - Isolasi mutlak 0 jarahan saat Defeat dan pembekuan transaksi saat Game Over.
+      - Proteksi eksekusi berulang (*duplicate settlement protection*) via tracking ID settlement unik.
+      - Sinkronisasi telemetri HUD dan dialog hasil pertempuran pada `PrototypeDebugView`.
+    - `Sub-Phase 7C — Expense Normalization & Dynamic Sinks`: **NEXT / LOCKED (PENDING APPROVAL)**
     - `Sub-Phase 7D — Merchant & Supply Depot System`: **PLANNED / LOCKED**
     - `Sub-Phase 7E — Fortress & Hero Progression Economy`: **PLANNED / LOCKED**
     - `Sub-Phase 7F — Economy & Merchant UX Integration`: **PLANNED / LOCKED**

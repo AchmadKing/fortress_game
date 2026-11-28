@@ -85,6 +85,7 @@ const BASE_TICK_DURATION: float = 1.0
 var _session_seed: int = 12345
 var _hero_id_counter: int = 1
 var _hero_training_wave_tracker: Dictionary = {} # hero_id (String) -> wave_num (int)
+var _settled_battle_ids: Dictionary = {} # settlement_id (String) -> bool (Phase 7B)
 
 
 func _init(initial_state: GameStateSnapshot = null, runner: SimulationRunner = null) -> void:
@@ -155,6 +156,7 @@ func start_new_session(session_id: String = "session_proto", seed_val: int = 123
 	_active_commander_intents.clear()
 	_last_battle_result = {}
 	_hero_training_wave_tracker.clear()
+	_settled_battle_ids.clear()
 
 	_init_default_domain_models()
 
@@ -682,6 +684,78 @@ func spend_resources(cost_dict: Dictionary) -> bool:
 	if success:
 		_update_snapshot()
 		state_changed.emit(_current_state.clone())
+	return success
+
+
+# ==============================================================================
+# PHASE 7B BATTLE REWARD SETTLEMENT & LOOT ENGINE
+# ==============================================================================
+
+func is_battle_result_settled(settlement_id: String = "") -> bool:
+	if settlement_id.is_empty():
+		return bool(_last_battle_result.get("is_settled", false))
+	return _settled_battle_ids.has(settlement_id)
+
+
+func get_last_battle_result() -> Dictionary:
+	return _last_battle_result.duplicate(true)
+
+
+func settle_battle_rewards(custom_result: Dictionary = {}) -> bool:
+	var result_to_settle: Dictionary = custom_result if not custom_result.is_empty() else _last_battle_result
+	if result_to_settle.is_empty():
+		return false
+
+	# 1. Game Over protection
+	if is_game_over() or bool(result_to_settle.get("game_over", false)):
+		push_warning("Battle reward settlement ditolak: Game dalam status GAME_OVER")
+		return false
+
+	# 2. Victory-only invariant
+	var is_victory: bool = bool(result_to_settle.get("victory", false))
+	if not is_victory:
+		return false
+
+	# 3. Duplicate settlement protection
+	if bool(result_to_settle.get("is_settled", false)):
+		push_warning("Battle reward settlement ditolak: Pertempuran ini sudah pernah diselesaikan (duplicate settlement)")
+		return false
+
+	var s_id: String = str(result_to_settle.get("settlement_id", ""))
+	if s_id.is_empty():
+		var w_num: int = int(result_to_settle.get("wave", _current_wave_num))
+		s_id = "wave_%d_settlement" % w_num
+		result_to_settle["settlement_id"] = s_id
+
+	if _settled_battle_ids.has(s_id):
+		push_warning("Battle reward settlement ditolak: ID settlement '%s' sudah terdaftar" % s_id)
+		return false
+
+	# 4. Validasi nilai non-negatif
+	var gold: int = int(result_to_settle.get("loot_gold", 0))
+	var core: int = int(result_to_settle.get("loot_monster_core", 0))
+	var mat: int = int(result_to_settle.get("loot_monster_material", 0))
+
+	if gold < 0 or core < 0 or mat < 0:
+		push_warning("Battle reward settlement ditolak: Nilai reward tidak boleh negatif")
+		return false
+
+	var credit_dict: Dictionary = {
+		ResourceLedger.RESOURCE_GOLD: gold,
+		ResourceLedger.RESOURCE_MONSTER_CORE: core,
+		ResourceLedger.RESOURCE_MONSTER_MATERIAL: mat
+	}
+
+	# 5. Atomic settlement via Phase 7A Resource Authority
+	var success: bool = add_resources(credit_dict)
+	if success:
+		_settled_battle_ids[s_id] = true
+		result_to_settle["is_settled"] = true
+		if result_to_settle != _last_battle_result and not _last_battle_result.is_empty():
+			var last_s_id: String = str(_last_battle_result.get("settlement_id", ""))
+			if last_s_id.is_empty() or last_s_id == s_id:
+				_last_battle_result["is_settled"] = true
+
 	return success
 
 
@@ -1955,9 +2029,8 @@ func proceed_from_result() -> bool:
 			return false
 			
 		# Eksekusi Recovery pasca-tempur murni menggunakan sistem Phase 2 existing
-		# 1. Battle loot ditambahkan ke kas bendahara
-		var loot: int = int(_last_battle_result.get("loot_gold", 0))
-		_economy.treasury_gold += loot
+		# 1. Settle battle rewards secara atomik via Phase 7B Loot Engine
+		settle_battle_rewards(_last_battle_result)
 		
 		# 2. Proses siklus ekonomi (gaji & reparasi benteng oleh Repair Worker)
 		_economy.process_cycle(_population, _fortress)
@@ -2317,6 +2390,7 @@ func restart_session() -> void:
 
 func _init_default_domain_models() -> void:
 	_hero_id_counter = 1
+	_settled_battle_ids.clear()
 	_population = PopulationModel.new(18, 30, 100)
 	_fortress = FortressModel.new(1000, 40)
 	if _current_state != null and not _current_state.resources_data.is_empty():

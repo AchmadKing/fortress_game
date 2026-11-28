@@ -28,6 +28,13 @@ const VALID_SPEEDS: Array[float] = [SPEED_1X, SPEED_2X, SPEED_4X]
 # Phase 6E: Canonical Casualty Pressure Threshold
 const CASUALTY_PRESSURE_THRESHOLD: int = 50
 
+# Phase 7B: Canonical Gold Loot Multiplier & Provisional Reward Parameters
+const GOLD_LOOT_MULTIPLIER: float = 1.30
+const PROVISIONAL_CORE_PER_BOSS: int = 2
+const PROVISIONAL_CORE_PER_SIEGE: int = 1
+const PROVISIONAL_CORE_PER_TANK: int = 1
+const PROVISIONAL_MATERIAL_DROP_RATE: float = 0.50
+
 
 static func is_valid_speed(speed: float) -> bool:
 	return is_equal_approx(speed, SPEED_1X) or is_equal_approx(speed, SPEED_2X) or is_equal_approx(speed, SPEED_4X)
@@ -760,19 +767,47 @@ func simulate_battle(population: PopulationModel, heroes: Array, warehouse_equip
 			h_a.add_chemistry(h_b.hero_id, 2)
 			h_b.add_chemistry(h_a.hero_id, 2)
 			
-	# 5.E: Hasil Pertempuran & Loot Emas
+	# 5.E: Hasil Pertempuran & Perhitungan Hadiah (Phase 7B)
 	var is_victory: bool = not fortress.is_destroyed() and (breach_threat <= int(fortress.max_hp * 0.40))
-	var loot_gold: int = 0
 	if is_victory:
-		# Battle Loot adalah sumber pendapatan utama ekonomi
-		loot_gold = int(floor(float(threat_budget) * 1.30))
 		population.morale = clampi(population.morale + 2, 50, 150)
 	else:
 		population.morale = clampi(population.morale - 12, 30, 150)
-		
+
+	var defeated_enemies: Dictionary = {}
+	if is_victory:
+		defeated_enemies = (wave["enemies"] as Dictionary).duplicate(true)
+	else:
+		defeated_enemies = {
+			"MINION": minions_killed_ranged + minions_killed_melee,
+			"RAIDER": raiders_killed,
+			"BRUTE": brutes_killed,
+			"FLYER": flyers_killed,
+			"SIEGE": 0,
+			"BOSS": 0
+		}
+
+	var total_defeated_count: int = 0
+	for k in defeated_enemies:
+		if str(k) != "is_boss":
+			total_defeated_count += maxi(0, int(defeated_enemies[k]))
+
+	var rewards: Dictionary = calculate_battle_rewards(
+		threat_budget,
+		defeated_enemies,
+		is_victory,
+		fortress.is_destroyed()
+	)
+
 	return {
 		"victory": is_victory,
+		"defeat": not is_victory and not fortress.is_destroyed(),
 		"game_over": fortress.is_destroyed(),
+		"wave": wave_num,
+		"threat_budget": threat_budget,
+		"enemy_casualties": defeated_enemies,
+		"enemies_defeated_total": total_defeated_count,
+		"reward_eligibility": bool(rewards.get("reward_eligibility", false)),
 		"initial_fortress_hp": initial_fortress_hp,
 		"final_fortress_hp": fortress.current_hp,
 		"fortress_damage_taken": actual_damage_taken,
@@ -780,14 +815,62 @@ func simulate_battle(population: PopulationModel, heroes: Array, warehouse_equip
 		"casualties_by_role": casualties,
 		"casualties": casualties,
 		"breach_threat": breach_threat,
-		"loot_gold": loot_gold,
+		"loot_gold": int(rewards.get("loot_gold", 0)),
+		"loot_monster_core": int(rewards.get("loot_monster_core", 0)),
+		"loot_monster_material": int(rewards.get("loot_monster_material", 0)),
 		"exp_per_hero": exp_gained_per_hero,
 		"battle_exp_total": total_battle_exp,
 		"exp_distribution": exp_distribution,
 		"equipment_lost": eq_loss_summary["lost_items"],
 		"equipment_damaged": eq_loss_summary["damaged_items"],
 		"heroes_killed": hero_death_summary["killed"],
-		"heroes_survived": hero_death_summary["survived"]
+		"heroes_survived": hero_death_summary["survived"],
+		"settlement_id": "wave_%d_seed_%d" % [wave_num, seed_val],
+		"is_settled": false
+	}
+
+
+## Menghitung hadiah pertempuran deterministik (Gold, Monster Core, Monster Material) (Phase 7B).
+## Seluruh hadiah bernilai 0 jika kalah (Defeat) atau benteng hancur (Game Over).
+func calculate_battle_rewards(
+	threat_budget: int,
+	enemies_defeated: Dictionary,
+	is_victory: bool,
+	is_game_over: bool = false
+) -> Dictionary:
+	if not is_victory or is_game_over:
+		return {
+			"loot_gold": 0,
+			"loot_monster_core": 0,
+			"loot_monster_material": 0,
+			"reward_eligibility": false
+		}
+
+	# 1. Gold Reward (Formula Kanonikal: floor(threat_budget * 1.30))
+	var loot_gold: int = int(floor(float(maxi(0, threat_budget)) * GOLD_LOOT_MULTIPLIER))
+
+	# 2. Monster Core Reward (PROVISIONAL BALANCE VALUE: Boss = 2, Siege = 1, Tank = 1)
+	var boss_count: int = int(enemies_defeated.get("BOSS", 0))
+	if bool(enemies_defeated.get("is_boss", false)) and boss_count <= 0:
+		boss_count = 1
+	var siege_count: int = int(enemies_defeated.get("SIEGE", 0)) + int(enemies_defeated.get("SIEGE_MONSTER", 0))
+	var tank_count: int = int(enemies_defeated.get("BRUTE", 0)) + int(enemies_defeated.get("TROLL_TANK", 0))
+
+	var loot_core: int = (boss_count * PROVISIONAL_CORE_PER_BOSS) + (siege_count * PROVISIONAL_CORE_PER_SIEGE) + (tank_count * PROVISIONAL_CORE_PER_TANK)
+
+	# 3. Monster Material Reward (PROVISIONAL BALANCE VALUE: rate = 0.50 per defeated enemy)
+	var total_defeated: int = 0
+	for k in enemies_defeated:
+		if str(k) != "is_boss":
+			total_defeated += maxi(0, int(enemies_defeated[k]))
+
+	var loot_material: int = maxi(0, int(floor(float(total_defeated) * PROVISIONAL_MATERIAL_DROP_RATE)))
+
+	return {
+		"loot_gold": loot_gold,
+		"loot_monster_core": loot_core,
+		"loot_monster_material": loot_material,
+		"reward_eligibility": true
 	}
 
 
